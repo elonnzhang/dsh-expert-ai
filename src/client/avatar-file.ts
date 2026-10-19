@@ -52,6 +52,8 @@ export async function avatarFromFile(file: Blob): Promise<AvatarFileResult> {
     context.drawImage(bitmap, x, y, side, side, 0, 0, AVATAR_SIDE, AVATAR_SIDE);
     const avatar = encodeAvatar((mime, quality) => canvas.toDataURL(mime, quality));
     return avatar === undefined ? { problem: "unreadable" } : { avatar };
+  } catch {
+    return { problem: "unreadable" };
   } finally {
     bitmap.close();
   }

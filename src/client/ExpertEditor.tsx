@@ -48,6 +48,8 @@ export function ExpertEditor({
   const [boundFile, setBoundFile] = useState<string | undefined>(importedFile);
   const [fileError, setFileError] = useState<string | undefined>(undefined);
   const [avatarError, setAvatarError] = useState<string | undefined>(undefined);
+  const [picking, setPicking] = useState(false);
+  const latestPick = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const avatarInput = useRef<HTMLInputElement>(null);
 
@@ -73,13 +75,23 @@ export function ExpertEditor({
     }
   };
   const pickAvatar = async (file: File): Promise<void> => {
+    const pick = ++latestPick.current;
+    setPicking(true);
     const result = await avatarFromFile(file);
+    if (pick !== latestPick.current) return;
+    setPicking(false);
     if ("avatar" in result) {
       update("avatar", result.avatar);
       setAvatarError(undefined);
     } else {
       setAvatarError(t(result.problem === "tooLarge" ? "avatarTooLarge" : "avatarUnreadable"));
     }
+  };
+  const removeAvatar = (): void => {
+    latestPick.current += 1;
+    setPicking(false);
+    update("avatar", undefined);
+    setAvatarError(undefined);
   };
   const save = (): void => {
     const problem = recordProblem(draft, ids, existing ? initial.id : undefined);
@@ -134,7 +146,7 @@ export function ExpertEditor({
           <Button variant="outline" onClick={onCancel}>
             {t("cancel")}
           </Button>
-          <Button variant="primary" onClick={save} disabled={saving}>
+          <Button variant="primary" onClick={save} disabled={saving || picking}>
             {saving ? t("saving") : t("save")}
           </Button>
         </>
@@ -235,7 +247,10 @@ export function ExpertEditor({
             placeholder={t("sourceKind")}
             options={EXPERT_SOURCE_KINDS.map((kind) => ({ value: kind, label: t(SOURCE_COPY[kind].label) }))}
             onChange={(value) => {
-              update("source", { ...draft.source, kind: value as ExpertIdentitySourceKind });
+              setDraft((current) => ({
+                ...current,
+                source: { ...current.source, kind: value as ExpertIdentitySourceKind },
+              }));
             }}
           />
           <span className={css.hint}>{t(SOURCE_COPY[sourceKind].hint)}</span>
@@ -257,20 +272,14 @@ export function ExpertEditor({
         <div className={`${css.field} ${css.full}`}>
           <span className={css.label}>{t("avatar")}</span>
           <div className={css.avatarRow}>
-            {draft.avatar === undefined ? null : (
+            {draft.avatar == null ? null : (
               <img className={css.avatarPreview} src={avatarDataUrl(draft.avatar)} alt="" />
             )}
             <Button variant="outline" onClick={() => avatarInput.current?.click()}>
               {t("avatarChoose")}
             </Button>
-            {draft.avatar === undefined ? null : (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  update("avatar", undefined);
-                  setAvatarError(undefined);
-                }}
-              >
+            {draft.avatar == null ? null : (
+              <Button variant="outline" onClick={removeAvatar}>
                 {t("avatarRemove")}
               </Button>
             )}

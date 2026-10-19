@@ -320,7 +320,7 @@ export const en = {
   customCategoryPlaceholder: "For example: strategic consulting",
   titleLabel: "Title",
   titlePlaceholder: "For example: Startup thinking assistant",
-  titleHint: "Shown after the name, as in “Mentor · Startup thinking assistant”; blank uses “Thinking assistant”.",
+  titleHint: "Shown after the name, as in “Mentor · Startup thinking assistant”; blank uses “思考助手”.",
   titleLength: "The title cannot exceed 40 characters.",
   sourceKind: "Source of the persona",
   sourcePublic: "Public material",

@@ -52,6 +52,8 @@ describe("record validation", () => {
 
     const fits = { kind: "public" as const, note: "注".repeat(200) };
     expect(recordProblem({ ...valid, source: fits }, new Set(), undefined)).toBeUndefined();
+    const padded = { kind: "public" as const, note: ` ${"注".repeat(200)} ` };
+    expect(recordProblem({ ...valid, source: padded }, new Set(), undefined)).toBeUndefined();
     const note = recordProblem({ ...valid, source: { ...fits, note: "注".repeat(201) } }, new Set(), undefined);
     expect(note?.reason).toBe("sourceNoteLength");
     expect([...(note?.fields ?? [])]).toEqual(["source"]);

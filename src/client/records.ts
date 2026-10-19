@@ -30,8 +30,9 @@ export function normalizeDigitalLifeRecord(draft: DigitalLifeRecord): DigitalLif
   return {
     ...rest,
     ...(title ? { title } : {}),
-    ...(avatar === undefined ? {} : { avatar }),
-    ...(rawSource === undefined ? {} : { source: { kind: rawSource.kind, ...(note ? { note } : {}) } }),
+    // An empty `avatar:` or `source:` in YAML reaches the form as null.
+    ...(avatar == null ? {} : { avatar }),
+    ...(rawSource == null ? {} : { source: { kind: rawSource.kind, ...(note ? { note } : {}) } }),
     id,
     name: draft.name.trim(),
     description: draft.description.trim(),

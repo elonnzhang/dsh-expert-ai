@@ -77,6 +77,12 @@ describe("digital-life presentation fields", () => {
     for (const key of ["title", "avatar", "source"]) expect(normalized, key).not.toHaveProperty(key);
   });
 
+  it("reads a null avatar or source, as YAML gives for an empty value, as absent", () => {
+    const normalized = normalizeDigitalLifeRecord({ ...draft, avatar: null, source: null } as unknown as DigitalLifeRecord);
+    expect(normalized).not.toHaveProperty("avatar");
+    expect(normalized).not.toHaveProperty("source");
+  });
+
   it("produces settings the Host accepts", () => {
     const normalized = normalizeDigitalLifeRecord({
       ...draft,
