@@ -133,12 +133,12 @@ export async function identityFor(record: DigitalLifeRecord, stateDir?: string):
 
 /** Write beside the target, then rename over it, so a reader never sees a truncated file. */
 async function writeAtomically(path: string, text: string): Promise<void> {
-  const temporary = `${path}.${randomUUID()}.tmp`;
+  const temporary = join(dirname(path), `.${randomUUID()}.tmp`);
   try {
     await writeFile(temporary, text, { encoding: "utf8", flag: "wx", mode: 0o600 });
     await rename(temporary, path);
   } catch (error) {
-    await rm(temporary, { force: true });
+    await rm(temporary, { force: true }).catch(() => undefined);
     throw error;
   }
 }
@@ -199,25 +199,29 @@ export async function initializeIdentities(
   }));
 }
 
-/** Persist identity/metadata edits and remove storage for deleted records. */
+/**
+ * Persist identity/metadata edits and remove storage for deleted records.
+ * `applied` hears each id as soon as its change is stored (`undefined` once removed), so a caller
+ * can tell exactly what is on disk when another id fails and this rejects.
+ */
 export async function reconcileIdentities(
   previous: readonly DigitalLifeRecord[],
   next: readonly DigitalLifeRecord[],
   stateDir?: string,
+  applied?: (id: string, record: DigitalLifeRecord | undefined) => void,
 ): Promise<void> {
   const old = new Map(previous.map((record) => [record.id, record]));
   const ids = new Set(next.map((record) => record.id));
   await allDone([
     ...next.map(async (record) => {
       const before = old.get(record.id);
-      if (before === undefined) {
-        await persist(record, stateDir, "create");
-      } else if (JSON.stringify(before) !== JSON.stringify(record)) {
-        await persist(record, stateDir, "update");
-      }
+      if (before !== undefined && JSON.stringify(before) === JSON.stringify(record)) return;
+      await persist(record, stateDir, before === undefined ? "create" : "update");
+      applied?.(record.id, record);
     }),
-    ...previous.filter((record) => !ids.has(record.id)).map((record) =>
-      rm(join(digitalLifeHome(process.env, stateDir), record.id), { recursive: true, force: true }),
-    ),
+    ...previous.filter((record) => !ids.has(record.id)).map(async (record) => {
+      await rm(join(digitalLifeHome(process.env, stateDir), record.id), { recursive: true, force: true });
+      applied?.(record.id, undefined);
+    }),
   ]);
 }

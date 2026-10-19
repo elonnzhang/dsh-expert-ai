@@ -199,6 +199,52 @@ describe('expertIdentity service', () => {
     expect(h.changes).toEqual([['mentor'], ['mentor']])
   })
 
+  it('keeps saving personas after the state directory changes while another record cannot be read', async () => {
+    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const broken = { ...analyst, agent: join('/nonexistent-expert-identity', 'missing.md') }
+    const h = await start([managed, broken])
+    const other = await mkdtemp(join(tmpdir(), 'expert-identity-other-'))
+    cleanups.push(() => rm(other, { recursive: true, force: true }))
+    h.dir = other
+    await update(h, [managed, broken])
+    await update(h, [{ ...managed, persona: '第一次修改。' }, broken])
+    await update(h, [{ ...managed, persona: '第二次修改。' }, broken])
+    expect((await h.service.get('mentor'))?.persona).toBe('第二次修改。')
+    expect(await readFile(agentPath('mentor', other), 'utf8')).toContain('第二次修改。')
+    expect(h.changes).toEqual([['mentor'], ['mentor']])
+  })
+
+  it('applies a revert after an earlier write only partly succeeded', async () => {
+    const broken = { ...analyst, agent: join('/nonexistent-expert-identity', 'missing.md') }
+    const h = await start([mentor])
+    await update(h, [{ ...mentor, persona: '关注团队。' }, broken])
+    expect((await h.service.get('mentor'))?.persona).toBe('关注团队。')
+    await update(h, [mentor])
+    expect((await h.service.get('mentor'))?.persona).toBe('关注现金流。')
+    expect(await readFile(agentPath('mentor', h.root), 'utf8')).toContain('关注现金流。')
+    expect(h.changes).toEqual([['mentor'], ['mentor']])
+  })
+
+  it('stores a record again when a partly failed write had removed it', async () => {
+    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const broken = { ...analyst, agent: join('/nonexistent-expert-identity', 'missing.md') }
+    const h = await start([managed])
+    await update(h, [broken])
+    await expect(h.service.get('mentor')).resolves.toBeUndefined()
+    await update(h, [managed])
+    expect((await h.service.get('mentor'))?.persona).toBe('关注现金流。')
+    expect(await readFile(agentPath('mentor', h.root), 'utf8')).toContain('关注现金流。')
+  })
+
+  it('removes the storage of a record that a partly failed write had added', async () => {
+    const broken = { ...analyst, id: 'broken', agent: join('/nonexistent-expert-identity', 'missing.md') }
+    const h = await start([mentor])
+    await update(h, [mentor, analyst, broken])
+    expect(await readFile(agentPath('analyst', h.root), 'utf8')).toContain('关注系统可靠性。')
+    await update(h, [mentor])
+    await expect(readFile(agentPath('analyst', h.root), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
   it('publishes tags trimmed and without duplicates', async () => {
     const h = await start([{ ...mentor, tags: [' 创业 ', '创业', '现金流'] }])
     expect((await h.service.list())[0]?.tags).toEqual(['创业', '现金流'])

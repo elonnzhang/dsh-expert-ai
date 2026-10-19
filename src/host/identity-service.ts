@@ -218,21 +218,25 @@ export class ExpertIdentityProvider extends Service implements ExpertIdentitySer
     super(ctx, "expertIdentity");
     const state: State = { ctx, options, work: Promise.resolve(), visible: new Map() };
     this.state = state;
-    let persisted = options.saved();
-    let seededDir = options.stateDir();
-    const initial = persisted;
-    const initialDir = seededDir;
+    const initial = options.saved();
+    const initialDir = options.stateDir();
+    const onDisk = new Map(initial.map((record) => [record.id, record]));
+    let seededDir = initialDir;
     enqueue(state, "digital-life: failed to initialize identities", false, () => initializeIdentities(initial, initialDir));
     ctx.on("loader/volatile-update", () => {
       const next = options.saved();
       const dir = options.stateDir();
       enqueue(state, "digital-life: failed to persist identities", true, async () => {
         if (dir !== seededDir) {
-          await initializeIdentities(next, dir);
           seededDir = dir;
+          await initializeIdentities(next, dir).catch((error: unknown) => {
+            ctx.logger.error("digital-life: failed to initialize identities", error);
+          });
         }
-        await reconcileIdentities(persisted, next, dir);
-        persisted = next;
+        await reconcileIdentities([...onDisk.values()], next, dir, (id, record) => {
+          if (record === undefined) onDisk.delete(id);
+          else onDisk.set(id, record);
+        });
       });
     });
   }

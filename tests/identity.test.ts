@@ -76,4 +76,20 @@ describe('digital-life expert agent identity', () => {
     await reconcileIdentities([imported], [])
     expect(await readFile(source, 'utf8')).toContain('Use first principles.')
   })
+
+  it('reports each stored change even when another record cannot be stored', async () => {
+    await home()
+    const gone = { ...record, id: 'gone' }
+    const broken = { ...record, id: 'broken', agent: join('/nonexistent-expert-identity', 'missing.md') }
+    await initializeIdentities([record, gone])
+    const applied: Array<[string, string | undefined]> = []
+    await expect(
+      reconcileIdentities([record, gone], [{ ...record, persona: '关注团队。' }, broken], undefined, (id, stored) => {
+        applied.push([id, stored?.persona])
+      }),
+    ).rejects.toThrow('cannot load agent')
+    expect(applied.sort()).toEqual([['gone', undefined], ['mentor', '关注团队。']])
+    await expect(readFile(agentPath('gone'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readFile(agentPath('mentor'), 'utf8')).toContain('关注团队。')
+  })
 })

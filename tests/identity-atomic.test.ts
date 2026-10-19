@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { agentPath, initializeIdentities, reconcileIdentities } from '../src/host/identity.js'
 import type { DigitalLifeRecord } from '../src/types.js'
 
-const disk = vi.hoisted(() => ({ full: false }))
+const disk = vi.hoisted(() => ({ full: false, stuck: false }))
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>()
@@ -14,7 +14,11 @@ vi.mock('node:fs/promises', async (importOriginal) => {
     await actual.writeFile(args[0], String(args[1]).slice(0, 4), args[2])
     throw Object.assign(new Error('no space left on device'), { code: 'ENOSPC' })
   }) as typeof actual.writeFile
-  return { ...actual, writeFile }
+  const rm = (async (...args: Parameters<typeof actual.rm>) => {
+    if (disk.stuck) throw Object.assign(new Error('operation not permitted'), { code: 'EPERM' })
+    return actual.rm(...args)
+  }) as typeof actual.rm
+  return { ...actual, writeFile, rm }
 })
 
 const record: DigitalLifeRecord = {
@@ -26,6 +30,7 @@ const edited = { ...record, persona: '关注团队。' }
 const dirs: string[] = []
 afterEach(async () => {
   disk.full = false
+  disk.stuck = false
   await Promise.all(dirs.splice(0).map((path) => rm(path, { recursive: true, force: true })))
 })
 
@@ -87,5 +92,22 @@ describe('managed identity files are replaced atomically', () => {
     await initializeIdentities([record], dir)
     await reconcileIdentities([record], [edited], dir)
     expect((await stat(agentPath('mentor', dir))).mode & 0o777).toBe(0o600)
+  })
+
+  it('saves an identity whose id nearly fills a file name', async () => {
+    const dir = await stateDir()
+    const long = { ...record, id: 'a'.repeat(230) }
+    await initializeIdentities([long], dir)
+    expect(await readFile(agentPath(long.id, dir), 'utf8')).toContain('关注现金流。')
+    await reconcileIdentities([long], [{ ...long, persona: '关注团队。' }], dir)
+    expect(await readFile(agentPath(long.id, dir), 'utf8')).toContain('关注团队。')
+  })
+
+  it('reports the failed save, not the failed removal of its temporary file', async () => {
+    const dir = await stateDir()
+    await initializeIdentities([record], dir)
+    disk.full = true
+    disk.stuck = true
+    await expect(reconcileIdentities([record], [edited], dir)).rejects.toMatchObject({ code: 'ENOSPC' })
   })
 })
