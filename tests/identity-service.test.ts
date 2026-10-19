@@ -38,15 +38,20 @@ afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()))
 })
 
-/** `before` runs ahead of the recorder, so a listener it adds is called first. */
-async function start(records: DigitalLifeRecord[], before?: (ctx: Context) => void): Promise<Harness> {
+/** `before` runs ahead of the recorder, so a listener it adds is called first; `dirFor` picks the state directory. */
+async function start(
+  records: DigitalLifeRecord[],
+  before?: (ctx: Context) => void,
+  dirFor?: (root: string) => Promise<string>,
+): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'expert-identity-'))
   const ctx = new Context()
   cleanups.push(async () => {
     await ctx.fiber.dispose()
     await rm(root, { recursive: true, force: true })
   })
-  const harness = { ctx, root, dir: root, records, changes: [] } as unknown as Harness
+  const dir = dirFor === undefined ? root : await dirFor(root)
+  const harness = { ctx, root, dir, records, changes: [] } as unknown as Harness
   before?.(ctx)
   ctx.on('expert-identity/changed', ({ ids }) => { harness.changes.push(ids) })
   await ctx.plugin((inner: Context) => {
@@ -182,6 +187,38 @@ describe('expertIdentity service', () => {
     expect((await h.service.get('mentor'))?.persona).toBe('关注现金流。')
     expect(await readFile(agentPath('mentor', other), 'utf8')).toContain('关注现金流。')
     expect(h.changes).toEqual([])
+  })
+
+  it('seeds a new state directory again on a later save when the first attempt failed', async () => {
+    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const h = await start([managed])
+    const blocked = join(h.root, 'blocked')
+    await writeFile(blocked, 'not a directory')
+    h.dir = blocked
+    await update(h, [managed])
+    expect(await h.service.get('mentor')).toBeUndefined()
+    await rm(blocked)
+    await mkdir(blocked)
+    await update(h, [managed])
+    expect((await h.service.get('mentor'))?.persona).toBe('关注现金流。')
+    expect(await readFile(agentPath('mentor', blocked), 'utf8')).toContain('关注现金流。')
+    expect(h.changes).toEqual([['mentor'], ['mentor']])
+  })
+
+  it('seeds the state directory on a later save when the attempt at startup failed', async () => {
+    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const h = await start([managed], undefined, async (root) => {
+      const blocked = join(root, 'blocked')
+      await writeFile(blocked, 'not a directory')
+      return blocked
+    })
+    expect(await h.service.get('mentor')).toBeUndefined()
+    await rm(h.dir)
+    await mkdir(h.dir)
+    await update(h, [managed])
+    expect((await h.service.get('mentor'))?.persona).toBe('关注现金流。')
+    expect(await readFile(agentPath('mentor', h.dir), 'utf8')).toContain('关注现金流。')
+    expect(h.changes).toEqual([['mentor']])
   })
 
   it('retries a save that failed when the settings are written again', async () => {
