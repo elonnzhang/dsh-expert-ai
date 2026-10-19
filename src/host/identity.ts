@@ -1,4 +1,5 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import type { DigitalLifeRecord } from "../types.js";
@@ -130,6 +131,18 @@ export async function identityFor(record: DigitalLifeRecord, stateDir?: string):
   throw new Error(`digital-life: no identity configured for "${record.id}"`);
 }
 
+/** Write beside the target, then rename over it, so a reader never sees a truncated file. */
+async function writeAtomically(path: string, text: string): Promise<void> {
+  const temporary = `${path}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporary, text, { encoding: "utf8", flag: "wx", mode: 0o600 });
+    await rename(temporary, path);
+  } catch (error) {
+    await rm(temporary, { force: true });
+    throw error;
+  }
+}
+
 async function persist(
   record: DigitalLifeRecord,
   stateDir?: string,
@@ -149,10 +162,7 @@ async function persist(
     throw new Error(`digital-life: no identity configured for "${record.id}"`);
   const path = agentPath(record.id, stateDir);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  await writeFile(path, agentDocument(record, identity), {
-    encoding: "utf8",
-    mode: 0o600,
-  });
+  await writeAtomically(path, agentDocument(record, identity));
 }
 
 /** Wait for every task, so none is still writing when the first failure is reported. */
@@ -179,7 +189,7 @@ export async function initializeIdentities(
         const legacy = await readIdentityFile(legacyAgentsPath(record.id, stateDir));
         const path = agentPath(record.id, stateDir);
         await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-        await writeFile(path, agentDocument(record, legacy), { encoding: "utf8", mode: 0o600 });
+        await writeAtomically(path, agentDocument(record, legacy));
         await rm(legacyAgentsPath(record.id, stateDir), { force: true });
       } catch (legacyError) {
         if ((legacyError as NodeJS.ErrnoException).code !== "ENOENT") throw legacyError;
