@@ -14,6 +14,7 @@
 - 通过 additive `sidebar.footer.action` Slot 注入 Chat Panel，不替换 Harness 的 Sidebar 或 Workspace 浏览器。
 - 创建不附加 Workspace 的独立会话，并使用所选数字生命初始化会话。
 - 将 `digital-life-mode` 注册到 Harness 首页原生 Agent preset 选择器及预设设置页；具体数字生命可从会话选择器或侧边栏 Chat Panel 选择。
+- 提供 `expertIdentity` Cordis 服务，供其他插件（如 Bot 运行时）读取已启用的身份：人设、头像、来源声明与版本。
 
 ## 演示
 
@@ -25,6 +26,22 @@
 ## 数字生命记录字段
 
 每条记录包含 `id`、`name`、`description`、主领域 `category`、能力标签 `tags[]`、`agent`、`persona` 和 `enabled`。`agent` 是运行时唯一的人格来源：未填写 Agent 文件时，保存会将 `persona` 写入托管的 `<id>/agents/<id>.md`，并把相对路径保存到 `agent`；填写 Agent 文件后，以该 Markdown 正文为准，忽略 `persona`。新建 `custom` 主领域的记录时建议填写 `customCategory`；旧配置缺少该字段时会回退使用数字生命名称。`toolFilter` 与 `model` 为可选字段。Host 会校验设置文档，并使用配置的子代理 Provider 创建一次性咨询。智囊团设计见 [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md)。
+
+展示字段均为可选，没有它们的旧记录仍然有效：
+
+- `title`：显示在名字后面，去掉首尾空白后不超过 40 个字符，缺省为“思考助手”。
+- `avatar`：`{ mime, data }`，`mime` 为 `image/png`、`image/jpeg` 或 `image/webp`，`data` 为 base64；整个 data URL 不超过 160,000 个字符。编辑器会把所选图片居中裁成 160 px 的正方形后重新编码。
+- `source`：`{ kind, note? }`，`kind` 为 `public`、`organization` 或 `authorized`；`note` 不超过 200 个字符。没有 `source` 的记录按 `public` 处理，`kind` 决定身份附带的来源声明。
+
+## expertIdentity 服务
+
+其他插件通过 `ctx.inject(['expertIdentity'], ctx => …)` 读取身份：
+
+- `list()` 返回已启用且人设可读取的身份。`get(id)` 返回单个身份（含 `persona` 与 `disclosure`）；id 不存在、未启用或人设无法读取时返回 `undefined`。
+- `revision` 是人设正文的 sha256。标题、头像或来源的变化不会改变它，而是通过变更事件并重新 `get` 获得。
+- `disclosure` 是按 `source.kind` 选择的一段中文来源声明，使用方原样放进提示词。
+- `expert-identity/changed` 携带 `{ ids }`：新增、移除或变化的 id（已排序）。监听器不会被等待，启动时不会触发。
+- 导出的类型有 `ExpertIdentity`、`ExpertIdentitySummary`、`ExpertIdentityService` 和 `ExpertIdentityChange`。
 
 ## 从 GitHub 安装
 

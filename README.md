@@ -15,6 +15,7 @@ English | [中文](README.zh.md)
 - Injects a Chat Panel through the additive `sidebar.footer.action` Slot without replacing the Harness sidebar or workspace browser.
 - Creates conversations without a Workspace and starts standalone conversations initialized with a selected digital-life persona.
 - Registers `digital-life-mode` in Harness's native Agent preset selector and Agent presets settings. Choose a specific identity from the conversation selector or the sidebar Chat Panel.
+- Provides the `expertIdentity` Cordis service, so another plugin such as a Bot runtime can read the enabled identities: persona, avatar, source disclosure and revision.
 
 ## Demo
 
@@ -26,6 +27,22 @@ English | [中文](README.zh.md)
 ## Record fields
 
 Each record has an `id`, `name`, `description`, primary-domain `category`, composable `tags[]`, `agent`, `persona`, and `enabled` flag. `agent` is the only runtime identity source. When no Agent file is supplied, saving a record writes `persona` to the managed `<id>/agents/<id>.md` file and stores that relative path in `agent`; when an Agent file is supplied, its Markdown body is authoritative and `persona` is ignored. New records using the `custom` category should set `customCategory`; older records without it fall back to the display name. `toolFilter` and `model` are optional. The Host validates the settings document and creates one-shot consultations with the configured subagent provider. See [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md) for the proposed Think Tank agent-team design.
+
+Presentation fields are optional, so records saved before they existed stay valid:
+
+- `title` (at most 40 characters after trimming) is shown after the name and defaults to “思考助手”.
+- `avatar` is `{ mime, data }` with an `image/png`, `image/jpeg` or `image/webp` mime and base64 data; the whole data URL must fit in 160,000 characters. The editor crops a picked image to a centered 160 px square and re-encodes it.
+- `source` is `{ kind, note? }` with `kind` one of `public`, `organization` or `authorized`; `note` holds at most 200 characters. A record without `source` counts as `public`, and the kind selects the disclosure the identity carries.
+
+## expertIdentity service
+
+Another plugin reads identities with `ctx.inject(['expertIdentity'], ctx => …)`:
+
+- `list()` returns the enabled identities whose persona can be read. `get(id)` returns one with its `persona` and `disclosure`, or `undefined` for an unknown, disabled or unreadable id.
+- `revision` is the sha256 of the persona. A change of title, avatar or source does not alter it; it arrives through the changed event and a fresh `get`.
+- `disclosure` is a Chinese paragraph chosen by `source.kind`, for the consumer to put into its prompt as is.
+- `expert-identity/changed` carries `{ ids }`, the sorted ids that appeared, disappeared or changed. Listeners are not awaited, and nothing is emitted at startup.
+- The types `ExpertIdentity`, `ExpertIdentitySummary`, `ExpertIdentityService` and `ExpertIdentityChange` are exported.
 
 ## Install from GitHub
 
