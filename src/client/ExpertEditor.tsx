@@ -139,7 +139,7 @@ export function ExpertEditor({
       footer={
         <>
           {error === undefined ? null : (
-            <span className={`${css.error} ${css.grow}`} role="alert">
+            <span className={`${css.error} ${css.footerError}`} role="alert">
               {error}
             </span>
           )}

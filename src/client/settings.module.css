@@ -152,6 +152,12 @@
   line-height: 20px;
 }
 
+/* Takes only the room the footer buttons leave; the 220px basis of .grow squeezes them on a phone. */
+.footerError {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 /* Section blocks inside a tab (launcher, history). */
 .block {
   display: flex;
