@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -170,6 +170,40 @@ describe('expertIdentity service', () => {
     expect(await readFile(agentPath('analyst', other), 'utf8')).toContain('关注系统可靠性。')
     await expect(readFile(agentPath('analyst', h.root), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
   })
+
+  it('keeps editor-managed identities published when the state directory changes', async () => {
+    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const h = await start([managed])
+    const other = await mkdtemp(join(tmpdir(), 'expert-identity-other-'))
+    cleanups.push(() => rm(other, { recursive: true, force: true }))
+    h.dir = other
+    await update(h, [managed])
+    expect((await h.service.list()).map(({ id }) => id)).toEqual(['mentor'])
+    expect((await h.service.get('mentor'))?.persona).toBe('关注现金流。')
+    expect(await readFile(agentPath('mentor', other), 'utf8')).toContain('关注现金流。')
+    expect(h.changes).toEqual([])
+  })
+
+  it('retries a save that failed when the settings are written again', async () => {
+    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const h = await start([managed])
+    const file = agentPath('mentor', h.root)
+    await rm(file)
+    await mkdir(file)
+    const edited = [{ ...managed, persona: '关注团队。' }]
+    await update(h, edited)
+    expect(await h.service.get('mentor')).toBeUndefined()
+    await rm(file, { recursive: true })
+    await update(h, edited)
+    expect((await h.service.get('mentor'))?.persona).toBe('关注团队。')
+    expect(h.changes).toEqual([['mentor'], ['mentor']])
+  })
+
+  it('publishes tags trimmed and without duplicates', async () => {
+    const h = await start([{ ...mentor, tags: [' 创业 ', '创业', '现金流'] }])
+    expect((await h.service.list())[0]?.tags).toEqual(['创业', '现金流'])
+    expect((await h.service.get('mentor'))?.tags).toEqual(['创业', '现金流'])
+  })
 })
 
 describe('disclosure', () => {
@@ -315,18 +349,22 @@ describe('expert-identity/changed', () => {
     expect(h.changes).toEqual([['mentor'], ['mentor']])
   })
 
-  it('tells every listener even when one added earlier throws, and logs the failure', async () => {
-    const warnings: string[] = []
+  it('tells every listener even when one added earlier throws, and logs only who failed', async () => {
+    const warnings: unknown[] = []
     const h = await start([mentor], (ctx) => {
       ctx.logger.exporter({
         levels: { default: 3 },
-        export: (message) => { if (message.type === 'warn') warnings.push(String(message.args[0])) },
+        export: (message) => { if (message.type === 'warn') warnings.push(...message.args) },
       })
-      ctx.on('expert-identity/changed', () => { throw new Error('listener failed') })
+      ctx.on('expert-identity/changed', () => { throw new TypeError('关注团队。') })
     })
     await update(h, [{ ...mentor, persona: '关注团队。' }])
     expect(h.changes).toEqual([['mentor']])
     await vi.waitFor(() => { expect(warnings.join('\n')).toContain('expert-identity/changed') })
+    expect(warnings.every((arg) => typeof arg === 'string')).toBe(true)
+    expect(warnings.join('\n')).toContain('mentor')
+    expect(warnings.join('\n')).toContain('TypeError')
+    expect(warnings.join('\n')).not.toContain('关注团队。')
   })
 
   it('publishes an identity once its persona becomes readable', async () => {

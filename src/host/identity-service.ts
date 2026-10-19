@@ -123,7 +123,7 @@ function summaryOf(state: State, record: DigitalLifeRecord, persona: string): Ex
       record.category === "custom"
         ? record.customCategory?.trim() || record.name
         : DIGITAL_LIFE_CATEGORY_LABELS[record.category],
-    tags: [...record.tags],
+    tags: [...new Set(record.tags.map((tag) => tag.trim()))],
     ...(avatar === undefined ? {} : { avatar }),
     source: sourceOf(record),
     revision: createHash("sha256").update(persona, "utf8").digest("hex"),
@@ -157,6 +157,12 @@ function fingerprint(summary: ExpertIdentitySummary): string {
   return createHash("sha256").update(JSON.stringify(summary)).digest("hex");
 }
 
+/** Only error names are logged for a failed listener, because its message may quote persona text. */
+function errorNames(error: unknown): string {
+  const causes: unknown[] = error instanceof AggregateError ? error.errors : [error];
+  return causes.map((cause) => (cause instanceof Error ? cause.name : typeof cause)).join(", ");
+}
+
 /** Remember what is published now and tell listeners which ids differ from before. */
 async function settle(state: State, announce: boolean): Promise<void> {
   const published = await loadEnabled(state);
@@ -167,7 +173,7 @@ async function settle(state: State, announce: boolean): Promise<void> {
   if (!announce || changed.length === 0) return;
   // Not awaited, so a listener that calls get() cannot deadlock the queue; parallel isolates failures.
   void state.ctx.parallel("expert-identity/changed", { ids: changed }).catch((error: unknown) => {
-    state.ctx.logger.warn("digital-life: a listener of expert-identity/changed failed", error);
+    state.ctx.logger.warn(`digital-life: listeners of expert-identity/changed failed for ${changed.join(", ")}: ${errorNames(error)}`);
   });
 }
 
@@ -213,15 +219,21 @@ export class ExpertIdentityProvider extends Service implements ExpertIdentitySer
     const state: State = { ctx, options, work: Promise.resolve(), visible: new Map() };
     this.state = state;
     let persisted = options.saved();
+    let seededDir = options.stateDir();
     const initial = persisted;
-    const initialDir = options.stateDir();
+    const initialDir = seededDir;
     enqueue(state, "digital-life: failed to initialize identities", false, () => initializeIdentities(initial, initialDir));
     ctx.on("loader/volatile-update", () => {
-      const previous = persisted;
       const next = options.saved();
       const dir = options.stateDir();
-      persisted = next;
-      enqueue(state, "digital-life: failed to persist identities", true, () => reconcileIdentities(previous, next, dir));
+      enqueue(state, "digital-life: failed to persist identities", true, async () => {
+        if (dir !== seededDir) {
+          await initializeIdentities(next, dir);
+          seededDir = dir;
+        }
+        await reconcileIdentities(persisted, next, dir);
+        persisted = next;
+      });
     });
   }
 
