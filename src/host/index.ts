@@ -124,7 +124,7 @@ export const Config: z<DigitalLifeSettings, Config> = z.object({
 });
 
 function normalizeRecord(record: DigitalLifeRecord): DigitalLifeRecord {
-  const { title: rawTitle, source: rawSource, ...rest } = record;
+  const { title: rawTitle, avatar, source: rawSource, ...rest } = record;
   const name = record.name.trim();
   const title = rawTitle?.trim();
   const note = rawSource?.note?.trim();
@@ -141,7 +141,9 @@ function normalizeRecord(record: DigitalLifeRecord): DigitalLifeRecord {
         ? { customCategory: record.customCategory.trim() }
         : {}),
     tags,
-    ...(rawSource === undefined ? {} : { source: { kind: rawSource.kind, ...(note ? { note } : {}) } }),
+    // YAML reads an empty `avatar:` or `source:` as null, which the schema keeps.
+    ...(avatar == null ? {} : { avatar }),
+    ...(rawSource == null ? {} : { source: { kind: rawSource.kind, ...(note ? { note } : {}) } }),
     // Packages imported before the branch or tag was recorded were pinned to a
     // commit; that commit is the version they came from.
     ...(record.expertPackage !== undefined && typeof record.expertPackage.ref !== "string"

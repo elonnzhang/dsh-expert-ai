@@ -51,6 +51,11 @@ describe('expert avatar', () => {
     expect(avatarProblem({ mime: 'image/png', data: 'not base64 data' })).not.toContain('not base64 data')
   })
 
+  it('accepts every base64 character and both padding forms', () => {
+    for (const data of ['A+/B'.repeat(10), 'Zm9v', 'AAAAAA==', 'AAAAAAA='])
+      expect(avatarProblem({ mime: 'image/png', data })).toBeUndefined()
+  })
+
   it('splits a data URL back into an avatar', () => {
     expect(avatarFromDataUrl(`data:image/png;base64,${PNG}`)).toEqual(avatar)
     expect(avatarFromDataUrl(avatarDataUrl({ mime: 'image/webp', data: PNG }))).toEqual({ mime: 'image/webp', data: PNG })
@@ -68,5 +73,10 @@ describe('expert avatar', () => {
       `data:image/png;base64,${'A'.repeat(MAX_EXPERT_AVATAR_LENGTH)}`,
     ]
     for (const url of urls) expect(avatarFromDataUrl(url)).toBeUndefined()
+  })
+
+  it('refuses a URL that only looks like a data URL', () => {
+    for (const url of [`blob:image/png;base64,${PNG}`, `data:image/pngX;base64,${PNG}`])
+      expect(avatarFromDataUrl(url)).toBeUndefined()
   })
 })

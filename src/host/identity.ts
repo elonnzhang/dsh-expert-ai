@@ -155,12 +155,18 @@ async function persist(
   });
 }
 
+/** Wait for every task, so none is still writing when the first failure is reported. */
+async function allDone(tasks: readonly Promise<unknown>[]): Promise<void> {
+  const outcomes = await Promise.allSettled(tasks);
+  for (const outcome of outcomes) if (outcome.status === "rejected") throw outcome.reason;
+}
+
 /** Ensure every managed life owns agents/<id>.md and migrate the old AGENTS.md layout. */
 export async function initializeIdentities(
   records: readonly DigitalLifeRecord[],
   stateDir?: string,
 ): Promise<void> {
-  await Promise.all(records.map(async (record) => {
+  await allDone(records.map(async (record) => {
     if (record.agent !== undefined && record.agent !== managedAgentBinding(record.id)) {
       await readAgentIdentity(record.agent, stateDir);
       return;
@@ -191,7 +197,7 @@ export async function reconcileIdentities(
 ): Promise<void> {
   const old = new Map(previous.map((record) => [record.id, record]));
   const ids = new Set(next.map((record) => record.id));
-  await Promise.all([
+  await allDone([
     ...next.map(async (record) => {
       const before = old.get(record.id);
       if (before === undefined) {

@@ -164,8 +164,11 @@ async function settle(state: State, announce: boolean): Promise<void> {
   const ids = new Set([...state.visible.keys(), ...next.keys()]);
   const changed = [...ids].filter((id) => state.visible.get(id) !== next.get(id)).sort();
   state.visible = next;
-  // emit does not await listeners, so one that calls get() cannot wait on this task.
-  if (announce && changed.length > 0) state.ctx.emit("expert-identity/changed", { ids: changed });
+  if (!announce || changed.length === 0) return;
+  // Not awaited, so a listener that calls get() cannot deadlock the queue; parallel isolates failures.
+  void state.ctx.parallel("expert-identity/changed", { ids: changed }).catch((error: unknown) => {
+    state.ctx.logger.warn("digital-life: a listener of expert-identity/changed failed", error);
+  });
 }
 
 /** Run identity maintenance one task at a time, then publish; the queue never rejects. */

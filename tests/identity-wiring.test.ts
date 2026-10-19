@@ -1,10 +1,11 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { afterEach, describe, expect, it } from 'vitest'
+import { agentPath } from '../src/host/identity.js'
 import * as plugin from '../src/index.js'
 import type { ExpertIdentity, ExpertIdentitySummary } from '../src/index.js'
 
@@ -47,5 +48,7 @@ describe('expertIdentity in the loaded plugin', () => {
     expect(seen.mentor).toMatchObject({
       name: '创业导师', title: '创业思考助手', category: '企业', persona: '关注现金流。', source: { kind: 'organization', note: '访谈' },
     })
+    expect(await readFile(agentPath('mentor', root), 'utf8')).toContain('关注现金流。')
+    expect(await readFile(agentPath('hidden', root), 'utf8')).toContain('不应出现。')
   })
 })

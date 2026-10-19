@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { DIGITAL_LIFE_CATEGORY_LABELS, EXPERT_SOURCE_KINDS } from '../src/constants.js'
+import { agentPath } from '../src/host/identity.js'
 import { disclosureFor, ExpertIdentityProvider } from '../src/index.js'
 import type { ExpertIdentityService } from '../src/index.js'
 import type { DigitalLifeRecord } from '../src/types.js'
@@ -23,6 +25,8 @@ const sha256 = (text: string): string => createHash('sha256').update(text, 'utf8
 interface Harness {
   ctx: Context
   root: string
+  /** State directory the service is told to use; a test may point it elsewhere between writes. */
+  dir: string
   /** The service as another plugin receives it, through cordis' proxy. */
   service: ExpertIdentityService
   records: DigitalLifeRecord[]
@@ -34,17 +38,19 @@ afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()))
 })
 
-async function start(records: DigitalLifeRecord[]): Promise<Harness> {
+/** `before` runs ahead of the recorder, so a listener it adds is called first. */
+async function start(records: DigitalLifeRecord[], before?: (ctx: Context) => void): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'expert-identity-'))
   const ctx = new Context()
   cleanups.push(async () => {
     await ctx.fiber.dispose()
     await rm(root, { recursive: true, force: true })
   })
-  const harness = { ctx, root, records, changes: [] } as unknown as Harness
+  const harness = { ctx, root, dir: root, records, changes: [] } as unknown as Harness
+  before?.(ctx)
   ctx.on('expert-identity/changed', ({ ids }) => { harness.changes.push(ids) })
   await ctx.plugin((inner: Context) => {
-    new ExpertIdentityProvider(inner, { saved: () => harness.records, records: () => harness.records, stateDir: () => root })
+    new ExpertIdentityProvider(inner, { saved: () => harness.records, records: () => harness.records, stateDir: () => harness.dir })
   })
   await ctx.plugin(Object.assign((inner: Context) => { harness.service = inner.expertIdentity }, { inject: ['expertIdentity'] }))
   await harness.service.list()
@@ -129,6 +135,41 @@ describe('expertIdentity service', () => {
     expect((await h.service.list()).map((item) => item.id)).toEqual(['mentor'])
     await expect(h.service.get('analyst')).resolves.toBeUndefined()
   })
+
+  it.each([
+    ['business', '企业'],
+    ['science', '科学'],
+    ['tech', '技术'],
+    ['culture', '文化'],
+    ['entertainment', '娱乐'],
+  ] as const)('publishes the %s domain as %s', async (category, label) => {
+    const h = await start([{ ...mentor, category }])
+    expect((await h.service.list())[0]?.category).toBe(label)
+    expect(DIGITAL_LIFE_CATEGORY_LABELS[category]).toBe(label)
+  })
+
+  it('hands out copies, so a consumer cannot change the settings', async () => {
+    const h = await start([{ ...mentor, tags: ['创业', '现金流'], avatar: { ...png } }])
+    const first = await h.service.get('mentor')
+    first?.tags.push('篡改')
+    if (first?.avatar !== undefined) first.avatar.data = 'AAAA'
+    const again = await h.service.get('mentor')
+    expect(again?.tags).toEqual(['创业', '现金流'])
+    expect(again?.avatar).toEqual(png)
+    expect(h.records[0]?.tags).toEqual(['创业', '现金流'])
+    expect(h.records[0]?.avatar).toEqual(png)
+  })
+
+  it('writes the managed file under the state directory in force at each write', async () => {
+    const h = await start([mentor])
+    expect(await readFile(agentPath('mentor', h.root), 'utf8')).toContain('关注现金流。')
+    const other = await mkdtemp(join(tmpdir(), 'expert-identity-other-'))
+    cleanups.push(() => rm(other, { recursive: true, force: true }))
+    h.dir = other
+    await update(h, [mentor, analyst])
+    expect(await readFile(agentPath('analyst', other), 'utf8')).toContain('关注系统可靠性。')
+    await expect(readFile(agentPath('analyst', h.root), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
 })
 
 describe('disclosure', () => {
@@ -148,6 +189,16 @@ describe('disclosure', () => {
     expect(disclosureFor('organization')).toMatch(/组织内部资料.*并非本人/)
     expect(disclosureFor('authorized')).toContain('经本人授权')
     expect(disclosureFor('authorized')).not.toContain('并非本人')
+  })
+
+  it('tells the persona to admit what it is and not to invent beyond its sources', () => {
+    for (const kind of EXPERT_SOURCE_KINDS) {
+      expect(disclosureFor(kind)).toContain('如实说明')
+      expect(disclosureFor(kind)).toMatch(/不要.*编造/)
+    }
+    for (const kind of ['public', 'organization'] as const)
+      expect(disclosureFor(kind)).toContain('不要声称自己就是本人')
+    expect(disclosureFor('authorized')).toContain('不是本人在实时回答')
   })
 
   it('keeps the free-text note out of the disclosure', async () => {
@@ -207,6 +258,43 @@ describe('expert-identity/changed', () => {
     expect(h.changes).toEqual([])
   })
 
+  it.each([
+    ['name', { name: '新名字' }],
+    ['description', { description: '换了简介' }],
+    ['category', { category: 'tech' }],
+    ['tags', { tags: ['创业', '增长'] }],
+  ])('reports a change to the %s', async (_field, patch) => {
+    const h = await start([mentor])
+    await update(h, [{ ...mentor, ...patch } as DigitalLifeRecord])
+    expect(h.changes).toEqual([['mentor']])
+  })
+
+  it('announces a change once, not again on the next unrelated write', async () => {
+    const h = await start([mentor, analyst])
+    const edited = { ...mentor, persona: '关注团队。' }
+    await update(h, [edited, analyst])
+    await update(h, [edited, { ...analyst, toolFilter: ['read_file'] }])
+    expect(h.changes).toEqual([['mentor']])
+  })
+
+  it('serves the persona saved last after an edit and its reversal', async () => {
+    const h = await start([mentor])
+    await update(h, [{ ...mentor, persona: '关注团队。' }])
+    await update(h, [mentor])
+    expect((await h.service.get('mentor'))?.persona).toBe('关注现金流。')
+    const file = await readFile(agentPath('mentor', h.root), 'utf8')
+    expect(file).toContain('关注现金流。')
+    expect(file).not.toContain('关注团队。')
+    expect(h.changes).toEqual([['mentor'], ['mentor']])
+  })
+
+  it('still announces an edit when another record in the same write cannot be stored', async () => {
+    const h = await start([mentor])
+    await update(h, [{ ...mentor, persona: '关注团队。' }, { ...analyst, persona: '' }])
+    expect((await h.service.get('mentor'))?.persona).toBe('关注团队。')
+    expect(h.changes).toEqual([['mentor']])
+  })
+
   it('lets a listener read the new identity', async () => {
     const h = await start([mentor])
     const seen: Array<string | undefined> = []
@@ -225,6 +313,20 @@ describe('expert-identity/changed', () => {
     off()
     await update(h, [{ ...mentor, persona: '关注增长。' }])
     expect(h.changes).toEqual([['mentor'], ['mentor']])
+  })
+
+  it('tells every listener even when one added earlier throws, and logs the failure', async () => {
+    const warnings: string[] = []
+    const h = await start([mentor], (ctx) => {
+      ctx.logger.exporter({
+        levels: { default: 3 },
+        export: (message) => { if (message.type === 'warn') warnings.push(String(message.args[0])) },
+      })
+      ctx.on('expert-identity/changed', () => { throw new Error('listener failed') })
+    })
+    await update(h, [{ ...mentor, persona: '关注团队。' }])
+    expect(h.changes).toEqual([['mentor']])
+    await vi.waitFor(() => { expect(warnings.join('\n')).toContain('expert-identity/changed') })
   })
 
   it('publishes an identity once its persona becomes readable', async () => {

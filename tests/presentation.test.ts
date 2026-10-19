@@ -68,6 +68,21 @@ describe('record title, avatar and source', () => {
     expect(messageOf({ title: '   ', source: { kind: 'public', note: '  ' } })).toBe('')
   })
 
+  it('measures the note after trimming', () => {
+    expect(messageOf({ source: { kind: 'public', note: `  ${'x'.repeat(MAX_EXPERT_SOURCE_NOTE_LENGTH)}  ` } })).toBe('')
+  })
+
+  it('reads an empty `source:` or `avatar:` in YAML as absent', () => {
+    const [parsed] = Config({ records: [{ ...record, source: null, avatar: null }] as never }).records.get()
+    expect(() => validateSettings({ records: [parsed as DigitalLifeRecord] })).not.toThrow()
+    expect(messageOf({ source: null, avatar: null })).toBe('')
+  })
+
+  it('refuses to load an avatar of another image type', () => {
+    const gif = { ...record, avatar: { mime: 'image/gif', data: png.data } } as unknown as DigitalLifeRecord
+    expect(() => Config({ records: [gif] })).toThrow()
+  })
+
   it('rejects avatars the Bot runtime would not store', () => {
     expect(messageOf({ avatar: png })).toBe('')
     expect(messageOf({ avatar: { mime: 'image/gif', data: png.data } })).toMatch(/avatar: image type must be one of/)
