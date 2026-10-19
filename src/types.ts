@@ -1,11 +1,30 @@
-import { DIGITAL_LIFE_CATEGORIES } from "./constants.js";
+import { DIGITAL_LIFE_CATEGORIES, EXPERT_AVATAR_MIMES, EXPERT_SOURCE_KINDS } from "./constants.js";
 import type { ExpertPackageBinding, ExpertTeam } from "./expert-types.js";
 
 export type DigitalLifeCategory = (typeof DIGITAL_LIFE_CATEGORIES)[number];
 
+export type ExpertIdentitySourceKind = (typeof EXPERT_SOURCE_KINDS)[number];
+
+export type ExpertIdentityAvatarMime = (typeof EXPERT_AVATAR_MIMES)[number];
+
+/** Where the persona's material comes from. */
+export interface ExpertIdentitySource {
+  kind: ExpertIdentitySourceKind;
+  /** Free text for people (for example the material used); never added to the disclosure. */
+  note?: string;
+}
+
+/** Avatar image; `data` is base64 without the `data:` prefix. */
+export interface ExpertIdentityAvatar {
+  mime: ExpertIdentityAvatarMime;
+  data: string;
+}
+
 export interface DigitalLifeRecord {
   id: string;
   name: string;
+  /** Text shown after the name, for example "储能系统思考助手". Defaults to "思考助手". */
+  title?: string;
   description: string;
   /** Stable primary domain used for coarse grouping and routing. */
   category: DigitalLifeCategory;
@@ -23,6 +42,10 @@ export interface DigitalLifeRecord {
   model?: { provider?: string; model?: string };
   /** Immutable upstream package; user configuration remains separate. */
   expertPackage?: ExpertPackageBinding | undefined;
+  /** Picture shown with the identity. */
+  avatar?: ExpertIdentityAvatar | undefined;
+  /** What the persona was built from. Absent means public material. */
+  source?: ExpertIdentitySource | undefined;
   enabled: boolean;
 }
 

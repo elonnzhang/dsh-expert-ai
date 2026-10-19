@@ -22,7 +22,15 @@ import {
 } from "./session-binding.js";
 import type { SubagentResult, SubagentRun } from "@deepseek-ai/dsh-subagent";
 import type { Agent } from "@deepseek-ai/dsh-agent";
-import { DIGITAL_LIFE_CATEGORIES } from "../constants.js";
+import {
+  DIGITAL_LIFE_CATEGORIES,
+  DIGITAL_LIFE_CATEGORY_LABELS,
+  EXPERT_AVATAR_MIMES,
+  EXPERT_SOURCE_KINDS,
+  MAX_EXPERT_SOURCE_NOTE_LENGTH,
+  MAX_EXPERT_TITLE_LENGTH,
+} from "../constants.js";
+import { avatarProblem } from "../avatar.js";
 import { createExpertService } from "./expert-service.js";
 import { packageAgentBinding, validatePackageBinding } from "./expert-packages.js";
 import type { ExpertTeam } from "../expert-types.js";
@@ -41,6 +49,7 @@ const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 const RecordSchema: z<DigitalLifeRecord> = z.object({
   id: z.string(),
   name: z.string(),
+  title: z.string().required(false),
   description: z.string().default(""),
   category: z.union([...DIGITAL_LIFE_CATEGORIES]),
   customCategory: z.string().required(false),
@@ -64,6 +73,14 @@ const RecordSchema: z<DigitalLifeRecord> = z.object({
       revision: z.string(),
       ref: z.string(),
     }),
+    z.const(undefined),
+  ]).required(false),
+  avatar: z.union([
+    z.object({ mime: z.union([...EXPERT_AVATAR_MIMES]), data: z.string() }),
+    z.const(undefined),
+  ]).required(false),
+  source: z.union([
+    z.object({ kind: z.union([...EXPERT_SOURCE_KINDS]), note: z.string().required(false) }),
     z.const(undefined),
   ]).required(false),
   enabled: z.boolean().default(true),
@@ -106,12 +123,16 @@ export const Config: z<DigitalLifeSettings, Config> = z.object({
 });
 
 function normalizeRecord(record: DigitalLifeRecord): DigitalLifeRecord {
+  const { title: rawTitle, source: rawSource, ...rest } = record;
   const name = record.name.trim();
+  const title = rawTitle?.trim();
+  const note = rawSource?.note?.trim();
   const legacyTag = record.tag?.trim();
   const tags = record.tags.length > 0 ? record.tags : legacyTag === undefined || legacyTag === "" ? [] : [legacyTag];
   return {
-    ...record,
+    ...rest,
     name,
+    ...(title ? { title } : {}),
     description: record.description.trim() || name,
     ...(record.category === "custom"
       ? { customCategory: record.customCategory?.trim() || name }
@@ -119,6 +140,7 @@ function normalizeRecord(record: DigitalLifeRecord): DigitalLifeRecord {
         ? { customCategory: record.customCategory.trim() }
         : {}),
     tags,
+    ...(rawSource === undefined ? {} : { source: { kind: rawSource.kind, ...(note ? { note } : {}) } }),
     // Packages imported before the branch or tag was recorded were pinned to a
     // commit; that commit is the version they came from.
     ...(record.expertPackage !== undefined && typeof record.expertPackage.ref !== "string"
@@ -129,6 +151,20 @@ function normalizeRecord(record: DigitalLifeRecord): DigitalLifeRecord {
 
 function normalizeRecords(records: readonly DigitalLifeRecord[]): DigitalLifeRecord[] {
   return records.map(normalizeRecord);
+}
+
+/** Why a record's title, source, or avatar cannot be stored, or `undefined` when they can. Never echoes the image. */
+function presentationProblem(record: DigitalLifeRecord): string | undefined {
+  if ((record.title?.length ?? 0) > MAX_EXPERT_TITLE_LENGTH)
+    return `title must contain at most ${String(MAX_EXPERT_TITLE_LENGTH)} characters`;
+  if (record.source !== undefined) {
+    if (!(EXPERT_SOURCE_KINDS as readonly string[]).includes(record.source.kind))
+      return `source kind must be one of ${EXPERT_SOURCE_KINDS.join(", ")}`;
+    if ((record.source.note?.length ?? 0) > MAX_EXPERT_SOURCE_NOTE_LENGTH)
+      return `source note must contain at most ${String(MAX_EXPERT_SOURCE_NOTE_LENGTH)} characters`;
+  }
+  const avatar = record.avatar === undefined ? undefined : avatarProblem(record.avatar);
+  return avatar === undefined ? undefined : `avatar: ${avatar}`;
 }
 
 export function validateSettings(settings: DigitalLifeSettings): void {
@@ -152,6 +188,8 @@ export function validateSettings(settings: DigitalLifeSettings): void {
       if (record.agent !== packageAgentBinding(record.expertPackage))
         throw new Error("digital-life: imported expert identity must stay bound to its immutable package");
     }
+    const presentation = presentationProblem(record);
+    if (presentation !== undefined) throw new Error(`digital-life: ${presentation} for "${record.id}"`);
     if (ids.has(record.id)) throw new Error(`digital-life: duplicate id "${record.id}"`);
     ids.add(record.id);
   }
@@ -256,17 +294,9 @@ export function appendOpeningAssistantMessage(session: Session, text: string): v
   session.append("turn/end", { turn: 0, reason: { kind: "completed" } });
 }
 
-const CATEGORY_LABELS: Record<Exclude<DigitalLifeCategory, "custom">, string> = {
-  business: "企业",
-  science: "科学",
-  tech: "技术",
-  culture: "文化",
-  entertainment: "娱乐",
-};
-
 /** Who the digital life is: name, summary, domain, and tags; shared by both prompt kinds. */
 function profileFor(record: DigitalLifeRecord): string {
-  const domain = record.category === "custom" ? record.customCategory?.trim() ?? "" : CATEGORY_LABELS[record.category];
+  const domain = record.category === "custom" ? record.customCategory?.trim() ?? "" : DIGITAL_LIFE_CATEGORY_LABELS[record.category];
   return [
     record.description.trim() === "" ? "" : `简介：${record.description.trim()}`,
     domain === "" ? "" : `主领域：${domain}`,
