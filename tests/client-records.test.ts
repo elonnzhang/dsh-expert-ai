@@ -43,4 +43,17 @@ describe("record validation", () => {
     expect(recordProblem(valid, new Set(["analyst"]), undefined)?.reason).toBe("duplicateId");
     expect(recordProblem(valid, new Set(["analyst"]), "analyst")).toBeUndefined();
   });
+
+  it("limits the title and the source note after trimming", () => {
+    expect(recordProblem({ ...valid, title: ` ${"题".repeat(40)} ` }, new Set(), undefined)).toBeUndefined();
+    const title = recordProblem({ ...valid, title: "题".repeat(41) }, new Set(), undefined);
+    expect(title?.reason).toBe("titleLength");
+    expect([...(title?.fields ?? [])]).toEqual(["title"]);
+
+    const fits = { kind: "public" as const, note: "注".repeat(200) };
+    expect(recordProblem({ ...valid, source: fits }, new Set(), undefined)).toBeUndefined();
+    const note = recordProblem({ ...valid, source: { ...fits, note: "注".repeat(201) } }, new Set(), undefined);
+    expect(note?.reason).toBe("sourceNoteLength");
+    expect([...(note?.fields ?? [])]).toEqual(["source"]);
+  });
 });

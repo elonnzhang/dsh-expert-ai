@@ -274,6 +274,23 @@
   display: none;
 }
 
+.avatarRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.avatarPreview {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-layer-3);
+  object-fit: cover;
+}
+
 .checks {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -1,3 +1,4 @@
+import { MAX_EXPERT_SOURCE_NOTE_LENGTH, MAX_EXPERT_TITLE_LENGTH } from "../constants.js";
 import type { DigitalLifeRecord } from "../types.js";
 import { ID_PATTERN } from "./teams.js";
 
@@ -19,12 +20,18 @@ export const EMPTY_RECORD: DigitalLifeRecord = {
  * @returns A record bound to either its managed Markdown file or an external Agent file.
  */
 export function normalizeDigitalLifeRecord(draft: DigitalLifeRecord): DigitalLifeRecord {
+  const { title: rawTitle, avatar, source: rawSource, ...rest } = draft;
   const agent = draft.agent?.trim() ?? "";
   const id = draft.id.trim();
+  const title = rawTitle?.trim();
+  const note = rawSource?.note?.trim();
   const managedBinding = `${id}/agents/${id}.md`;
   const managed = agent === "" || agent === managedBinding;
   return {
-    ...draft,
+    ...rest,
+    ...(title ? { title } : {}),
+    ...(avatar === undefined ? {} : { avatar }),
+    ...(rawSource === undefined ? {} : { source: { kind: rawSource.kind, ...(note ? { note } : {}) } }),
     id,
     name: draft.name.trim(),
     description: draft.description.trim(),
@@ -37,7 +44,7 @@ export function normalizeDigitalLifeRecord(draft: DigitalLifeRecord): DigitalLif
 
 /** Why an editor draft cannot be saved, and which fields to mark. */
 export interface RecordProblem {
-  reason: "required" | "invalidId" | "duplicateId";
+  reason: "required" | "invalidId" | "duplicateId" | "titleLength" | "sourceNoteLength";
   fields: Set<string>;
 }
 
@@ -68,5 +75,9 @@ export function recordProblem(
   if (missing.size > 0) return { reason: "required", fields: missing };
   if (!ID_PATTERN.test(id)) return { reason: "invalidId", fields: new Set(["id"]) };
   if (editingId !== id && ids.has(id)) return { reason: "duplicateId", fields: new Set(["id"]) };
+  if ((draft.title?.trim().length ?? 0) > MAX_EXPERT_TITLE_LENGTH)
+    return { reason: "titleLength", fields: new Set(["title"]) };
+  if ((draft.source?.note?.trim().length ?? 0) > MAX_EXPERT_SOURCE_NOTE_LENGTH)
+    return { reason: "sourceNoteLength", fields: new Set(["source"]) };
   return undefined;
 }

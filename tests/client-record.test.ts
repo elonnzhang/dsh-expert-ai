@@ -50,3 +50,40 @@ describe("digital-life record normalization", () => {
     expect(normalized.persona).toBe("更新后的人格");
   });
 });
+
+describe("digital-life presentation fields", () => {
+  const avatar = { mime: "image/png" as const, data: "iVBORw0KGgo=" };
+
+  it("trims the title and the source note and drops blank ones", () => {
+    const normalized = normalizeDigitalLifeRecord({
+      ...draft,
+      title: "  创业思考助手  ",
+      source: { kind: "organization", note: " 内部访谈 " },
+    });
+    expect(normalized).toMatchObject({ title: "创业思考助手", source: { kind: "organization", note: "内部访谈" } });
+
+    const blank = normalizeDigitalLifeRecord({ ...draft, title: "   ", source: { kind: "public", note: "  " } });
+    expect(blank).not.toHaveProperty("title");
+    expect(blank.source).toEqual({ kind: "public" });
+  });
+
+  it("keeps an avatar and drops a cleared one", () => {
+    expect(normalizeDigitalLifeRecord({ ...draft, avatar }).avatar).toEqual(avatar);
+    expect(normalizeDigitalLifeRecord({ ...draft, avatar: undefined })).not.toHaveProperty("avatar");
+  });
+
+  it("adds nothing to a record that has none of them", () => {
+    const normalized = normalizeDigitalLifeRecord(draft);
+    for (const key of ["title", "avatar", "source"]) expect(normalized, key).not.toHaveProperty(key);
+  });
+
+  it("produces settings the Host accepts", () => {
+    const normalized = normalizeDigitalLifeRecord({
+      ...draft,
+      title: " 助手 ",
+      avatar,
+      source: { kind: "authorized", note: " 授权书 " },
+    });
+    expect(() => validateSettings({ records: [normalized] })).not.toThrow();
+  });
+});
