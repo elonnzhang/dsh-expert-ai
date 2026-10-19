@@ -11,7 +11,8 @@ import type {} from "@deepseek-ai/dsh-system-prompt";
 import type {} from "@deepseek-ai/cordis-plugin-loader";
 import { defineTool, type ToolExecution } from "@deepseek-ai/dsh-tools";
 import { createAssistantMessage, type ContentBlock } from "@deepseek-ai/dsh-llm";
-import { createProject, identityFor, initializeIdentities, reconcileIdentities } from "./identity.js";
+import { createProject, identityFor } from "./identity.js";
+import { ExpertIdentityProvider } from "./identity-service.js";
 import {
   deleteBinding,
   loadBinding,
@@ -827,18 +828,10 @@ export function apply(ctx: Context, config: Config): void {
     },
   );
   validateSettings(source());
-  let persisted = source().records ?? [];
-  void initializeIdentities(persisted, stateDir()).catch((error) => {
-    ctx.logger.error("digital-life: failed to initialize identities", error);
-  });
-  // Reconcile identity files when the volatile `records` field changes in place.
-  ctx.on("loader/volatile-update", () => {
-    const next = source().records ?? [];
-    const previous = persisted;
-    persisted = next;
-    void reconcileIdentities(previous, next, stateDir()).catch((error) => {
-      ctx.logger.error("digital-life: failed to persist identities", error);
-    });
+  new ExpertIdentityProvider(ctx, {
+    saved: () => source().records ?? [],
+    records: () => resolved(source()).records,
+    stateDir,
   });
   ctx.effect(() => registerTools(ctx, () => resolved(source()), stateDir, expertService.registerTools));
 }
