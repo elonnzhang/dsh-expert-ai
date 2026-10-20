@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DIGITAL_LIFE_CATEGORY_LABELS, EXPERT_SOURCE_KINDS } from '../src/constants.js'
@@ -21,6 +22,29 @@ const analyst: DigitalLifeRecord = {
 const png = { mime: 'image/png' as const, data: 'iVBORw0KGgo=' }
 
 const sha256 = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex')
+
+function xingtuRecords(): DigitalLifeRecord[] {
+  const patch = readFileSync(resolve(import.meta.dirname, '..', 'cordis.patch.yml'), 'utf8')
+  return patch
+    .split(/^ {10}- id: /m)
+    .slice(1)
+    .filter((block) => block.includes('agent: experts/xingtu/'))
+    .map((block) => {
+      const id = block.slice(0, block.indexOf('\n'))
+      const field = (name: string): string => new RegExp(`^ {12}${name}: (.+)$`, 'm').exec(block)?.[1]?.trim() ?? ''
+      return {
+        id,
+        name: field('name'),
+        title: field('title'),
+        description: field('description'),
+        category: 'science',
+        tags: [],
+        persona: '',
+        agent: field('agent'),
+        enabled: true,
+      }
+    })
+}
 
 interface Harness {
   ctx: Context
@@ -84,6 +108,14 @@ describe('expertIdentity service', () => {
       expect(item).not.toHaveProperty('persona')
       expect(item).not.toHaveProperty('disclosure')
     }
+  })
+
+  it('lists all nine bundled Xingtu identities in a fresh state directory', async () => {
+    const records = xingtuRecords()
+    const h = await start(records)
+    const listed = await h.service.list()
+    expect(listed.map((item) => item.id)).toEqual(records.map((record) => record.id))
+    expect(await h.service.get('clq')).toMatchObject({ id: 'clq', name: '陈立泉', title: '固态电池与科研方法思考助手' })
   })
 
   it('returns the whole identity for an enabled id', async () => {

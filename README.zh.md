@@ -42,16 +42,7 @@
 | `identity`（始终） | 带「专家」「通用设置」标签的设置区、托管的身份文件、`expertIdentity` 服务及其变更事件、`expert/*` 与 `identity` 端点 |
 | `conversation` | `consult_*`、评审与专家团运行工具；新会话的人设与专家团绑定（含 `project`、`greeting`、`binding`、`bind`、`unbind` 和 `review/*` 端点）；Chat Panel；`@<id>` 输入源；Expert AI 面板与侧边栏入口；会话首页的数字生命选择器；设置页的专家团标签 |
 
-在组合包插入的入口里开启对话功能：
-
-```yaml
-- id: digital-life
-  name: dsh-digital-life
-  config:
-    features: [identity, conversation]
-```
-
-- `digital-life-mode` Agent preset 不再随安装的组合包提供。需要时另外应用 `digital-life-mode.patch.yml`；没有它时，独立会话使用部署的默认 preset。`pnpm run dev:patch -- --conversation` 会把两者一起写进开发 overlay。
+在组合包插入的 `digital-life` 入口中开启对话功能时，要保留完整的 `config`：Cordis patch 会整体替换该对象。保留 `provider`、`maxBatchSize` 和所有现有 `records`，再加入 `features: [identity, conversation]`。开发 overlay 可用 `pnpm run dev:patch -- --conversation` 生成。`digital-life-mode` Agent preset 不再随安装的组合包提供；需要时另外应用 `digital-life-mode.patch.yml`，没有它时独立会话使用部署的默认 preset。
 - `features` 没有设置页入口。identity 模式下，**子代理 Provider** 与 **分类最大咨询数** 仍然显示，但不起作用。
 - Client 在拿到设置值之后才挂载对话相关界面；设置还在加载、不可用或缺失时，什么都不挂载。
 - 修改 `features` 通过 loader 的 volatile 更新原地生效（若没有生效，请重启 Profile）。把 `conversation` 关掉会撤销工具和 Client 界面，但已经绑定过的会话在重建前仍带着原来的身份段。已经在运行的专家团阶段会自行结束，其子代理仍只能输出结构化结果；后续阶段和取消运行需要重新开启 `conversation`。
@@ -65,7 +56,7 @@
 
 ## 数字生命记录字段
 
-每条记录包含 `id`、`name`、`description`、主领域 `category`、能力标签 `tags[]`、`agent`、`persona` 和 `enabled`。`agent` 是运行时唯一的人格来源：未填写 Agent 文件时，保存会将 `persona` 写入托管的 `<id>/agents/<id>.md`，并把相对路径保存到 `agent`；填写 Agent 文件后，以该 Markdown 正文为准，忽略 `persona`。新建 `custom` 主领域的记录时建议填写 `customCategory`；旧配置缺少该字段时会回退使用数字生命名称。`toolFilter` 与 `model` 为可选字段。Host 会校验设置文档，并使用配置的子代理 Provider 创建一次性咨询。智囊团设计见 [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md)。
+每条记录包含 `id`、`name`、`description`、主领域 `category`、能力标签 `tags[]`、`agent`、`persona` 和 `enabled`。`agent` 是运行时唯一的人格来源：未填写 Agent 文件时，保存会将 `persona` 写入托管的 `<id>/agents/<id>.md`，并把相对路径保存到 `agent`；填写 Agent 文件后，以该 Markdown 正文为准，忽略 `persona`。相对 `agent` 路径会先从 `$DSH_HOME/digital-life/` 读取，文件不存在时再从插件包读取，因此全新 Profile 也能加载包内的 `experts/`；若数据目录下有同名文件，则优先使用该文件覆盖包内版本。新建 `custom` 主领域的记录时建议填写 `customCategory`；旧配置缺少该字段时会回退使用数字生命名称。`toolFilter` 与 `model` 为可选字段。Host 会校验设置文档，并使用配置的子代理 Provider 创建一次性咨询。智囊团设计见 [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md)。
 
 展示字段均为可选，没有它们的旧记录仍然有效：
 

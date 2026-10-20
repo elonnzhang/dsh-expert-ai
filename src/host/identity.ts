@@ -1,11 +1,23 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { DigitalLifeRecord } from "../types.js";
 import { readPackageIdentity } from "./expert-packages.js";
 
 const MAX_IDENTITY_BYTES = 1024 * 1024;
+
+/** The plugin package that ships `experts/`: the nearest package.json above this module, from lib/ and from src/ alike. */
+export function packageRootFrom(directory: string): string | undefined {
+  for (let current = directory; ; current = dirname(current)) {
+    if (existsSync(join(current, "package.json"))) return current;
+    if (dirname(current) === current) return undefined;
+  }
+}
+
+const PACKAGE_ROOT = packageRootFrom(dirname(fileURLToPath(import.meta.url)));
 
 /** Resolve the per-digital-life storage root. */
 export function digitalLifeHome(
@@ -63,11 +75,13 @@ function legacyAgentsPath(id: string, stateDir?: string): string {
   return join(digitalLifeHome(process.env, stateDir), id, "AGENTS.md");
 }
 
-function expandAgentPath(value: string, stateDir?: string): string {
-  if (value === "~") return homedir();
-  if (value.startsWith("~/") || value.startsWith("~\\"))
-    return join(homedir(), value.slice(2));
-  return value.startsWith("/") ? resolve(value) : resolve(digitalLifeHome(process.env, stateDir), value);
+/** Files an Agent path may name, in the order they are read: a relative path is also looked up in the plugin package. */
+function agentFileCandidates(value: string, stateDir?: string): string[] {
+  if (value === "~") return [homedir()];
+  if (value.startsWith("~/") || value.startsWith("~\\")) return [join(homedir(), value.slice(2))];
+  if (value.startsWith("/")) return [resolve(value)];
+  const inState = resolve(digitalLifeHome(process.env, stateDir), value);
+  return PACKAGE_ROOT === undefined ? [inState] : [inState, resolve(PACKAGE_ROOT, value)];
 }
 
 /** Agent files may carry YAML frontmatter; only the Markdown body is identity. */
@@ -106,16 +120,24 @@ async function readIdentityFile(path: string): Promise<string> {
 
 /**
  * Read an Agent Markdown identity from an absolute, home-relative, or state-relative path.
+ * A relative path missing from the state directory is read from the plugin package, so the bundled `experts/` resolve.
  * @param path Agent file path stored in settings.
  * @param stateDir Optional digital-life state directory for relative paths.
  * @returns The Markdown body without YAML frontmatter.
  */
 export async function readAgentIdentity(path: string, stateDir?: string): Promise<string> {
-  try {
-    return await readIdentityFile(expandAgentPath(path, stateDir));
-  } catch (error) {
-    throw new Error(`digital-life: cannot load agent "${path}": ${String(error)}`);
+  const unreadable = (error: unknown): Error =>
+    new Error(`digital-life: cannot load agent "${path}": ${String(error)}`);
+  let missing: unknown;
+  for (const candidate of agentFileCandidates(path, stateDir)) {
+    try {
+      return await readIdentityFile(candidate);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw unreadable(error);
+      missing ??= error;
+    }
   }
+  throw unreadable(missing);
 }
 
 /** Read the canonical persisted expert identity. */

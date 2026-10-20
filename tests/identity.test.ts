@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { agentDocument, agentIdentity, agentPath, createProject, digitalLifeHome, identityFor, initializeIdentities, managedAgentBinding, reconcileIdentities } from '../src/host/identity.js'
+import { agentDocument, agentIdentity, agentPath, createProject, digitalLifeHome, identityFor, initializeIdentities, managedAgentBinding, packageRootFrom, readAgentIdentity, reconcileIdentities } from '../src/host/identity.js'
 import type { DigitalLifeRecord } from '../src/types.js'
 
 const record: DigitalLifeRecord = {
@@ -44,6 +44,43 @@ describe('digital-life expert agent identity', () => {
   it('strips agent frontmatter', () => {
     expect(agentIdentity('---\nname: mentor\ndescription: test\n---\n\n# Identity\nBe concise.\n'))
       .toBe('# Identity\nBe concise.')
+  })
+
+  it('uses a same-named state directory file before a bundled file', async () => {
+    const root = await home()
+    const relative = 'experts/xingtu/clq/AGENTS.md'
+    const local = join(root, 'digital-life', relative)
+    await mkdir(join(root, 'digital-life', 'experts', 'xingtu', 'clq'), { recursive: true })
+    await writeFile(local, '# Local override\n')
+    expect(await readAgentIdentity(relative)).toBe('# Local override')
+  })
+
+  it('falls back to the bundled Xingtu file when the state directory has no copy', async () => {
+    const root = await home()
+    const identity = await readAgentIdentity('experts/xingtu/clq/AGENTS.md', root)
+    expect(identity).toContain('# 陈立泉 · 科学家数字分身')
+  })
+
+  it('does not retry absolute or home-relative paths inside the package', async () => {
+    await home()
+    await expect(readAgentIdentity('/nonexistent-expert-identity/missing.md')).rejects.toThrow('ENOENT')
+    await expect(readAgentIdentity('~/nonexistent-expert-identity/missing.md')).rejects.toThrow('ENOENT')
+  })
+
+  it('does not retry a relative path when reading fails for a reason other than ENOENT', async () => {
+    const root = await home()
+    const directory = join(root, 'digital-life', 'experts', 'xingtu', 'clq', 'AGENTS.md')
+    await mkdir(directory, { recursive: true })
+    await expect(readAgentIdentity('experts/xingtu/clq/AGENTS.md')).rejects.toThrow('EISDIR')
+  })
+
+  it('finds the nearest package root', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'digital-life-package-root-'))
+    homes.push(root)
+    await mkdir(join(root, 'outer', 'inner'), { recursive: true })
+    await writeFile(join(root, 'package.json'), '{}')
+    await writeFile(join(root, 'outer', 'package.json'), '{}')
+    expect(packageRootFrom(join(root, 'outer', 'inner', 'src'))).toBe(join(root, 'outer'))
   })
 
   it('creates and reads one durable agents/<id>.md per record', async () => {

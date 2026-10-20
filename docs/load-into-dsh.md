@@ -19,16 +19,7 @@ pnpm dsh --profile web --dump-config
 
 插件入口 `config.features` 决定启用哪些部分：`identity` 始终开启，`conversation` 缺省关闭。两者各自提供的内容见 README 的“运行模式”一节。
 
-开启对话功能，要在组合包插入的入口里写：
-
-```yaml
-- id: digital-life
-  name: dsh-digital-life
-  config:
-    features: [identity, conversation]
-```
-
-`digital-life-mode` 预设不再随组合包安装，需要时另外应用 `digital-life-mode.patch.yml`。旧版本装过的 Profile 如果在 `--dump-config` 里仍有 `preset-digital-life-mode` 一行，那是旧组合包留下的，可以移除。
+开启对话功能时，要更新组合包插入的 `digital-life` 入口并保留完整的 `config`：Cordis patch 会整体替换该对象。保留 `provider`、`maxBatchSize` 和所有现有 `records`，再加入 `features: [identity, conversation]`。`digital-life-mode` 预设不再随组合包安装，需要时另外应用 `digital-life-mode.patch.yml`。
 
 `features` 是 volatile 配置，修改后由 loader 原地应用；拿不准时重启 Profile。
 

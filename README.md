@@ -43,16 +43,7 @@ The split of responsibilities and the service contract are in [`docs/expert-bot-
 | `identity` (always) | the settings section with the 专家 and 通用设置 tabs, the managed identity files, the `expertIdentity` service and its changed event, the `expert/*` and `identity` endpoints |
 | `conversation` | the `consult_*`, review and team-run tools; persona and team binding of new Sessions, with the `project`, `greeting`, `binding`, `bind`, `unbind` and `review/*` endpoints; the Chat Panel; the `@<id>` input source; the Expert AI panel and sidebar entry; the digital-life selector in the conversation hero; the 专家团 settings tab |
 
-Turn conversation on in the entry that the bundle inserts:
-
-```yaml
-- id: digital-life
-  name: dsh-digital-life
-  config:
-    features: [identity, conversation]
-```
-
-- The `digital-life-mode` Agent preset is no longer part of the installed bundle. To use it, also apply `digital-life-mode.patch.yml`; without it, standalone sessions run on the deployment's default preset. `pnpm run dev:patch -- --conversation` writes both into the development overlay.
+To enable conversation for an installed bundle, update the existing `digital-life` entry and preserve its full `config`: Cordis patch rows replace the entire `config` object. Keep `provider`, `maxBatchSize`, and every existing `records` entry, then add `features: [identity, conversation]`. The development overlay can be generated with `pnpm run dev:patch -- --conversation`.
 - `features` has no settings UI. In identity mode **子代理 Provider** and **分类最大咨询数** stay visible but unused.
 - The Client mounts the conversation surfaces only once the setting is known; while it is loading, unavailable or missing, nothing is mounted.
 - A change to `features` is applied in place through the loader's volatile update (restart the Profile if it does not take effect). Switching `conversation` off withdraws the tools and the Client surfaces, but a Session that was already bound keeps its identity sections until it is recreated. A team stage that is already running finishes on its own, its subagent still limited to structured output; further stages and cancelling the run need `conversation` back on.
@@ -66,7 +57,7 @@ Turn conversation on in the entry that the bundle inserts:
 
 ## Record fields
 
-Each record has an `id`, `name`, `description`, primary-domain `category`, composable `tags[]`, `agent`, `persona`, and `enabled` flag. `agent` is the only runtime identity source. When no Agent file is supplied, saving a record writes `persona` to the managed `<id>/agents/<id>.md` file and stores that relative path in `agent`; when an Agent file is supplied, its Markdown body is authoritative and `persona` is ignored. New records using the `custom` category should set `customCategory`; older records without it fall back to the display name. `toolFilter` and `model` are optional. The Host validates the settings document and creates one-shot consultations with the configured subagent provider. See [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md) for the proposed Think Tank agent-team design.
+Each record has an `id`, `name`, `description`, primary-domain `category`, composable `tags[]`, `agent`, `persona`, and `enabled` flag. `agent` is the only runtime identity source. When no Agent file is supplied, saving a record writes `persona` to the managed `<id>/agents/<id>.md` file and stores that relative path in `agent`; when an Agent file is supplied, its Markdown body is authoritative and `persona` is ignored. Relative `agent` paths are read from `$DSH_HOME/digital-life/` first and then from the plugin package, so bundled `experts/` files work in a fresh Profile; a same-named file under `$DSH_HOME/digital-life/` overrides the bundled copy. New records using the `custom` category should set `customCategory`; older records without it fall back to the display name. `toolFilter` and `model` are optional. The Host validates the settings document and creates one-shot consultations with the configured subagent provider. See [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md) for the proposed Think Tank agent-team design.
 
 Presentation fields are optional, so records saved before they existed stay valid:
 
