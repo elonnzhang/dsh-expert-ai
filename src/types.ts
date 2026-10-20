@@ -42,6 +42,10 @@ export interface ExpertRecord {
   persona: string;
   /** Optional ~/.agent/agents or ~/.claude/agents Markdown identity source. */
   agent?: string;
+  /** Tools a consultation may use; absent inherits every tool the provider offers. */
+  toolFilter?: string[];
+  /** Provider and model a consultation runs on; absent follows the provider default. */
+  model?: { provider?: string; model?: string };
   /** Immutable upstream package; user configuration remains separate. */
   expertPackage?: ExpertPackageBinding | undefined;
   /** Picture shown with the identity. */

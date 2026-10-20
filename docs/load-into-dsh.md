@@ -17,11 +17,12 @@ pnpm dsh --profile web --dump-config
 
 ## 运行的内容
 
-插件始终只提供身份层（`expertIdentity` 服务、身份文件、设置页）与单聊（侧边栏 Chat Panel、
-`project` / `greeting` / `binding` / `bind` / `unbind` 端点）。没有运行模式开关。
+插件始终提供身份层（`expertIdentity` 服务、身份文件、设置页）、单聊（侧边栏 Chat Panel 与输入框
+`@` 专家候选，走 `project` / `greeting` / `binding` / `bind` / `unbind` 端点），以及 `consult_expert`
+工具。没有运行模式开关。
 
-旧配置行里遗留的 `features`、`provider`、`teams`、`maxBatchSize` 仍可加载但会被忽略；停止 Profile
-后可以直接删掉这些字段。
+旧配置行里遗留的 `features`、`teams`、`maxBatchSize` 仍可加载但会被忽略；停止 Profile 后可以
+直接删掉这些字段。`provider` 仍然有效，是 `consult_expert` 使用的子代理 Provider。
 
 ## 本地 link
 

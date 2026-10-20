@@ -1,4 +1,9 @@
 import type { Context as ClientContext } from "@deepseek-ai/cordis";
+// Type-only: pulls the `slash.menu` dictionary merge and the trigger contracts.
+import type {
+  InputTriggerServiceContract,
+  InputTriggerSource,
+} from "@deepseek-ai/dsh-client-ui-input-trigger/client";
 // Type-only: pulls the ctx.slots service merge (SlotRegistry) into scope.
 import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
 // Type-only: pulls the ctx.configForms service merge (ConfigForms) into scope.
@@ -12,12 +17,13 @@ import type {} from "@deepseek-ai/dsh-client-locale/client";
 // Type-only: pulls the ctx.uiWorkspace navigation service merge into scope.
 import type {} from "@deepseek-ai/dsh-client-ui-workspace/client";
 import type { ClientConnectionRpc, ConnectionHandle } from "@deepseek-ai/dsh-client-connection/client";
-import { IconUsersOutlineMedium } from "@deepseek-ai/dsh-client-ui-primitives";
+import { IconUserOutlineRegular, IconUsersOutlineMedium } from "@deepseek-ai/dsh-client-ui-primitives";
 import { EXPERT_AI_NAMESPACE } from "../constants.js";
 import { callHost } from "./hostCall.js";
 import type { ExpertRecord, ExpertSettings } from "../types.js";
 import { ExpertSettingSection, type ExpertSettingSectionInjected } from "./ExpertSettingSection.js";
 import { ChatPanel, type ChatPanelInjected } from "./ChatPanel.js";
+import { mentionCandidates } from "./mentions.js";
 import { en, NS, zh, type ExpertKey } from "./locales.js";
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
@@ -38,6 +44,7 @@ const EXPERT_AI_ENTRY_ID = EXPERT_AI_NAMESPACE;
 
 export const inject = [
   "slots",
+  "inputTriggers",
   "connection",
   "configForms",
   "locale",
@@ -93,6 +100,46 @@ export function apply(ctx: ClientContext): void {
     }
   };
 
+  // `@` names an expert: picking one starts a conversation with it in a new
+  // session, while the session being typed in keeps only the mention text.
+  // The menu titles each group with its `slash.menu` key, and the workspace
+  // owning that dictionary rejects a second registrant of any locale, so this
+  // source takes the existing key whose name states what it lists.
+  const source: InputTriggerSource = {
+    trigger: "@",
+    name: "skill",
+    order: 5,
+    candidates(_session, { query }) {
+      return Promise.resolve(
+        mentionCandidates(records(), query).map((candidate) => ({ ...candidate, icon: IconUserOutlineRegular })),
+      );
+    },
+    warm() {
+      void Promise.resolve();
+    },
+    lexicon() {
+      return records().map((item) => item.id);
+    },
+    subscribeLexicon(_session, listener) {
+      return form.subscribe(listener);
+    },
+    onPick({ candidate }) {
+      const record = records().find((item) => item.id === candidate.name);
+      if (record !== undefined) {
+        void createSession(record).catch((error: unknown) => {
+          console.error(`expert-ai: failed to start a conversation with "${record.id}"`, error);
+        });
+      }
+      return { text: `@${candidate.name} `, continue: true };
+    },
+    codec: {
+      clipboardText: (ref) => `@${ref}`,
+      serialize: (ref, signal) => signal.aborted
+        ? Promise.reject(new Error("expert-ai: the submission was cancelled"))
+        : Promise.resolve(`@${ref}`),
+    },
+  };
+
   // The settings section edits the identity library.
   // The nav-row icon option arrives with the harness after 0.2.0-rc.2; older
   // hosts drop it and draw their default glyph.
@@ -103,8 +150,6 @@ export function apply(ctx: ClientContext): void {
         id: EXPERT_AI_NAMESPACE,
         order: 25,
         label: () => t("nav"),
-        // The nav-row icon option arrives with the harness after 0.2.0-rc.2;
-        // older hosts drop it and draw their default glyph.
         ...{ icon: IconUsersOutlineMedium },
         locale: NS,
         inject: injected,
@@ -125,4 +170,6 @@ export function apply(ctx: ClientContext): void {
       ChatPanel,
     ),
   );
+  const inputTriggers = ctx.get("inputTriggers") as InputTriggerServiceContract;
+  ctx.effect(() => inputTriggers.registerSource(source), "expert-ai: expert mentions");
 }

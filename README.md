@@ -9,11 +9,12 @@ English | [中文](README.zh.md)
 The plugin does two things:
 
 - **Identity layer**: persists records in the `expert-ai` settings namespace and each identity in `$DSH_HOME/expert-ai/<id>/agents/<id>.md`; provides the `expertIdentity` Cordis service so another plugin, such as a Bot runtime, can read the enabled identities: persona, avatar, source disclosure and revision.
-- **Single-expert conversation**: pick an expert in the sidebar Chat Panel to open a conversation bound to that expert's persona. It has no Workspace, is forced to the read-only file sandbox, and gets its opening message from the plugin.
+- **Single-expert conversation**: pick an expert in the sidebar Chat Panel, or type `@` in the composer and pick one, to open a conversation bound to that expert's persona. It has no Workspace, is forced to the read-only file sandbox, and gets its opening message from the plugin.
+- **Expert mention and consultation**: `@<id>` in the composer still saves the mention as model-visible text, and the primary agent can ask one expert through the `consult_expert` tool, whose answer comes back through a persona subagent.
 
 It also adds a Harness-styled settings section for creating, editing, enabling, and deleting records, including imports from agent Markdown files (YAML frontmatter is ignored, the body is the persona).
 
-It does not add consultation tools for the primary agent, an `@<id>` input source, an Agent preset selector, online expert-package import, or group chats (the `dsh-bot` runtime owns those).
+It does not add an Agent preset selector, online expert-package import, or group chats (the `dsh-bot` runtime owns those).
 
 ## Working with dsh-bot
 
@@ -35,7 +36,7 @@ The split of responsibilities and the service contract are in [`docs/expert-bot-
 
 ## Record fields
 
-Each record has an `id`, `name`, `description`, primary-domain `category`, composable `tags[]`, `agent`, `persona`, and `enabled` flag. `agent` is the only runtime identity source. When no Agent file is supplied, saving a record writes `persona` to the managed `<id>/agents/<id>.md` file and stores that relative path in `agent`; when an Agent file is supplied, its Markdown body is authoritative and `persona` is ignored. Relative `agent` paths are read from `$DSH_HOME/expert-ai/` first and then from the plugin package, so bundled `experts/` files work in a fresh Profile; a same-named file under `$DSH_HOME/expert-ai/` overrides the bundled copy. New records using the `custom` category should set `customCategory`; older records without it fall back to the display name. The Host validates the settings document; leftover `toolFilter`, `model`, `provider`, `features`, `teams`, and `maxBatchSize` from older settings are ignored.
+Each record has an `id`, `name`, `description`, primary-domain `category`, composable `tags[]`, `agent`, `persona`, and `enabled` flag. `agent` is the only runtime identity source. When no Agent file is supplied, saving a record writes `persona` to the managed `<id>/agents/<id>.md` file and stores that relative path in `agent`; when an Agent file is supplied, its Markdown body is authoritative and `persona` is ignored. Relative `agent` paths are read from `$DSH_HOME/expert-ai/` first and then from the plugin package, so bundled `experts/` files work in a fresh Profile; a same-named file under `$DSH_HOME/expert-ai/` overrides the bundled copy. New records using the `custom` category should set `customCategory`; older records without it fall back to the display name. The Host validates the settings document; leftover `features`, `teams`, and `maxBatchSize` from older settings are ignored. `toolFilter` and `model` are optional: they pick the tools and the model a consultation runs on.
 
 Presentation fields are optional, so records saved before they existed stay valid:
 
@@ -109,25 +110,23 @@ pnpm dsh plugin --profile web remove dsh-expert-ai
 
 Restart `pnpm dsh web` after installing, updating, or removing the plugin.
 
-### Upgrading to the identity-and-conversation-only release
+### Upgrading from a release that offered run modes
 
-This release removes the consultation tools for the primary agent (`consult_expert`, `read_expert_reference`),
-the `@<id>` input source, the `expert-ai-mode` Agent preset, online expert-package import
-(`expert/catalog`, `expert/import`), and the `features` and `provider` settings. The plugin now always
-provides exactly the identity layer and single-expert conversations.
-
-No data migration is needed. Stop the Profile and drop the fields that are no longer read from the
-plugin's patch row:
+The `features` run-mode switch is gone: the identity layer, the Chat Panel and the `@` expert
+source are always on, and the `expert-ai-mode` Agent preset, online expert-package import
+(`expert/catalog`, `expert/import`) and the category/review/team features before them have been
+removed. No data migration is needed. Stop the Profile and drop the fields that are no longer read
+from the plugin's patch row:
 
 ```yaml
 - id: expert-ai
   name: dsh-expert-ai
   config:
     stateDir: …        # keep
+    provider: spawn    # keep: the subagent provider for consult_expert
     records: […]       # keep
     # no longer read; safe to delete
     features: [identity, conversation]
-    provider: spawn
     teams: […]
     maxBatchSize: 3
 ```
@@ -233,13 +232,17 @@ Saving on the settings page rewrites the `expert-ai` row of that file.
 
 ### 2. Chat with an expert
 
-Open **Chat Panel** in the sidebar and choose an expert. The plugin creates an isolated project under `$DSH_HOME/expert-ai/projects/<datetime>`, then creates a Session and binds the expert's persona on the Host:
+Type `@` in the composer and pick an expert, or open **Chat Panel** in the sidebar and choose one; either way the plugin starts a new conversation with that expert. The plugin creates an isolated project under `$DSH_HOME/expert-ai/projects/<datetime>`, then creates a Session and binds the expert's persona on the Host:
 
 - The Session receives a record-specific system prompt through Host binding; the opening message is written by the plugin and does not repeat the full persona.
 - The Session is forced to the **read-only file sandbox**: files can be read, not changed.
 - The binding is saved under `$DSH_HOME/expert-ai/sessions/`, so reopening the Session after a Host restart keeps its persona.
 
-### 3. Update the plugin
+### 3. Consult one expert from a conversation
+
+With `@<id>` in the composer, the mention stays model-visible text and the primary agent decides whether a consultation helps. `consult_expert(id, question)` starts a persona subagent for that expert and returns its answer; the subagent provider is the **子代理 Provider** setting (default `spawn`). The expert answers once, without follow-up questions.
+
+### 4. Update the plugin
 
 After publishing a new GitHub revision, build the plugin before pushing. Then update it from the Harness checkout:
 
@@ -257,10 +260,12 @@ pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.gi
 
 ## Model Experience
 
-An expert conversation receives a record-specific system prompt and is set to the read-only file sandbox. The role instruction is carried by the system prompt and remains durable and model-visible in that Session; the plugin registers no tools for the primary agent.
+An expert conversation receives a record-specific system prompt and is set to the read-only file sandbox. The role instruction is carried by the system prompt and remains durable and model-visible in that Session.
+
+`consult_expert` adds its schema to the primary agent's model request. A consultation starts one subagent, installs the expert's persona as the subagent persona, and returns the answer text.
 
 ## Known Limitations
 
-- The conversation entry point is the sidebar Chat Panel. The current public sidebar has no additive Slot above the workspace browser, so Chat Panel uses the supported footer action Slot.
+- Expert conversations start in a new Session each time, either from the `@` menu or from the Chat Panel; the current Session keeps only the `@<id>` mention text.
+- The Chat Panel lives in the sidebar footer action Slot: the current public sidebar has no additive Slot above the workspace browser.
 - Expert conversations use the deployment's default Agent preset; the plugin no longer installs one of its own.
-- Per-record model selection is not supported.

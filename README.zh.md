@@ -9,11 +9,12 @@
 本插件只做两件事：
 
 - **身份层**：在 `expert-ai` 设置命名空间中持久化专家记录，每条身份保存在 `$DSH_HOME/expert-ai/<id>/agents/<id>.md`；通过 `expertIdentity` Cordis 服务把已启用的身份（人设、头像、来源声明与版本）提供给其他插件，例如 Bot 运行时。
-- **单聊**：在侧边栏 Chat Panel 里选择一位专家，打开一个绑定该专家人设的独立会话。会话不依附 Workspace，强制只读文件沙箱，开场消息由插件写入。
+- **单聊**：在侧边栏 Chat Panel 里选择一位专家，或在输入框输入 `@` 选择一位专家，打开一个绑定该专家人设的独立会话。会话不依附 Workspace，强制只读文件沙箱，开场消息由插件写入。
+- **点名与咨询**：输入框里的 `@<id>` 仍作为模型可见文本保存；主 Agent 可以用 `consult_expert` 工具向一位专家发起一次性咨询，回答由该专家的 persona 子代理返回。
 
 同时提供符合 Harness 风格的设置区，用于新增、编辑、启用和删除专家记录，并可导入 Agent Markdown 文件（YAML frontmatter 忽略，正文即人设）。
 
-不提供：向主 Agent 咨询专家的工具、`@<id>` 输入源、Agent preset 选择器、专家包在线导入，以及群聊（群聊由 `dsh-bot` 运行时负责）。
+不提供：Agent preset 选择器、专家包在线导入，以及群聊（群聊由 `dsh-bot` 运行时负责）。
 
 ## 与 dsh-bot 配合
 
@@ -35,7 +36,7 @@
 
 ## 专家记录字段
 
-每条记录包含 `id`、`name`、`description`、主领域 `category`、能力标签 `tags[]`、`agent`、`persona` 和 `enabled`。`agent` 是唯一的人格来源：未填写 Agent 文件时，保存会将 `persona` 写入托管的 `<id>/agents/<id>.md`，并把相对路径保存到 `agent`；填写 Agent 文件后，以该 Markdown 正文为准，忽略 `persona`。相对 `agent` 路径会先从 `$DSH_HOME/expert-ai/` 读取，文件不存在时再从插件包读取，因此全新 Profile 也能加载包内的 `experts/`；若数据目录下有同名文件，则优先使用该文件覆盖包内版本。新建 `custom` 主领域的记录时建议填写 `customCategory`；旧配置缺少该字段时会回退使用专家名称。Host 会校验设置文档，旧配置里遗留的 `toolFilter`、`model`、`provider`、`features`、`teams`、`maxBatchSize` 会被忽略。
+每条记录包含 `id`、`name`、`description`、主领域 `category`、能力标签 `tags[]`、`agent`、`persona` 和 `enabled`；`toolFilter` 与 `model` 可选，分别决定咨询可用的工具和模型。`agent` 是唯一的人格来源：未填写 Agent 文件时，保存会将 `persona` 写入托管的 `<id>/agents/<id>.md`，并把相对路径保存到 `agent`；填写 Agent 文件后，以该 Markdown 正文为准，忽略 `persona`。相对 `agent` 路径会先从 `$DSH_HOME/expert-ai/` 读取，文件不存在时再从插件包读取，因此全新 Profile 也能加载包内的 `experts/`；若数据目录下有同名文件，则优先使用该文件覆盖包内版本。新建 `custom` 主领域的记录时建议填写 `customCategory`；旧配置缺少该字段时会回退使用专家名称。Host 会校验设置文档，旧配置里遗留的 `features`、`teams`、`maxBatchSize` 会被忽略。
 
 展示字段均为可选，没有它们的旧记录仍然有效：
 
@@ -108,11 +109,11 @@ pnpm dsh plugin --profile web remove dsh-expert-ai
 
 安装、更新或卸载后，重新启动 `pnpm dsh web`。
 
-### 升级到只提供身份层与单聊的版本
+### 从带运行模式的版本升级
 
-本版本删除了向主 Agent 咨询专家的工具（`consult_expert`、`read_expert_reference`）、`@<id>` 输入源、
-`expert-ai-mode` Agent preset、专家包在线导入（`expert/catalog`、`expert/import`）以及 `features` 与
-`provider` 设置。插件现在始终只提供身份层与单聊。
+`features` 运行模式开关已删除：身份层、Chat Panel 与 `@` 专家候选始终开启。`expert-ai-mode`
+Agent preset、专家包在线导入（`expert/catalog`、`expert/import`），以及更早的分类咨询、评审与专家团
+都已移除。
 
 已有 Profile 无需迁移数据，只需停止 Profile 后清理 patch 行里不再读取的字段：
 
@@ -121,10 +122,10 @@ pnpm dsh plugin --profile web remove dsh-expert-ai
   name: dsh-expert-ai
   config:
     stateDir: …        # 保留
+    provider: spawn    # 保留：consult_expert 使用的子代理 Provider
     records: […]       # 保留
     # 以下字段已不再读取，可以删掉
     features: [identity, conversation]
-    provider: spawn
     teams: […]
     maxBatchSize: 3
 ```
@@ -207,7 +208,7 @@ pnpm run dev
 - **自定义领域**：主领域选择 `custom` 时建议填写
 - **能力标签**：用于搜索和分类，例如 `储能系统`、`工程化`
 - **人格设定**：初始身份、人设和回答规则；未配置 Agent 文件时会转换为托管 Agent 文件
-- **启用**：只有启用的记录会提供给 `expertIdentity` 服务与 Chat Panel
+- **启用**：只有启用的记录会提供给 `expertIdentity` 服务、Chat Panel 与 `@` 候选
 
 也可以直接导入一个 Agent Markdown 文件。文件的 YAML frontmatter 会被忽略，Markdown 正文作为唯一人格来源。浏览器不会暴露 Host 可重新读取的文件路径，因此通过文件选择器选中的内容会改为导入托管文件。未填写外部路径时，输入的人格设定会保存到：
 
@@ -227,13 +228,17 @@ $DSH_HOME/profiles/<profile>/cordis.patch.yml
 
 ### 2. 与专家单聊
 
-打开侧边栏的 **Chat Panel**，选择一位专家。插件会先在 `$DSH_HOME/expert-ai/projects/<datetime>` 下创建一个独立项目，再新建会话并在 Host 侧绑定该专家的人设：
+在输入框输入 `@` 选择一位专家，或打开侧边栏的 **Chat Panel** 选择一位；两种方式都会新建一个与该专家的会话。插件会先在 `$DSH_HOME/expert-ai/projects/<datetime>` 下创建一个独立项目，再新建会话并在 Host 侧绑定该专家的人设：
 
 - 会话通过 Host binding 注入该记录专属的 system prompt，开场消息由插件写入，不重复完整人设。
 - 会话被强制使用**只读文件沙箱**：可以读取文件，不能修改。
 - 所选身份保存在 `$DSH_HOME/expert-ai/sessions/`，Host 重启后再次打开该会话仍带着原人设。
 
-### 3. 更新插件
+### 3. 在会话中向专家咨询
+
+输入框里的 `@<id>` 作为模型可见文本保留，是否发起咨询由主 Agent 决定。`consult_expert(id, question)` 会为该专家启动一个 persona 子代理并返回回答；子代理 Provider 取自 **子代理 Provider** 设置，默认 `spawn`。咨询是一次性的，专家不会反问后续问题。
+
+### 4. 更新插件
 
 发布新的 GitHub 版本前，先在插件仓库构建并推送；然后在 Harness checkout 中更新：
 
@@ -251,7 +256,11 @@ pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.gi
 
 ## 设置项
 
-通用设置里只有一项：
+通用设置里有两项：
+
+### 子代理 Provider（`provider`）
+
+`consult_expert` 使用的 subagent Provider ID，默认 `spawn`。它必须是当前 Harness 已挂载的 Provider；不存在或不支持 persona 时，咨询会返回明确错误。
 
 ### 插件数据目录（`stateDir`）
 
@@ -259,10 +268,13 @@ pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.gi
 
 ## 模型体验
 
-单聊会话会接收基于具体记录生成的 system prompt，并强制使用只读文件沙箱。人设由 system prompt 承担，对该 Session 持久且对模型可见；本插件不向主 Agent 注册任何工具。
+单聊会话会接收基于具体记录生成的 system prompt，并强制使用只读文件沙箱。人设由 system prompt 承担，对该 Session 持久且对模型可见。
+
+`consult_expert` 的 schema 会加入主 Agent 的模型请求。每次咨询启动一个子代理，把专家的人设安装为该子代理的 persona，并返回回答文本。
 
 ## 已知限制
 
-- 单聊入口在侧边栏 Chat Panel。当前公共 Sidebar 没有 Workspace 浏览器上方的 additive Slot，因此使用受支持的 footer action Slot。
+- 每次通过 `@` 候选或 Chat Panel 都会新建会话；当前会话里只留下 `@<id>` 文本。
+- Chat Panel 挂在侧边栏 footer action Slot：当前公共 Sidebar 没有 Workspace 浏览器上方的 additive Slot。
 - 单聊会话沿用部署的默认 Agent preset；本插件不再安装自己的 preset。
-- 每条记录的独立模型配置不支持。
+- `@` 候选的菜单分组标题依赖 Harness 的 `slash.menu` 词典按来源名取值；更早的 Harness 版本会显示原始来源名 `expert-ai`。

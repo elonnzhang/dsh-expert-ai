@@ -7,9 +7,12 @@ import z from "@deepseek-ai/schemastery";
 import type {} from "@deepseek-ai/dsh-settings";
 // Type-only: pulls the ctx.systemPrompt service merge into this program.
 import type {} from "@deepseek-ai/dsh-system-prompt";
+// Type-only: pulls the ctx.subagents service merge into this program.
+import type { SubagentResult, SubagentRun } from "@deepseek-ai/dsh-subagent";
 // Type-only: pulls the 'loader/volatile-update' event into cordis Events.
 import type {} from "@deepseek-ai/cordis-plugin-loader";
-import { createAssistantMessage } from "@deepseek-ai/dsh-llm";
+import { createAssistantMessage, type ContentBlock } from "@deepseek-ai/dsh-llm";
+import { defineTool, type ToolExecution } from "@deepseek-ai/dsh-tools";
 import { createProject, identityFor } from "./identity.js";
 import { ExpertIdentityProvider } from "./identity-service.js";
 import { serveHostRpc } from "./rpc-routes.js";
@@ -35,7 +38,10 @@ import { packageAgentBinding, validatePackageBinding } from "./expert-packages.j
 import type { ExpertRecord, ExpertSettings, ResolvedExpertSettings } from "../types.js";
 
 export const name = "expert-ai";
-export const inject = ["agents", "connection", "sandboxPolicy"];
+export const inject = ["tools", "subagents", "agents", "connection", "sandboxPolicy"];
+
+/** Subagent provider that runs a consultation. */
+const DEFAULT_PROVIDER = "spawn";
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -50,6 +56,13 @@ const RecordSchema: z<ExpertRecord> = z.object({
   tag: z.string().required(false),
   persona: z.string().default(""),
   agent: z.string().required(false),
+  toolFilter: z.array(z.string()).required(false),
+  model: z
+    .object({
+      provider: z.string().required(false),
+      model: z.string().required(false),
+    })
+    .required(false),
   // z.object() defaults to `{}`, which would turn an absent binding into an
   // invalid one; the union with undefined keeps it absent.
   expertPackage: z.union([
@@ -273,6 +286,126 @@ export function independentSystemPromptFor(record: ExpertRecord, identity: strin
   return [pre, persona, suf].filter(Boolean).join("\n\n");
 }
 
+/**
+ * Build the one-shot consultation prompt for an expert.
+ * The identity itself is installed as the subagent persona, so it is not repeated here.
+ */
+export function promptFor(record: ExpertRecord, question: string): ContentBlock[] {
+  return [
+    {
+      type: "text",
+      text: [
+        `你正在以专家“${record.name}”（@${record.id}）的身份回答一次咨询。`,
+        profileFor(record),
+        referenceInstructionsFor(record),
+        [
+          "## 回答要求",
+          "- 这是一次性咨询：只回答本次问题，不要反问或假设还有后续对话；信息不足时说明假设后继续作答。",
+          "- 问题由主代理转交，你的回答可能与其他专家的观点并列比较：先给结论再给依据，区分事实、判断和推测。",
+          "- 不要声称自己是真实人物本人。使用问题所用的语言。",
+        ].join("\n"),
+        `<question>\n${question}\n</question>`,
+      ].filter(Boolean).join("\n\n"),
+    },
+  ];
+}
+
+function outputText(run: SubagentRun, result: SubagentResult): string {
+  const text = result.output
+    .filter((block) => block.type === "text")
+    .map((block) => block.text)
+    .join("");
+  if (text === "") throw new Error(`expert-ai: ${String(run.id)} returned no text`);
+  return text;
+}
+
+/** Ask one expert a question through a subagent and return its answer. */
+async function consult(
+  ctx: Context,
+  record: ExpertRecord,
+  question: string,
+  exec: ToolExecution,
+  provider: string,
+  stateDir?: string,
+): Promise<string> {
+  if (exec.agent === undefined) throw new Error("expert-ai consultation requires an agent-backed session");
+  const available = ctx.subagents.getProvider(provider);
+  if (available === undefined) throw new Error(`expert-ai: subagent provider "${provider}" is unavailable`);
+  if (!available.capabilities.persona) throw new Error(`expert-ai: provider "${provider}" does not support persona`);
+  if (record.toolFilter !== undefined && !available.capabilities.toolFilter) {
+    throw new Error(`expert-ai: provider "${provider}" does not support toolFilter`);
+  }
+  const identity = await identityFor(record, stateDir);
+  const run = await ctx.subagents.start(provider, {
+    label: `专家：${record.name}`,
+    prompt: promptFor(record, question),
+    parent: exec.agent,
+    signal: exec.signal,
+    persona: identity,
+    ...(record.toolFilter === undefined ? {} : { toolFilter: { allow: record.toolFilter } }),
+    ...(record.model === undefined ? {} : { agentOptions: record.model }),
+  });
+  try {
+    const result = await run.result;
+    if (result.stopReason !== "completed") {
+      throw new Error(`expert-ai: consultation with "${record.name}" ended with ${result.stopReason}`);
+    }
+    return outputText(run, result);
+  } finally {
+    await run.dispose();
+  }
+}
+
+/**
+ * Register `consult_expert`: an expert answers one question independently.
+ * Registered on the inherited Host plane, so delegated tool restrictions also constrain it.
+ */
+function registerConsultTool(
+  ctx: Context,
+  current: () => ResolvedExpertSettings,
+  stateDir: () => string | undefined,
+  provider: string,
+): () => void {
+  return ctx.tools.register(
+    defineTool({
+      name: "consult_expert",
+      description: "向一个指定的专家咨询问题。使用专家 ID；不要选择 provider 或传输方式。",
+      parameters: {
+        id: { type: "string", required: true, description: "专家 ID，例如 clq。" },
+        question: { type: "string", required: true, description: "需要该专家独立回答的问题。" },
+      },
+      output: {
+        schema: {
+          type: "object",
+          properties: {
+            id: { type: "string", required: true },
+            name: { type: "string", required: true },
+            tags: { type: "array", items: { type: "string" }, required: true },
+            answer: { type: "string", required: true },
+          },
+          additionalProperties: false,
+        },
+        render: (_args, value) => [
+          {
+            type: "text",
+            text: `${value.name}${value.tags.length > 0 ? `（${value.tags.join("、")}）` : ""}：\n${value.answer}`,
+          },
+        ],
+      },
+      async execute(args, exec) {
+        const settings = current();
+        const record = findRecord(settings, args.id);
+        return {
+          id: record.id,
+          name: record.name,
+          tags: record.tags,
+          answer: await consult(ctx, record, args.question, exec, provider, stateDir()),
+        };
+      },
+    }),
+  );
+}
+
 // inject the identity layer and the single-expert conversation into the host
 export function apply(ctx: Context, config: Config): void {
   const modeDisposers = new WeakMap<Agent, () => void>();
@@ -474,6 +607,10 @@ export function apply(ctx: Context, config: Config): void {
     },
   );
   validateSettings(source());
+  ctx.effect(
+    () => registerConsultTool(ctx, () => resolved(source()), stateDir, DEFAULT_PROVIDER),
+    "expert-ai: consult_expert",
+  );
   new ExpertIdentityProvider(ctx, {
     saved: () => source().records ?? [],
     records: () => resolved(source()).records,

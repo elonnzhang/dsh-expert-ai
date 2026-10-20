@@ -62,6 +62,7 @@ async function start() {
       inner.provide('webServer', { register: () => () => undefined })
     },
   })
+  ctx.provide('subagents', { getProvider: () => undefined })
   ctx.provide('agents', {})
   ctx.provide('sandboxPolicy', { defaultMode: 'read-only' })
   const fiber = await ctx.plugin(plugin, { stateDir: root, records: [RECORD] })
