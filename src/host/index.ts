@@ -703,6 +703,8 @@ export function apply(ctx: Context, config: Config): void {
   const stateDir = (): string | undefined => source().stateDir?.trim() || undefined;
   const expertService = createExpertService({ current: () => resolved(source()), stateDir });
   ctx.effect(() => () => expertService.dispose(), "digital-life: expert service lifecycle");
+  // Not tied to the tools: a stage still running when conversation goes off must stay restricted.
+  ctx.effect(() => expertService.guardStages({ ctx }), "digital-life: team stage guard");
   // Preferences edited through Settings apply to the running fiber in place;
   // opt out of an auto-generated page (the plugin ships its own settings.section).
   ctx.inject(["settings"], (child) => {

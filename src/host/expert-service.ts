@@ -221,6 +221,11 @@ export function createExpertService(options: Options) {
       // Host shutdown is a tool-call abort: leave runs recoverable instead of terminally cancelled.
       for (const job of active.values()) job.stop.abort(new Error("Expert service stopped"));
     },
+    guardStages(target: Pick<Agent, "ctx">): () => void {
+      return target.ctx.tools.guard((exec) => exec.agent !== undefined && stageChildren.has(exec.agent.id) && exec.name !== STRUCTURED_OUTPUT_TOOL
+        ? `digital-life: team stage subagents may only call ${STRUCTURED_OUTPUT_TOOL}; ${exec.name} is not available`
+        : undefined);
+    },
     registerTools(target: Pick<Agent, "ctx">): () => void {
       const runOutput = {
         schema: { type: "object", additionalProperties: false, properties: {
@@ -231,9 +236,6 @@ export function createExpertService(options: Options) {
       } as const;
       const ORDER = "推荐顺序：brief（可选）→ 若有补问先交给用户，回答后 amend_team_brief → analysis → cross-critique（分析专家≥2时建议）→ review → synthesis。如实转述 synthesis 报告，你自己的补充单独标明。";
       const disposers = [
-        target.ctx.tools.guard((exec) => exec.agent !== undefined && stageChildren.has(exec.agent.id) && exec.name !== STRUCTURED_OUTPUT_TOOL
-          ? `digital-life: team stage subagents may only call ${STRUCTURED_OUTPUT_TOOL}; ${exec.name} is not available`
-          : undefined),
         target.ctx.tools.register(defineTool({
           name: "read_expert_reference",
           description: "读取已导入专家包中的参考资料。省略 path 列出文件；只返回本地固定版本内容，不会访问资料中的外部链接。",

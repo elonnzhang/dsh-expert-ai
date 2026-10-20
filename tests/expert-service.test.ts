@@ -42,9 +42,10 @@ async function fixture(structured = true, teams: ExpertTeam[] = []) {
   } } as unknown as Agent;
   const service = createExpertService({ current: () => ({ provider: "spawn", maxBatchSize: 3, records, teams }), stateDir: () => stateDir });
   const unregister = service.registerTools(parent);
+  const unguard = service.guardStages(parent);
   const signal = new AbortController().signal;
   const exec = { agent: parent, signal } as ToolExecution;
-  return { stateDir, registered, guards, dispose, start, parent, service, exec, unregister };
+  return { stateDir, registered, guards, dispose, start, parent, service, exec, unregister, unguard };
 }
 
 describe("expert Host service", () => {
@@ -184,7 +185,7 @@ describe("expert Host service", () => {
     expect((await f.registered.get("review_expert_plan")!.execute(request, exec) as { status: string }).status).toBe("completed");
   });
 
-  it("denies every tool but structured_output to a live stage subagent", async () => {
+  it("denies every tool but structured_output to a live stage subagent, even once the tools are withdrawn", async () => {
     const f = await fixture();
     const denied = (agentId: string, name: string) => f.guards.map((guard) => guard({ agent: { id: agentId } as Agent, name })).find((reason) => reason !== undefined);
     const seen: Array<string | undefined>[] = [];
@@ -193,15 +194,18 @@ describe("expert Host service", () => {
       // A child can only call tools after a model response, i.e. after `start()` has resolved.
       result: new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
         seen.push([denied("stage-child", "spawn_teammate"), denied("stage-child", "structured_output"), denied("session-fixture", "spawn_teammate")]);
+        f.unregister();
+        seen.push([denied("stage-child", "spawn_teammate")]);
         return { stopReason: "completed", output: [], structured: report };
       }),
     }));
     const { runId } = await f.registered.get("start_team_run")!.execute({ brief: "Evaluate", analystIds: ["analyst"], reviewerId: "reviewer" }, f.exec) as { runId: string };
     await f.registered.get("run_team_stage")!.execute({ runId, stage: "analysis" }, f.exec);
-    expect(seen).toEqual([[expect.stringMatching(/spawn_teammate/), undefined, undefined]]);
+    expect(seen).toEqual([[expect.stringMatching(/spawn_teammate/), undefined, undefined], [expect.stringMatching(/spawn_teammate/)]]);
     // The id is released with the run.
     expect(denied("stage-child", "spawn_teammate")).toBeUndefined();
-    f.unregister();
+    expect(f.guards).toHaveLength(1);
+    f.unguard();
     expect(f.guards).toHaveLength(0);
   });
 });

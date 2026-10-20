@@ -5,7 +5,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { Session } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as plugin from '../src/index.js'
 import { loadBinding, saveBinding } from '../src/host/session-binding.js'
 import type { DigitalLifeFeature } from '../src/index.js'
@@ -30,7 +30,7 @@ afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()))
 })
 
-async function start(initial: DigitalLifeFeature[]) {
+async function start(initial: DigitalLifeFeature[], options: { records?: typeof RECORDS; subagents?: unknown } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'digital-life-features-'))
   const ctx = new Context()
   cleanups.push(async () => {
@@ -41,7 +41,7 @@ async function start(initial: DigitalLifeFeature[]) {
   await ctx.plugin(ToolRuntime)
   const agents = new Map<string, unknown>()
   let handler: Handler | undefined
-  ctx.provide('subagents', {})
+  ctx.provide('subagents', options.subagents ?? {})
   ctx.provide('agents', { get: (id: string) => agents.get(id) })
   ctx.provide('connection', { rpc: { handle: (_path: string, fn: Handler) => { handler = fn; return () => undefined } } })
   ctx.provide('sandboxPolicy', { defaultMode: 'read-only' })
@@ -52,7 +52,7 @@ async function start(initial: DigitalLifeFeature[]) {
     provider: live(() => 'spawn'),
     maxBatchSize: live(() => 3),
     stateDir: live(() => root),
-    records: live(() => RECORDS),
+    records: live(() => options.records ?? RECORDS),
     teams: live(() => []),
   })
   return {
@@ -206,5 +206,38 @@ describe('switching conversation while the plugin runs', () => {
     const h = await start(WITH_CONVERSATION)
     await h.fiber.dispose()
     expect(h.tools()).toEqual([])
+  })
+})
+
+describe('a team stage still running when conversation goes off', () => {
+  const report = { summary: 'Check evidence', findings: [], assumptions: ['Needs external validation'], disagreements: [], nextActions: ['Run a controlled comparison'] }
+  const experts = ['analyst', 'reviewer'].map((id) => ({ ...RECORDS[0], id, name: id }))
+
+  it.each([
+    ['started with it on', WITH_CONVERSATION],
+    ['switched on later', IDENTITY_ONLY],
+  ])('keeps its subagent restricted to structured output (%s)', async (_label, initial) => {
+    let finish = () => {}
+    const subagents = {
+      getProvider: () => ({ capabilities: { persona: true, toolFilter: true, outputSchema: true, agentOptions: true } }),
+      start: async () => ({
+        id: 'stage-child',
+        dispose: async () => {},
+        result: new Promise((resolve) => { finish = () => resolve({ stopReason: 'completed', output: [], structured: report }) }),
+      }),
+    }
+    const h = await start(initial, { records: experts, subagents })
+    h.setFeatures(WITH_CONVERSATION)
+    const tool = (name: string) => h.ctx.tools.get(name) as unknown as { execute(args: unknown, exec: unknown): Promise<unknown> }
+    const exec = { agent: { id: 'owner', ctx: {} }, signal: new AbortController().signal }
+    const { runId } = await tool('start_team_run').execute({ brief: 'Evaluate', analystIds: ['analyst'], reviewerId: 'reviewer' }, exec) as { runId: string }
+    const stage = tool('run_team_stage').execute({ runId, stage: 'analysis' }, exec)
+    const denial = () => h.ctx.tools.guardReason({ agent: { id: 'stage-child' }, name: 'spawn_teammate' } as never)
+    await vi.waitFor(() => expect(denial()).toMatch(/spawn_teammate/))
+    h.setFeatures(IDENTITY_ONLY)
+    expect(h.tools()).toEqual([])
+    expect(denial()).toMatch(/spawn_teammate/)
+    finish()
+    await stage
   })
 })
