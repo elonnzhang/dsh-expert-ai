@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-`dsh-expert-ai` 为 DeepSeek Harness 维护一个专家身份库（人设、头像、来源声明），并通过 `expertIdentity` Cordis 服务提供给其他插件。它是与 `dsh-bot` 运行时配合使用的身份层（见[与 dsh-bot 配合](#与-dsh-bot-配合)），另外只提供与单一位专家的对话界面。
+`dsh-expert-ai` 为 DeepSeek Harness 维护一个专家身份库（人设、头像、来源声明），并通过 `expertIdentity` Cordis 服务提供给其他插件。它是与 `dsh-bot` 运行时配合使用的身份层，另外只提供与单一位专家的对话界面。
 
 ## 功能
 

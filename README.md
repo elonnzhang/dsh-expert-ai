@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-`dsh-expert-ai` keeps a library of expert identities (persona, avatar, source disclosure) for DeepSeek Harness and serves it to other plugins through the `expertIdentity` Cordis service. It is the identity layer meant to run together with the `dsh-bot` runtime (see [Working with dsh-bot](#working-with-dsh-bot)), and it adds exactly one other thing: a conversation with a single expert.
+`dsh-expert-ai` keeps a library of expert identities (persona, avatar, source disclosure) for DeepSeek Harness and serves it to other plugins through the `expertIdentity` Cordis service. It is the identity layer meant to run together with the `dsh-bot` runtime, and it adds exactly one other thing: a conversation with a single expert.
 
 ## Features
 
