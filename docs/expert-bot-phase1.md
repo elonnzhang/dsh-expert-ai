@@ -35,7 +35,7 @@ dsh-bot（运行时层，fork 的 ds-bot 插件）
 | 单聊 | 长期私聊、分段、管家、记忆 | `src/host/parts.js`、`steward.js`、`memory.js` | 可用 |
 | 群聊 | 1–12 人，`admin` / `everyone` 两种模式，`@` 接力，`[PASS]` | `src/host/groups.js`、`constants.js` `ROOM_MODES` | 可用 |
 | 头像、名字 | 图片 ≤160 KB；名字 ≤40 字，可含中文和「·」 | `roster.js` `buildBot`、`src/shared/mentions.js` `nameProblem` | 可用 |
-| 从身份库创建 | 只能手填，或 Main Bot `create_bot` | `src/client/create-bot.js`、`tools.js` | 需改 |
+| 从身份库创建 | 只能手填，或 Main Bot `create_bot`；只有一个 Create new Bot 入口 | `src/client/create-bot.js`、`tools.js` | 需改（另加独立入口，原入口不动） |
 | 人设保真 | 身份段写死 "a Bot on the user's team in DS Bot"；`TEAM_RULES` 要求「像队友发短信、短句、无标题」，排在人设之后 | `src/host/prompt.js` | 需改 |
 | 身份不被改写 | `update_bot` 允许 Bot 改自己的 `instructions`；Main Bot 可改任何 Bot | `src/host/tools.js` `update_bot` | 需改 |
 | 身份随库更新 | 创建时复制，之后脱钩 | `roster.js` `buildBot` | 需改 |
@@ -87,7 +87,7 @@ interface ExpertIdentityService {
 | F1 | 身份来源：`ctx.inject(['expertIdentity'])` 接入；Bot 记录增加 `identity: { source: 'expert-ai', id, revision }`；每段 Session 冻结人设快照（存在 `bot/` 数据目录下，与记忆快照同样的生命周期）；监听 `expert-identity/changed` 只更新「下一段用的版本」 | 新 `src/host/identity-source.js`；`index.js` MODULES、`store.js`、`roster.js` |
 | F2 | 分身提示词：绑定身份时身份段改为「你是 {name} 的数字分身（{title}）」+ disclosure + persona；`TEAM_RULES` 里「Chat like a teammate texting…」一条改为「语气和表达以你的人设为准」，其余协作规则保留；kickoff 问候按人设口吻。未绑定的 Bot 提示词字节不变 | `src/host/prompt.js`、`roster.js`（kickoff） |
 | F3 | 身份锁定：绑定身份的 Bot，`update_bot` 改 `name` / `instructions` 时拒绝并说明「人设由身份库管理」（Main Bot 同样）；界面详情里这两项只读，提供「解除绑定」（只有用户能做，解除后把当前人设写入 `instructions`，变成普通 Bot） | `src/host/tools.js`、`channel.js` `update-bot`、`src/client/bot-settings.js` |
-| F4 | 从身份库创建：新建 Bot 表单增加「从数字身份创建」，列出 `list()`，选中后名字取 `{name} · {title}`（超 40 字截断）、头像取 `avatar`、角色标签可编辑；同一身份已有 Bot 时提示。新增 channel 端点 `identities`（列表）与 `create-bot` 的 `identityId` 参数；服务不可用时入口隐藏 | `src/client/create-bot.js`、`bot-draft.js`、`src/host/channel.js`、`roster.js` |
+| F4 | 从身份库创建：**保留**原有 Create new Bot 入口不变；另加一个独立入口 Create new Expert-AI Bot（新建 Expert-AI Bot），只在 `expertIdentity` 可用时显示。该入口列出 `list()`，每个身份展示头像、`name`、`title`、`description` 与 `source.kind` 标签（`public` / `organization` / `authorized`）；选中后名字取 `{name} · {title}`（超 40 字截断）、头像取 `avatar`、角色标签可编辑。某个身份已经有 Bot 时，由 dsh-bot 自己按 Bot 记录的 `identity.id` 判断并在列表里标「已创建」——身份层不提供该状态。新增 channel 端点 `identities`（列表）与 `create-bot` 的 `identityId` 参数；服务不可用时入口隐藏 | `src/client/create-bot.js`、`bot-draft.js`、`src/host/channel.js`、`roster.js` |
 | F5 | 群聊默认模式：成员全是绑定身份的 Bot 时新群默认 `everyone`；用户仍可在群设置里改 | `roster.js` `createRoom` |
 | F6 | 品牌文案：产品名从配置读取（缺省 "DS Bot"），用于提示词与界面可见文案；**不改**插件 id、数据目录、路由 | `prompt.js`、`src/client/i18n.js` |
 
