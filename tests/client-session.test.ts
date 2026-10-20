@@ -124,7 +124,9 @@ function setup(
       conversation,
       connection: {
         rpc: {
-          call: async (_channel: string, endpoint: string, payload?: unknown) => {
+          call: async (channel: string, method: string, payload?: unknown) => {
+            if (channel !== "/api" || !method.startsWith("digital-life/")) throw new Error(`unexpected RPC target ${channel}/${method}`);
+            const endpoint = method.slice("digital-life/".length);
             calls.push(endpoint);
             if (endpoint === "bind") bindPayloads.push(payload);
             if (endpoint === "project") return { ok: true, value: { cwd: "/tmp/digital-life/projects/test" } };

@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { agentPath } from '../src/host/identity.js'
 import * as plugin from '../src/index.js'
 import type { ExpertIdentity, ExpertIdentitySummary } from '../src/index.js'
+import { fakeHostConnection } from './host-connection.js'
 
 const cleanups: Array<() => Promise<void>> = []
 afterEach(async () => {
@@ -26,7 +27,7 @@ describe('expertIdentity in the loaded plugin', () => {
     await ctx.plugin(ToolRuntime)
     ctx.provide('subagents', {})
     ctx.provide('agents', {})
-    ctx.provide('connection', { rpc: { handle: () => () => undefined } })
+    ctx.provide('connection', fakeHostConnection().connection)
     ctx.provide('sandboxPolicy', { defaultMode: 'read-only' })
     await ctx.plugin(plugin, {
       stateDir: root,

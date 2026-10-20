@@ -21,6 +21,7 @@ import type { DigitalLifeRecord } from "../types.js";
 import type { ClientConnectionRpc } from "@deepseek-ai/dsh-client-connection/client";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import { NS } from "./locales.js";
+import { callHost } from "./hostCall.js";
 import {
   AgentPresetSelector,
   type AgentPresetSelectorInjected,
@@ -81,7 +82,7 @@ export function installAgentPresetSelector(
   const lifeFor = async (sessionId: SessionId): Promise<string | undefined> => {
     const cached = selectedLifeBySession.get(sessionId);
     if (cached !== undefined) return cached || undefined;
-    const result = await rpcOf().call("/digital-life", "binding", { sessionId });
+    const result = await callHost(rpcOf(), "binding", { sessionId });
     if (!result.ok) throw new Error(result.error.message);
     const value = result.value as { recordId?: unknown; team?: { name?: unknown } } | undefined;
     if (typeof value?.team?.name === "string") teamBySession.set(sessionId, value.team.name);
@@ -152,7 +153,7 @@ export function installAgentPresetSelector(
           selectedLifeBySession.set(createdSessionId, id);
           return;
         }
-        const result = await rpcOf().call("/digital-life", "bind", {
+        const result = await callHost(rpcOf(), "bind", {
           sessionId,
           recordId: id,
         });
@@ -229,7 +230,7 @@ export function installAgentPresetSelector(
         if (id === "digital-life-mode") {
           setLifeBlock(sessionId, await lifeFor(sessionId));
         } else {
-          const unbound = await rpcOf().call("/digital-life", "unbind", { sessionId });
+          const unbound = await callHost(rpcOf(), "unbind", { sessionId });
           if (!unbound.ok) throw new Error(unbound.error.message);
           selectedLifeBySession.delete(sessionId);
           teamBySession.delete(sessionId);

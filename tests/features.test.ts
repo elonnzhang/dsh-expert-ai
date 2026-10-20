@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as plugin from '../src/index.js'
 import { loadBinding, saveBinding } from '../src/host/session-binding.js'
 import type { DigitalLifeFeature } from '../src/index.js'
+import { fakeHostConnection } from './host-connection.js'
 
 const GATED_TOOLS = [
   'consult_digital_life', 'consult_digital_life_category', 'read_expert_reference', 'review_expert_plan',
@@ -21,8 +22,6 @@ const RECORDS = [
   { id: 'mentor', name: '创业导师', description: '创业', category: 'business', tags: [], persona: '关注现金流。', enabled: true },
 ]
 
-type Reply = { ok: boolean; error?: { message: string }; value?: unknown }
-type Handler = (endpoint: string, payload: unknown) => Promise<Reply>
 type Section = { name: string; text: string }
 
 const cleanups: Array<() => Promise<void>> = []
@@ -40,10 +39,10 @@ async function start(initial: DigitalLifeFeature[], options: { records?: typeof 
   await ctx.plugin(SystemPrompt, {})
   await ctx.plugin(ToolRuntime)
   const agents = new Map<string, unknown>()
-  let handler: Handler | undefined
+  const host = fakeHostConnection()
   ctx.provide('subagents', options.subagents ?? {})
   ctx.provide('agents', { get: (id: string) => agents.get(id) })
-  ctx.provide('connection', { rpc: { handle: (_path: string, fn: Handler) => { handler = fn; return () => undefined } } })
+  ctx.provide('connection', host.connection)
   ctx.provide('sandboxPolicy', { defaultMode: 'read-only' })
   const state = { features: initial }
   const live = <T,>(read: () => T) => ({ get: read })
@@ -60,7 +59,8 @@ async function start(initial: DigitalLifeFeature[], options: { records?: typeof 
     ctx,
     fiber,
     tools: () => GATED_TOOLS.filter((name) => ctx.tools.get(name) !== undefined),
-    rpc: (endpoint: string, payload: unknown = {}) => (handler as Handler)(endpoint, payload),
+    rpc: host.call,
+    routes: host.paths,
     setFeatures(next: DigitalLifeFeature[]) {
       state.features = next
       ctx.emit('loader/volatile-update', [['features']])
@@ -118,10 +118,23 @@ describe('with the identity feature only', () => {
 
   it('keeps the identity library endpoints reachable', async () => {
     const h = await start(IDENTITY_ONLY)
-    expect(await h.rpc('identity', { recordId: 'mentor' })).toMatchObject({ ok: true })
-    const unknown = await h.rpc('expert/unknown')
-    expect(unknown.ok).toBe(false)
-    expect(unknown.error?.message).toContain('unknown expert endpoint')
+    const offline = vi.fn().mockRejectedValue(new Error('offline'))
+    vi.stubGlobal('fetch', offline)
+    try {
+      expect(await h.rpc('identity', { recordId: 'mentor' })).toMatchObject({ ok: true })
+      const catalog = await h.rpc('expert/catalog')
+      expect(offline).toHaveBeenCalled()
+      expect(catalog.ok).toBe(false)
+      expect(catalog.error?.message).toBe('offline')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('serves nothing beyond the known endpoints', async () => {
+    const h = await start(IDENTITY_ONLY)
+    expect(h.routes()).toContain('/api/digital-life/identity')
+    expect((await h.rpc('expert/unknown')).error?.code).toBe('not-found')
   })
 
   it('leaves a new session without a persona', async () => {

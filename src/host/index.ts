@@ -13,6 +13,7 @@ import { defineTool, type ToolExecution } from "@deepseek-ai/dsh-tools";
 import { createAssistantMessage, type ContentBlock } from "@deepseek-ai/dsh-llm";
 import { createProject, identityFor } from "./identity.js";
 import { ExpertIdentityProvider } from "./identity-service.js";
+import { serveHostRpc } from "./rpc-routes.js";
 import {
   deleteBinding,
   loadBinding,
@@ -713,8 +714,8 @@ export function apply(ctx: Context, config: Config): void {
   const connection = ctx.get("connection") as HostConnectionHandle;
   ctx.effect(
     () =>
-      connection.rpc.handle(
-        "/digital-life",
+      serveHostRpc(
+        connection,
         async (endpoint, payload) => {
           if (!conversationOn() && (endpoint.startsWith("review/") || CONVERSATION_ENDPOINTS.has(endpoint)))
             return {
@@ -836,7 +837,7 @@ export function apply(ctx: Context, config: Config): void {
           };
         },
       ),
-    "digital-life: session persona RPC",
+    "digital-life: host RPC",
   );
   // Validate the live configuration on load and reject a bad settings write
   // before it commits (mirrors the previous installSettingsSection.validate).

@@ -1,5 +1,10 @@
 export const DIGITAL_LIFE_NAMESPACE = "digital-life";
 
+/** The Host serves each endpoint on this shared channel as `digital-life/<endpoint>`. */
+export const DIGITAL_LIFE_RPC_CHANNEL = "/api";
+
+export const digitalLifeEndpoint = (endpoint: string): string => `${DIGITAL_LIFE_NAMESPACE}/${endpoint}`;
+
 /** Switchable parts; `identity` is always on, `conversation` adds the consult, review and team tools, persona binding, Chat Panel and `@` source. */
 export const DIGITAL_LIFE_FEATURES = ["identity", "conversation"] as const;
 

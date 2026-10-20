@@ -25,6 +25,7 @@ import type {
 } from "@deepseek-ai/dsh-client-connection/client";
 import { IconUserOutlineRegular, IconUsersOutlineMedium } from "@deepseek-ai/dsh-client-ui-primitives";
 import { DIGITAL_LIFE_NAMESPACE } from "../constants.js";
+import { callHost } from "./hostCall.js";
 import type { DigitalLifeRecord, DigitalLifeSettings } from "../types.js";
 import {
   DigitalLifeSettingSection,
@@ -79,7 +80,7 @@ export function apply(ctx: ClientContext): void {
   const callExpert = async <T,>(endpoint: string, payload: unknown): Promise<T> => {
     const connection = ctx.get("connection") as ConnectionHandle | undefined;
     if (connection === undefined) throw new Error("digital-life: connection service is unavailable");
-    const result = await (connection.rpc as unknown as ClientConnectionRpc).call("/digital-life", endpoint, payload);
+    const result = await callHost(connection.rpc as unknown as ClientConnectionRpc, endpoint, payload);
     if (!result.ok) throw new Error(result.error.message);
     return result.value as T;
   };
@@ -139,7 +140,7 @@ export function apply(ctx: ClientContext): void {
       if (connection === undefined)
         throw new Error("digital-life: connection service is unavailable");
       const rpc = connection.rpc as unknown as ClientConnectionRpc;
-      const result = await rpc.call("/digital-life", "identity", { recordId: id });
+      const result = await callHost(rpc, "identity", { recordId: id });
       if (!result.ok) throw new Error(result.error.message);
       return (result.value as { identity: string }).identity;
     },
@@ -173,7 +174,7 @@ export function apply(ctx: ClientContext): void {
     if (connection === undefined)
       throw new Error("digital-life: connection service is unavailable");
     const rpc = connection.rpc as unknown as ClientConnectionRpc;
-    const project = await rpc.call("/digital-life", "project", {});
+    const project = await callHost(rpc, "project", {});
     if (!project.ok) throw new Error(project.error.message);
     const cwd = (project.value as { cwd?: unknown }).cwd;
     if (typeof cwd !== "string" || cwd === "")
@@ -184,7 +185,7 @@ export function apply(ctx: ClientContext): void {
       await reference.ready;
       if (target !== undefined) {
         await selectDigitalLifeMode(sessionId);
-        const init = await rpc.call("/digital-life", "bind", { sessionId, ...target });
+        const init = await callHost(rpc, "bind", { sessionId, ...target });
         if (!init.ok) throw new Error(init.error.message);
       }
       return { sessionId, reference };
@@ -213,7 +214,7 @@ export function apply(ctx: ClientContext): void {
         record === undefined
           ? t("independentGreeting")
           : t("sessionGreeting", { name: record.name, description: record.description });
-      const greeting = await rpc.call("/digital-life", "greeting", { sessionId, text });
+      const greeting = await callHost(rpc, "greeting", { sessionId, text });
       if (!greeting.ok) throw new Error(greeting.error.message);
       ctx.uiWorkspace.openSession(sessionId);
       return sessionId;
