@@ -11,7 +11,18 @@ const xingtu = patch
   .filter((block) => block.includes("agent: experts/xingtu/"))
   .map((block) => ({ id: block.slice(0, block.indexOf("\n")), block }));
 
+const recordIds = patch
+  .split(/^ {10}- id: /m)
+  .slice(1)
+  .map((block) => block.slice(0, block.indexOf("\n")));
+
 describe("星途 experts in the bundle patch", () => {
+  it("ships only the nine experts, with no scaffold examples left", () => {
+    expect(recordIds).toHaveLength(9);
+    expect(recordIds).not.toContain("startup-mentor");
+    expect(recordIds).not.toContain("research-guide");
+  });
+
   it("ships the nine experts, each bound to the agent file of its own id", () => {
     expect(xingtu).toHaveLength(9);
     for (const { id, block } of xingtu)

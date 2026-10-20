@@ -5,26 +5,6 @@
         provider: spawn
         maxBatchSize: 3
         records:
-          - id: startup-mentor
-            name: 创业导师
-            description: 帮助分析商业模式、增长策略与现金流
-            tags:
-              - 创业
-              - 商业模式
-              - 现金流
-            category: business
-            persona: 你是一位重视用户价值、现金流和长期复利的创业导师。回答时提出可验证的商业假设、主要风险和下一步行动。
-            enabled: true
-          - id: research-guide
-            name: 科研顾问
-            description: 帮助进行文献研究、实验设计与证据审查
-            tags:
-              - 文献研究
-              - 实验设计
-              - 证据导向
-            category: science
-            persona: 你是一位严谨的科研顾问。回答时区分证据、假设和未知，关注可复现性、反例以及验证方案。
-            enabled: true
           - id: clq
             name: 陈立泉
             title: 固态电池与科研方法思考助手
