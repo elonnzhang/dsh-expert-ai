@@ -19,7 +19,7 @@ pnpm dsh --profile web --dump-config
 
 插件入口 `config.features` 决定启用哪些部分：`identity` 始终开启，`conversation` 缺省关闭。两者各自提供的内容见 README 的“运行模式”一节。
 
-开启对话功能时，要更新组合包插入的 `digital-life` 入口并保留完整的 `config`：Cordis patch 会整体替换该对象。保留 `provider`、`maxBatchSize` 和所有现有 `records`，再加入 `features: [identity, conversation]`。`digital-life-mode` 预设不再随组合包安装，需要时另外应用 `digital-life-mode.patch.yml`。
+开启对话功能时，要更新组合包插入的 `expert-ai` 入口并保留完整的 `config`：Cordis patch 会整体替换该对象。保留 `provider`、`maxBatchSize` 和所有现有 `records`，再加入 `features: [identity, conversation]`。`expert-ai-mode` 预设不再随组合包安装，需要时另外应用 `expert-ai-mode.patch.yml`。
 
 `features` 是 volatile 配置，修改后由 loader 原地应用；拿不准时重启 Profile。
 
@@ -45,7 +45,7 @@ Client 产物。Host 半边与 `cordis.patch.yml` 变化仍需重启 `dsh web`�
 不安装到 Profile 时，可生成绝对路径 overlay：
 
 请先在目标 Profile 中移除已安装的 `dsh-expert-ai`，或使用一个未安装插件的开发
-Profile。overlay 的 Host 条目与组合包共用 id `digital-life`（Client 按这个 id 读取设置
+Profile。overlay 的 Host 条目与组合包共用 id `expert-ai`（Client 按这个 id 读取设置
 表单），两者并存会得到两个同 id 的条目。
 
 ```sh
@@ -67,7 +67,7 @@ pnpm run dev:patch -- --conversation
 pnpm dsh web --patch /path/to/dsh-expert-ai/dev/cordis.dev.local.yml
 ```
 
-它在 Host 行写入 `features: [identity, conversation]`，并追加 `digital-life-mode` 预设。
+它在 Host 行写入 `features: [identity, conversation]`，并追加 `expert-ai-mode` 预设。
 之后直接用上面的 `pnpm dsh web --patch` 启动；`dev:web` 和 `dev:dump` 会把这个 overlay 覆盖回
 只开身份层的版本。
 
@@ -102,4 +102,4 @@ pnpm run dev:patch -- --conversation
 pnpm dsh web --patch /path/to/dsh-expert-ai/dev/cordis.dev.local.yml --dump-config
 ```
 
-这时 Host 行应带有 `features: [identity, conversation]`，并多出 `preset-digital-life-mode` 一行。
+这时 Host 行应带有 `features: [identity, conversation]`，并多出 `preset-expert-ai-mode` 一行。

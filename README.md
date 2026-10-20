@@ -8,20 +8,20 @@ English | [中文](README.zh.md)
 
 Always on (the `identity` feature):
 
-- Persists records in the `digital-life` settings namespace and each identity in `$DSH_HOME/digital-life/<id>/agents/<id>.md`.
+- Persists records in the `expert-ai` settings namespace and each identity in `$DSH_HOME/expert-ai/<id>/agents/<id>.md`.
 - Imports persona identities from agent Markdown files such as `~/.agent/agents/xxx.md` and `~/.claude/agents/xxx.md` (YAML frontmatter is ignored).
 - Adds a Harness-styled settings section for creating, editing, enabling, and deleting records.
 - Provides the `expertIdentity` Cordis service, so another plugin such as a Bot runtime can read the enabled identities: persona, avatar, source disclosure and revision.
 
 Only with the `conversation` feature (off by default):
 
-- Adds `consult_digital_life` for one independent consultation.
-- Adds `consult_digital_life_category` for parallel category consultation.
+- Adds `consult_expert` for one independent consultation.
+- Adds `consult_expert_category` for parallel category consultation.
 - Adds the review tools (`review_expert_plan`, `read_expert_review`) and the team-run tools, with the 专家团 settings tab and the Expert AI panel.
 - Registers an `@<id>` input source for selecting configured records.
 - Injects a Chat Panel through the additive `sidebar.footer.action` Slot without replacing the Harness sidebar or workspace browser.
-- Creates conversations without a Workspace and starts standalone conversations initialized with a selected digital-life persona.
-- Registers `digital-life-mode` in Harness's native Agent preset selector and Agent presets settings (an opt-in patch, see [Run modes](#run-modes)). Choose a specific identity from the conversation selector or the sidebar Chat Panel.
+- Creates conversations without a Workspace and starts standalone conversations initialized with a selected digital life persona.
+- Registers `expert-ai-mode` in Harness's native Agent preset selector and Agent presets settings (an opt-in patch, see [Run modes](#run-modes)). Choose a specific identity from the conversation selector or the sidebar Chat Panel.
 
 ## Working with dsh-bot
 
@@ -40,12 +40,12 @@ The split of responsibilities and the service contract are in [`docs/expert-bot-
 
 | Feature | What it adds |
 | --- | --- |
-| `identity` (always) | the settings section with the 专家 and 通用设置 tabs, the managed identity files, the `expertIdentity` service and its changed event, the `expert/*` and `identity` endpoints |
-| `conversation` | the `consult_*`, review and team-run tools; persona and team binding of new Sessions, with the `project`, `greeting`, `binding`, `bind`, `unbind` and `review/*` endpoints; the Chat Panel; the `@<id>` input source; the Expert AI panel and sidebar entry; the digital-life selector in the conversation hero; the 专家团 settings tab |
+| `identity` (always) | the settings section with the 专家 and 通用设置 tabs, the managed identity files, the `expertIdentity` service and its changed event, the `expert/*` and `identity` endpoints under `/api/expert-ai/` |
+| `conversation` | the `consult_*`, review and team-run tools; persona and team binding of new Sessions, with the `project`, `greeting`, `binding`, `bind`, `unbind` and `review/*` endpoints; the Chat Panel; the `@<id>` input source; the Expert AI panel and sidebar entry; the digital life selector in the conversation hero; the 专家团 settings tab |
 
-To enable conversation for an installed bundle, update the existing `digital-life` entry and preserve its full `config`: Cordis patch rows replace the entire `config` object. Keep `provider`, `maxBatchSize`, and every existing `records` entry, then add `features: [identity, conversation]`.
+To enable conversation for an installed bundle, update the existing `expert-ai` entry and preserve its full `config`: Cordis patch rows replace the entire `config` object. Keep `provider`, `maxBatchSize`, and every existing `records` entry, then add `features: [identity, conversation]`.
 
-The `digital-life-mode` Agent preset is no longer part of the installed bundle. Apply `digital-life-mode.patch.yml` to use it; without that patch, standalone sessions use the deployment's default preset. `pnpm run dev:patch -- --conversation` writes both the conversation setting and preset to the development overlay.
+The `expert-ai-mode` Agent preset is no longer part of the installed bundle. Apply `expert-ai-mode.patch.yml` to use it; without that patch, standalone sessions use the deployment's default preset. `pnpm run dev:patch -- --conversation` writes both the conversation setting and preset to the development overlay.
 
 - `features` has no settings UI. In identity mode **子代理 Provider** and **分类最大咨询数** stay visible but unused.
 - The Client mounts the conversation surfaces only once the setting is known; while it is loading, unavailable or missing, nothing is mounted.
@@ -56,11 +56,11 @@ The `digital-life-mode` Agent preset is no longer part of the installed bundle. 
 <!-- prettier-ignore -->
 | Chat Panel | Settings | Create digital life |
 | ---- | ---- | ------ |
-| <img src="pics/chat.png" alt="Digital-life Chat Panel" width="960"> | <img src="pics/setting.png" alt="Digital-life settings" width="960"> | <img src="pics/setting2.png" alt="Create digital-life form" width="960"> |
+| <img src="pics/chat.png" alt="Digital life Chat Panel" width="960"> | <img src="pics/setting.png" alt="Digital life settings" width="960"> | <img src="pics/setting2.png" alt="Create digital life form" width="960"> |
 
 ## Record fields
 
-Each record has an `id`, `name`, `description`, primary-domain `category`, composable `tags[]`, `agent`, `persona`, and `enabled` flag. `agent` is the only runtime identity source. When no Agent file is supplied, saving a record writes `persona` to the managed `<id>/agents/<id>.md` file and stores that relative path in `agent`; when an Agent file is supplied, its Markdown body is authoritative and `persona` is ignored. Relative `agent` paths are read from `$DSH_HOME/digital-life/` first and then from the plugin package, so bundled `experts/` files work in a fresh Profile; a same-named file under `$DSH_HOME/digital-life/` overrides the bundled copy. New records using the `custom` category should set `customCategory`; older records without it fall back to the display name. `toolFilter` and `model` are optional. The Host validates the settings document and creates one-shot consultations with the configured subagent provider. See [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md) for the proposed Think Tank agent-team design.
+Each record has an `id`, `name`, `description`, primary-domain `category`, composable `tags[]`, `agent`, `persona`, and `enabled` flag. `agent` is the only runtime identity source. When no Agent file is supplied, saving a record writes `persona` to the managed `<id>/agents/<id>.md` file and stores that relative path in `agent`; when an Agent file is supplied, its Markdown body is authoritative and `persona` is ignored. Relative `agent` paths are read from `$DSH_HOME/expert-ai/` first and then from the plugin package, so bundled `experts/` files work in a fresh Profile; a same-named file under `$DSH_HOME/expert-ai/` overrides the bundled copy. New records using the `custom` category should set `customCategory`; older records without it fall back to the display name. `toolFilter` and `model` are optional. The Host validates the settings document and creates one-shot consultations with the configured subagent provider. See [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md) for the proposed Think Tank agent-team design.
 
 Presentation fields are optional, so records saved before they existed stay valid:
 
@@ -136,21 +136,56 @@ Restart `pnpm dsh web` after installing, updating, or removing the plugin.
 
 ### Upgrading from `dsh-digital-life`
 
-The package was renamed to `dsh-expert-ai`; the settings namespace (`digital-life`), the data
-directory (`$DSH_HOME/digital-life`), and every entry id are unchanged. In an existing Profile,
-replace the installed package:
+The package is `dsh-expert-ai`, and the entry id, settings namespace and data directory are now
+`expert-ai`. Nothing is migrated automatically, so an existing Profile needs three manual steps.
+
+**1. Stop the Profile and rewrite its patch row.** Plugin settings are stored in the Profile's Cordis
+patch, not in `$DSH_HOME/settings.yaml`. Open `$DSH_HOME/profiles/<profile>/cordis.patch.yml` and find the
+row inserted for this plugin:
+
+```yaml
+- id: digital-life
+  name: dsh-digital-life # or already dsh-expert-ai if the package name was updated earlier
+  config: { … }
+```
+
+Change `id` to `expert-ai` and `name` to `dsh-expert-ai`, keep the complete `config` (the loader replaces
+the whole object, so `provider`, `maxBatchSize`, `stateDir`, `records` and `teams` must stay), and delete
+any duplicate left by an earlier rename.
+
+**2. Reinstall the package under the new id.** From the Harness checkout. If the dependency and
+`bundles` entry in the Profile's `package.json` already use `dsh-expert-ai`, skip the `remove` command
+and run only `add` again for the current checkout (or update the existing installation).
 
 ```sh
 pnpm dsh plugin --profile web remove dsh-digital-life
-pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.git
+pnpm dsh plugin --profile web add /path/to/dsh-expert-ai
 ```
 
-A settings override written under the old package name stays in
-`$DSH_HOME/profiles/<profile>/cordis.patch.yml` as a row like
-`{ id: digital-life, name: dsh-digital-life, config: … }`. The loader applies a row only when its
-`name` matches the entry, so that row is skipped and the entry falls back to the bundle defaults.
-Copy those values into the settings page once (or edit the `name` of the row to `dsh-expert-ai`)
-before making other changes, then delete the stale row.
+This updates the dependency name and the bundle name in the Profile's `package.json`. A local checkout
+path works immediately; `https://github.com/elonnzhang/dsh-expert-ai.git` only works after the remote
+repository itself has been renamed, which has not happened yet.
+
+**3. Deal with the old data directory.** `$DSH_HOME/digital-life` is no longer read. Delete it:
+
+```sh
+rm -rf "${DSH_HOME:-$HOME/.dsh}/digital-life"
+```
+
+or, before the first start and only while `$DSH_HOME/expert-ai` does not exist, move it:
+
+```sh
+mv "${DSH_HOME:-$HOME/.dsh}/digital-life" "${DSH_HOME:-$HOME/.dsh}/expert-ai"
+```
+
+The code does not move this directory. Without the move, imported expert packages (`.expert-packages/`),
+reviews (`.expert-reviews/`), standalone projects (`projects/`), session bindings (`sessions/`) and
+managed identity files (`<id>/agents/`) are left behind and have to be moved or re-imported; a managed
+persona kept in the `config` is rebuilt from `persona` on the next startup (or when the record is saved).
+
+A custom `stateDir` follows the same rule: the data root is that path with `expert-ai` appended, unless it
+already ends in `expert-ai`. A `stateDir` that ends in `/digital-life` therefore names the parent, and the
+old data has to move into `<stateDir>/expert-ai`.
 
 ### Local development
 
@@ -175,7 +210,7 @@ pnpm dsh web --port 3080
 | `lib/index.js` | `src/index.ts` | the Host, applied by cordis |
 | `lib/index.d.ts` | Host declarations | TypeScript consumers |
 | `lib/invariant.js` | `src/invariant.ts` | `exports["./invariant"]` |
-| `lib/client.js` | `src/client/index.ts` | the browser, served at `/plugins/dsh-expert-ai/client.js` |
+| `lib/client.js` | `src/client/index.ts` | the browser loader, which requests the `dsh-expert-ai/client.js` bundle through the versioned combo URL in the boot manifest |
 | `lib/types/client/index.d.ts` | Client declarations | TypeScript consumers of `./client` |
 
 `lib/index.d.ts` and `lib/invariant.d.ts` are generated by tsdown. `build:types` additionally emits
@@ -231,37 +266,39 @@ The plugin UI follows the Harness locale and provides complete English and Simpl
 You can enter a Host-readable path to bind an existing Agent Markdown file. Its YAML frontmatter is ignored and its Markdown body is the runtime identity. A file selected through the browser is instead imported into the managed file because the browser does not expose a path that the Host can reopen. When no external path is entered, the Persona is written to:
 
 ```text
-$DSH_HOME/digital-life/<id>/agents/<id>.md
+$DSH_HOME/expert-ai/<id>/agents/<id>.md
 ```
 
 An external Agent file remains the sole source of identity and is not copied or overwritten by the plugin.
 
-The settings document is normally:
+The settings document is the Profile's Cordis patch, not `$DSH_HOME/settings.yaml`:
 
 ```text
-$DSH_HOME/settings.yaml
+$DSH_HOME/profiles/<profile>/cordis.patch.yml
 ```
+
+Saving on the settings page rewrites the `expert-ai` row of that file.
 
 ### 2. Choose the consultation provider
 
-Set **子代理 Provider** to a mounted subagent provider. Keep the default `spawn` unless your Harness profile installs another provider. Set **分类最大咨询数** to the maximum number of enabled records that `consult_digital_life_category` may consult in parallel. This limit does not affect standalone sessions.
+Set **子代理 Provider** to a mounted subagent provider. Keep the default `spawn` unless your Harness profile installs another provider. Set **分类最大咨询数** to the maximum number of enabled records that `consult_expert_category` may consult in parallel. This limit does not affect standalone sessions.
 
 ### 3. Use a digital life from the composer
 
-Type `@` in the composer and select a record, for example `@startup-mentor`. The `@<id>` text helps the main Agent choose the `consult_digital_life` tool; it is not an automatic command. The model may still decide whether a consultation is useful.
+Type `@` in the composer and select a record, for example `@startup-mentor`. The `@<id>` text helps the main Agent choose the `consult_expert` tool; it is not an automatic command. The model may still decide whether a consultation is useful.
 
 The available tools are:
 
-- `consult_digital_life(id, question)`: ask one configured digital life
-- `consult_digital_life_category(category, question)`: ask enabled records in one category in parallel and compare their answers
+- `consult_expert(id, question)`: ask one configured digital life
+- `consult_expert_category(category, question)`: ask enabled records in one category in parallel and compare their answers
 
 ### 4. Start an independent conversation
 
-Choose a digital life from the conversation selector or open **Chat Panel** in the sidebar. If no project is selected, the plugin creates an isolated project under `~/.dsh/digital-life/projects/<datetime>` before opening the session. The composer remains blocked until a digital life is selected.
+Choose a digital life from the conversation selector or open **Chat Panel** in the sidebar. If no project is selected, the plugin creates an isolated project under `$DSH_HOME/expert-ai/projects/<datetime>` before opening the session. The composer remains blocked until a digital life is selected.
 
-The standalone session has no Workspace (`workspaceId`/`cwd`), receives a record-specific system prompt through Host binding, and is forced to the **read-only file sandbox**. The selected identity is saved under `$DSH_HOME/digital-life/sessions/` so it survives a Host restart. The opening message is brief and does not repeat the full persona. The mode exposes digital-life consultation tools, not file-editing tools.
+The standalone session has no Workspace (`workspaceId`/`cwd`), receives a record-specific system prompt through Host binding, and is forced to the **read-only file sandbox**. The selected identity is saved under `$DSH_HOME/expert-ai/sessions/` so it survives a Host restart. The opening message is brief and does not repeat the full persona. The mode exposes digital life consultation tools, not file-editing tools.
 
-Inside a standalone digital-life session, mentioning another record as `@<id>` requires `consult_digital_life`; the current digital life must not imitate or answer for that record. Mentioning the current record's own ID is answered directly without a self-consultation.
+Inside a standalone digital life session, mentioning another record as `@<id>` requires `consult_expert`; the current digital life must not imitate or answer for that record. Mentioning the current record's own ID is answered directly without a self-consultation.
 
 ### 5. Update the plugin
 
@@ -281,8 +318,8 @@ pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.gi
 
 ## Model Experience
 
-Consultation tools add their schemas to the main agent's model request. A single consultation starts one child agent and returns its text. Category consultation starts up to `maxBatchSize` enabled records in parallel. A standalone digital-life conversation receives a record-specific system prompt, is set to the read-only file sandbox, and starts with a brief first user message; the role instruction is carried by the system prompt and remains durable and model-visible in that Session.
+Consultation tools add their schemas to the main agent's model request. A single consultation starts one child agent and returns its text. Category consultation starts up to `maxBatchSize` enabled records in parallel. A standalone digital life conversation receives a record-specific system prompt, is set to the read-only file sandbox, and starts with a brief first user message; the role instruction is carried by the system prompt and remains durable and model-visible in that Session.
 
 ## Known Limitations and Deferred Work
 
-In a regular Chat, `@<id>` is model-visible text that helps the agent choose `consult_digital_life`; it is not an automatic command. In a standalone digital-life session, the durable system prompt requires other-record mentions to use the consultation tool while self-mentions are answered directly. The current public sidebar has no additive Slot above the workspace browser, so Chat Panel uses the supported footer action Slot. Standalone digital-life sessions use the `digital-life-mode` Agent preset when it is available (it ships as an opt-in patch, see [Run modes](#run-modes)); otherwise they use the deployment default. Per-record model selection is not yet applied during Session creation.
+In a regular Chat, `@<id>` is model-visible text that helps the agent choose `consult_expert`; it is not an automatic command. In a standalone digital life session, the durable system prompt requires other-record mentions to use the consultation tool while self-mentions are answered directly. The current public sidebar has no additive Slot above the workspace browser, so Chat Panel uses the supported footer action Slot. Standalone digital life sessions use the `expert-ai-mode` Agent preset when it is available (it ships as an opt-in patch, see [Run modes](#run-modes)); otherwise they use the deployment default. Per-record model selection is not yet applied during Session creation.

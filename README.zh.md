@@ -8,19 +8,19 @@
 
 始终开启（`identity` 功能）：
 
-- 在 `digital-life` 设置命名空间中持久化数字生命记录。
+- 在 `expert-ai` 设置命名空间中持久化数字生命记录，每条身份保存在 `$DSH_HOME/expert-ai/<id>/agents/<id>.md`。
 - 提供符合 Harness 风格的设置区，用于新增、编辑、启用和删除数字生命记录。
 - 提供 `expertIdentity` Cordis 服务，供其他插件（如 Bot 运行时）读取已启用的身份：人设、头像、来源声明与版本。
 
 仅在开启 `conversation` 功能时提供（默认关闭）：
 
-- 提供 `consult_digital_life`，用于一次性咨询指定数字生命。
-- 提供 `consult_digital_life_category`，用于并行咨询一个分类中的多个数字生命。
+- 提供 `consult_expert`，用于一次性咨询指定数字生命。
+- 提供 `consult_expert_category`，用于并行咨询一个分类中的多个数字生命。
 - 提供评审工具（`review_expert_plan`、`read_expert_review`）与专家团运行工具，以及设置页的专家团标签和 Expert AI 面板。
 - 注册 `@<id>` 输入源，用于选择已配置的数字生命。
 - 通过 additive `sidebar.footer.action` Slot 注入 Chat Panel，不替换 Harness 的 Sidebar 或 Workspace 浏览器。
 - 创建不附加 Workspace 的独立会话，并使用所选数字生命初始化会话。
-- 将 `digital-life-mode` 注册到 Harness 首页原生 Agent preset 选择器及预设设置页（需另外应用的补丁，见[运行模式](#运行模式)）；具体数字生命可从会话选择器或侧边栏 Chat Panel 选择。
+- 将 `expert-ai-mode` 注册到 Harness 首页原生 Agent preset 选择器及预设设置页（需另外应用的补丁，见[运行模式](#运行模式)）；具体数字生命可从会话选择器或侧边栏 Chat Panel 选择。
 
 ## 与 dsh-bot 配合
 
@@ -39,12 +39,12 @@
 
 | 功能 | 提供的内容 |
 | --- | --- |
-| `identity`（始终） | 带「专家」「通用设置」标签的设置区、托管的身份文件、`expertIdentity` 服务及其变更事件、`expert/*` 与 `identity` 端点 |
+| `identity`（始终） | 带「专家」「通用设置」标签的设置区、托管的身份文件、`expertIdentity` 服务及其变更事件、`/api/expert-ai/` 下的 `expert/*` 与 `identity` 端点 |
 | `conversation` | `consult_*`、评审与专家团运行工具；新会话的人设与专家团绑定（含 `project`、`greeting`、`binding`、`bind`、`unbind` 和 `review/*` 端点）；Chat Panel；`@<id>` 输入源；Expert AI 面板与侧边栏入口；会话首页的数字生命选择器；设置页的专家团标签 |
 
-在组合包插入的 `digital-life` 入口中开启对话功能时，要保留完整的 `config`：Cordis patch 会整体替换该对象。保留 `provider`、`maxBatchSize` 和所有现有 `records`，再加入 `features: [identity, conversation]`。
+在组合包插入的 `expert-ai` 入口中开启对话功能时，要保留完整的 `config`：Cordis patch 会整体替换该对象。保留 `provider`、`maxBatchSize` 和所有现有 `records`，再加入 `features: [identity, conversation]`。
 
-`digital-life-mode` Agent preset 不再随安装的组合包提供；需要时另外应用 `digital-life-mode.patch.yml`，没有它时独立会话使用部署的默认 preset。开发 overlay 可用 `pnpm run dev:patch -- --conversation` 生成。
+`expert-ai-mode` Agent preset 不再随安装的组合包提供；需要时另外应用 `expert-ai-mode.patch.yml`，没有它时独立会话使用部署的默认 preset。开发 overlay 可用 `pnpm run dev:patch -- --conversation` 生成。
 
 - `features` 没有设置页入口。identity 模式下，**子代理 Provider** 与 **分类最大咨询数** 仍然显示，但不起作用。
 - Client 在拿到设置值之后才挂载对话相关界面；设置还在加载、不可用或缺失时，什么都不挂载。
@@ -59,7 +59,7 @@
 
 ## 数字生命记录字段
 
-每条记录包含 `id`、`name`、`description`、主领域 `category`、能力标签 `tags[]`、`agent`、`persona` 和 `enabled`。`agent` 是运行时唯一的人格来源：未填写 Agent 文件时，保存会将 `persona` 写入托管的 `<id>/agents/<id>.md`，并把相对路径保存到 `agent`；填写 Agent 文件后，以该 Markdown 正文为准，忽略 `persona`。相对 `agent` 路径会先从 `$DSH_HOME/digital-life/` 读取，文件不存在时再从插件包读取，因此全新 Profile 也能加载包内的 `experts/`；若数据目录下有同名文件，则优先使用该文件覆盖包内版本。新建 `custom` 主领域的记录时建议填写 `customCategory`；旧配置缺少该字段时会回退使用数字生命名称。`toolFilter` 与 `model` 为可选字段。Host 会校验设置文档，并使用配置的子代理 Provider 创建一次性咨询。智囊团设计见 [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md)。
+每条记录包含 `id`、`name`、`description`、主领域 `category`、能力标签 `tags[]`、`agent`、`persona` 和 `enabled`。`agent` 是运行时唯一的人格来源：未填写 Agent 文件时，保存会将 `persona` 写入托管的 `<id>/agents/<id>.md`，并把相对路径保存到 `agent`；填写 Agent 文件后，以该 Markdown 正文为准，忽略 `persona`。相对 `agent` 路径会先从 `$DSH_HOME/expert-ai/` 读取，文件不存在时再从插件包读取，因此全新 Profile 也能加载包内的 `experts/`；若数据目录下有同名文件，则优先使用该文件覆盖包内版本。新建 `custom` 主领域的记录时建议填写 `customCategory`；旧配置缺少该字段时会回退使用数字生命名称。`toolFilter` 与 `model` 为可选字段。Host 会校验设置文档，并使用配置的子代理 Provider 创建一次性咨询。智囊团设计见 [`docs/think-tank-agent-team.md`](docs/think-tank-agent-team.md)。
 
 展示字段均为可选，没有它们的旧记录仍然有效：
 
@@ -132,20 +132,55 @@ pnpm dsh plugin --profile web remove dsh-expert-ai
 
 安装、更新或卸载后，重新启动 `pnpm dsh web`。
 
-### 从 `dsh-digital-life` 升级
+### 从 `dsh-digital-life` 迁移
 
-包已改名为 `dsh-expert-ai`；settings 命名空间（`digital-life`）、数据目录（`$DSH_HOME/digital-life`）
-和所有条目 id 保持不变。已有 Profile 需要换装插件：
+包名为 `dsh-expert-ai`；插件入口 id、settings 命名空间和数据目录都已改为 `expert-ai`。没有任何自动
+迁移，已有 Profile 需要手动完成三步。
+
+**1. 停止 Profile，改写 patch 行。** 插件设置保存在 Profile 的 Cordis patch 中，不在
+`$DSH_HOME/settings.yaml`。打开 `$DSH_HOME/profiles/<profile>/cordis.patch.yml`，找到本插件插入的行：
+
+```yaml
+- id: digital-life
+  name: dsh-digital-life # 如果之前只改过包名，这里可能已经是 dsh-expert-ai
+  config: { … }
+```
+
+把 `id` 改成 `expert-ai`、`name` 改成 `dsh-expert-ai`，并保留完整的 `config`（loader 会整体替换该
+对象，`provider`、`maxBatchSize`、`stateDir`、`records`、`teams` 都要留下）。如果早先改名时留下了
+重复的旧行，一并删除。
+
+**2. 用新 id 重新安装包。** 在 Harness checkout 中执行。若 Profile `package.json` 的依赖和
+`bundles` 已是 `dsh-expert-ai`，跳过 `remove` 旧包，只对当前 checkout 重新 `add`（或更新现有安装）。
 
 ```sh
 pnpm dsh plugin --profile web remove dsh-digital-life
-pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.git
+pnpm dsh plugin --profile web add /path/to/dsh-expert-ai
 ```
 
-用旧包名写入的设置覆盖仍留在 `$DSH_HOME/profiles/<profile>/cordis.patch.yml`，形如
-`{ id: digital-life, name: dsh-digital-life, config: … }`。loader 只应用 `name` 与条目一致的
-行，所以该行会被跳过，条目回落到组合包默认值。请在改动其他设置之前，把这些值重新填进设置页
-一次（或把该行的 `name` 改成 `dsh-expert-ai`），然后删除这行旧配置。
+这会更新 Profile `package.json` 里的依赖名和 bundle 名。本地 checkout 路径立即可用；
+`https://github.com/elonnzhang/dsh-expert-ai.git` 只有在远程仓库本身改名之后才可用，目前尚未改名。
+
+**3. 处理旧数据目录。** 旧目录 `$DSH_HOME/digital-life` 不再读取，请自行删除或手动 mv。默认清理命令：
+
+```sh
+rm -rf "${DSH_HOME:-$HOME/.dsh}/digital-life"
+```
+
+或者在首次启动前、且 `$DSH_HOME/expert-ai` 还不存在时，手动移动：
+
+```sh
+mv "${DSH_HOME:-$HOME/.dsh}/digital-life" "${DSH_HOME:-$HOME/.dsh}/expert-ai"
+```
+
+代码不会自动搬这个目录。不移动的话，导入的专家包（`.expert-packages/`）、评审记录
+（`.expert-reviews/`）、独立项目（`projects/`）、会话绑定（`sessions/`）和托管身份文件
+（`<id>/agents/`）都会留在旧目录，需要自己 mv 或重新导入；配置里保存的托管 persona 会在下次启动
+（或保存记录）时重建。
+
+自定义 `stateDir` 遵循同样的规则：数据根是该路径再拼上 `expert-ai`，除非它本身已经以 `expert-ai`
+结尾。因此以 `/digital-life` 结尾的 `stateDir` 会被当作父目录，旧数据要移进
+`<stateDir>/expert-ai`。
 
 ### 本地开发
 
@@ -170,7 +205,7 @@ pnpm dsh web --port 3080
 | `lib/index.js` | `src/index.ts` | Host，由 cordis apply |
 | `lib/index.d.ts` | Host 类型声明 | TypeScript 消费方 |
 | `lib/invariant.js` | `src/invariant.ts` | `exports["./invariant"]` |
-| `lib/client.js` | `src/client/index.ts` | 浏览器，服务在 `/plugins/dsh-expert-ai/client.js` |
+| `lib/client.js` | `src/client/index.ts` | 浏览器 loader，通过启动清单中的带版本号 combo URL 请求 `dsh-expert-ai/client.js` bundle |
 | `lib/types/client/index.d.ts` | Client 类型声明 | `./client` 的 TypeScript 消费方 |
 
 `lib/index.d.ts` 和 `lib/invariant.d.ts` 由 tsdown 生成；`build:types` 额外生成双面 Client
@@ -224,37 +259,39 @@ pnpm run dev
 也可以填写 Host 可读取的路径来绑定已有 Agent Markdown 文件。文件的 YAML frontmatter 会被忽略，Markdown 正文作为运行时唯一人格来源。浏览器不会暴露 Host 可重新读取的文件路径，因此通过文件选择器选中的内容会改为导入托管文件。未填写外部路径时，输入的人格设定会保存到：
 
 ```text
-$DSH_HOME/digital-life/<id>/agents/<id>.md
+$DSH_HOME/expert-ai/<id>/agents/<id>.md
 ```
 
 外部 Agent 文件不会被插件复制或覆盖。
 
-默认设置文件是：
+插件设置保存在 Profile 的 Cordis patch 中，不在 `$DSH_HOME/settings.yaml`：
 
 ```text
-$DSH_HOME/settings.yaml
+$DSH_HOME/profiles/<profile>/cordis.patch.yml
 ```
+
+在设置页保存会改写该文件里的 `expert-ai` 行。
 
 ### 2. 配置咨询 Provider
 
-**子代理 Provider** 必须填写当前 Harness 已挂载的 subagent Provider ID。没有额外 Provider 时保持默认值 `spawn`。**分类最大咨询数** 控制 `consult_digital_life_category` 一次最多并行咨询多少条已启用记录，不影响独立会话。
+**子代理 Provider** 必须填写当前 Harness 已挂载的 subagent Provider ID。没有额外 Provider 时保持默认值 `spawn`。**分类最大咨询数** 控制 `consult_expert_category` 一次最多并行咨询多少条已启用记录，不影响独立会话。
 
 ### 3. 在输入框中使用数字生命
 
-在输入框输入 `@`，然后选择数字生命，例如 `@startup-mentor`。`@<id>` 只是帮助主 Agent 选择 `consult_digital_life` 的模型可见文本，不是自动命令；是否咨询仍由模型决定。
+在输入框输入 `@`，然后选择数字生命，例如 `@startup-mentor`。`@<id>` 只是帮助主 Agent 选择 `consult_expert` 的模型可见文本，不是自动命令；是否咨询仍由模型决定。
 
 可用工具：
 
-- `consult_digital_life(id, question)`：咨询一条指定的数字生命
-- `consult_digital_life_category(category, question)`：并行咨询一个领域中的已启用数字生命，再比较各自观点
+- `consult_expert(id, question)`：咨询一条指定的数字生命
+- `consult_expert_category(category, question)`：并行咨询一个领域中的已启用数字生命，再比较各自观点
 
 ### 4. 创建独立会话
 
-从会话顶部选择一个数字生命，或打开侧边栏 **Chat Panel** 选择。未选择数字生命时输入框会被阻塞；如果没有选择项目，插件会先在 `~/.dsh/digital-life/projects/<datetime>` 下创建独立项目，再打开会话。
+从会话顶部选择一个数字生命，或打开侧边栏 **Chat Panel** 选择。未选择数字生命时输入框会被阻塞；如果没有选择项目，插件会先在 `$DSH_HOME/expert-ai/projects/<datetime>` 下创建独立项目，再打开会话。
 
-独立会话不附加 Workspace，不传 `workspaceId` 或 `cwd`，并通过 Host binding 注入该记录专属的 system prompt。所选身份保存在 `$DSH_HOME/digital-life/sessions/`，Host 重启后仍可恢复。数字生命会话强制使用**只读文件沙箱**；此模式提供数字生命咨询工具，不提供文件修改工具。开场消息是简短提示，不会重复完整人格设定。
+独立会话不附加 Workspace，不传 `workspaceId` 或 `cwd`，并通过 Host binding 注入该记录专属的 system prompt。所选身份保存在 `$DSH_HOME/expert-ai/sessions/`，Host 重启后仍可恢复。数字生命会话强制使用**只读文件沙箱**；此模式提供数字生命咨询工具，不提供文件修改工具。开场消息是简短提示，不会重复完整人格设定。
 
-在数字生命独立会话中，使用 `@<id>` 点名其他记录时必须调用 `consult_digital_life`，当前数字生命不得模拟或代替对方回答；点名当前数字生命自身的 ID 时直接回答，不进行自我咨询。
+在数字生命独立会话中，使用 `@<id>` 点名其他记录时必须调用 `consult_expert`，当前数字生命不得模拟或代替对方回答；点名当前数字生命自身的 ID 时直接回答，不进行自我咨询。
 
 ### 5. 更新插件
 
@@ -280,7 +317,7 @@ pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.gi
 
 ### 分类最大咨询数
 
-该值默认为 `3`，只影响 `consult_digital_life_category`。工具会筛选指定分类中已启用的记录，并最多并行启动该数量的数字生命子代理。它不影响单个咨询、`@<id>`、Chat Panel 或首页独立会话。
+该值默认为 `3`，只影响 `consult_expert_category`。工具会筛选指定分类中已启用的记录，并最多并行启动该数量的数字生命子代理。它不影响单个咨询、`@<id>`、Chat Panel 或首页独立会话。
 
 ## 模型体验
 
@@ -288,4 +325,4 @@ pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.gi
 
 ## 已知限制与后续工作
 
-在普通 Chat 中，`@<id>` 是帮助 Agent 选择 `consult_digital_life` 的模型可见文本，不是自动命令；在数字生命独立会话中，持久化 system prompt 要求点名其他记录时必须使用咨询工具，点名自身时直接回答。当前公共 Sidebar 没有 Workspace 浏览器上方的 additive Slot，因此 Chat Panel 使用受支持的 footer action Slot。独立会话在 `digital-life-mode` Agent preset 可用时使用该模式（该 preset 是需另外应用的补丁，见[运行模式](#运行模式)），否则使用部署默认 preset；每条记录的独立模型配置尚未应用到 Session 创建过程。
+在普通 Chat 中，`@<id>` 是帮助 Agent 选择 `consult_expert` 的模型可见文本，不是自动命令；在数字生命独立会话中，持久化 system prompt 要求点名其他记录时必须使用咨询工具，点名自身时直接回答。当前公共 Sidebar 没有 Workspace 浏览器上方的 additive Slot，因此 Chat Panel 使用受支持的 footer action Slot。独立会话在 `expert-ai-mode` Agent preset 可用时使用该模式（该 preset 是需另外应用的补丁，见[运行模式](#运行模式)），否则使用部署默认 preset；每条记录的独立模型配置尚未应用到 Session 创建过程。

@@ -17,7 +17,7 @@
 | 文件 | 动作 | 职责 |
 | --- | --- | --- |
 | `src/expert-types.ts` | 改 | v2 类型、`ExpertTeam` 新字段、`ReviewSummary` 放宽状态 |
-| `src/types.ts` | 改 | `ResolvedDigitalLifeSettings.teams` |
+| `src/types.ts` | 改 | `ResolvedExpertSettings.teams` |
 | `src/host/index.ts` | 改 | TeamSchema 新字段与校验、`resolved()` 带 teams、`TEAM_ROUTING_RULE` |
 | `src/host/team-schemas.ts` | 新 | brief/critique/synthesis schema、解析器、`outputSchemaFor`、`parseStageReport` |
 | `src/host/team-run.ts` | 新 | 纯状态机 |
@@ -98,13 +98,13 @@ export type AnyReviewRun = ReviewRun | TeamRun;
 export type ReviewSummary = Pick<ReviewRun, "id" | "createdAt" | "updatedAt"> & { status: ReviewStatus | TeamRunStatus; question: string; schemaVersion: 1 | 2 };
 ```
 
-- [ ] **Step 3:** `src/types.ts` 的 `ResolvedDigitalLifeSettings` 加 `teams: ExpertTeam[];`。`tests/expert-service.test.ts` 与 `tests/expert-scoping.test.ts` 中 `current: () => ({ provider: "spawn", maxBatchSize: 3, records… })` 都加 `teams: []`。
+- [ ] **Step 3:** `src/types.ts` 的 `ResolvedExpertSettings` 加 `teams: ExpertTeam[];`。`tests/expert-service.test.ts` 与 `tests/expert-scoping.test.ts` 中 `current: () => ({ provider: "spawn", maxBatchSize: 3, records… })` 都加 `teams: []`。
 - [ ] **Step 4:** `src/client/ReviewHistory.tsx` 的两张表改为 `satisfies Record<ReviewSummary["status"], …>`，并各加两项：`STATUS_KEYS` 加 `open: "reviewOpen", expired: "reviewExpired"`，`STATUS_DOTS` 加 `open: "ongoing", expired: "idle"`。`src/client/locales.ts` 在 `reviewTimedOut` 之后加 zh `reviewOpen: "等待推进", reviewExpired: "已过期",`，en `reviewOpen: "Waiting for next stage", reviewExpired: "Expired",`。
 - [ ] **Step 5:** 运行 `pnpm run typecheck`。预期：只剩 `src/host/index.ts` 的 `resolved()` 缺 `teams`（Task 2 修复）。暂不提交，与 Task 2 一起提交（提交命令加上 `src/client/ReviewHistory.tsx src/client/locales.ts`）。
 
 ## Task 2: Host 团队配置校验
 
-**Files:** Modify `src/host/index.ts`（TeamSchema ~71–77、team 循环 ~152–166、`resolved()` ~169–175）；Test `tests/validation.test.ts`（`describe('digital-life expert teams')` 末尾，单引号无分号风格）
+**Files:** Modify `src/host/index.ts`（TeamSchema ~71–77、team 循环 ~152–166、`resolved()` ~169–175）；Test `tests/validation.test.ts`（`describe('expert teams')` 末尾，单引号无分号风格）
 
 - [ ] **Step 1: 写失败测试**，追加到 teams describe 内：
 
@@ -143,14 +143,14 @@ const TeamSchema: z<ExpertTeam> = z.object({
 
 ```ts
     if (team.coordinatorId !== undefined && team.coordinatorId.trim() === "")
-      throw new Error(`digital-life: team "${team.id}" coordinator id must not be blank`);
+      throw new Error(`expert-ai: team "${team.id}" coordinator id must not be blank`);
     // 3 analysts + reviewer + coordinator; the coordinator may also hold another role.
     const members = new Set([...team.analystIds, team.reviewerId, team.coordinatorId ?? team.reviewerId]);
     for (const [memberId, text] of Object.entries(team.responsibilities ?? {})) {
       if (!members.has(memberId))
-        throw new Error(`digital-life: team "${team.id}" has a responsibility for non-member "${memberId}"`);
+        throw new Error(`expert-ai: team "${team.id}" has a responsibility for non-member "${memberId}"`);
       if (text.trim() === "" || text.length > 200)
-        throw new Error(`digital-life: team "${team.id}" responsibility for "${memberId}" must contain 1-200 characters`);
+        throw new Error(`expert-ai: team "${team.id}" responsibility for "${memberId}" must contain 1-200 characters`);
     }
 ```
 
@@ -321,22 +321,22 @@ const text = (value: string, limit = 8_000): boolean => value.trim() !== "" && v
 const texts = (values: readonly string[], min = 0, max = 30): boolean =>
   values.length >= min && values.length <= max && values.every((value) => text(value));
 function conform(schema: ObjectJsonSchema, value: unknown, label: string): void {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error(`digital-life: ${label} output must be an object`);
+  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error(`expert-ai: ${label} output must be an object`);
   if (validateJsonSchemaValue(schema, value).length > 0 || JSON.stringify(value).length > 24_000)
-    throw new Error(`digital-life: ${label} output does not match the schema or exceeds the report limit`);
+    throw new Error(`expert-ai: ${label} output does not match the schema or exceeds the report limit`);
 }
 function cited(ids: readonly string[], evidenceIds: ReadonlySet<string>): void {
   if (ids.length > 20 || ids.some((id) => !evidenceIds.has(id)))
-    throw new Error("digital-life: citation to evidence not supplied to this stage");
+    throw new Error("expert-ai: citation to evidence not supplied to this stage");
 }
 
 /** Parse a coordinator brief: 1-8 acceptance criteria and 0-5 clarifying questions. */
 export function parseBriefReport(value: unknown): BriefReport {
   conform(BRIEF_OUTPUT_SCHEMA, value, "brief");
   const report = value as BriefReport;
-  if (!text(report.objective) || !texts(report.constraints)) throw new Error("digital-life: invalid structured brief report");
-  if (!texts(report.acceptanceCriteria, 1, 8)) throw new Error("digital-life: brief needs 1-8 acceptance criteria");
-  if (!texts(report.clarifyingQuestions, 0, 5)) throw new Error("digital-life: brief allows 0-5 clarifying questions");
+  if (!text(report.objective) || !texts(report.constraints)) throw new Error("expert-ai: invalid structured brief report");
+  if (!texts(report.acceptanceCriteria, 1, 8)) throw new Error("expert-ai: brief needs 1-8 acceptance criteria");
+  if (!texts(report.clarifyingQuestions, 0, 5)) throw new Error("expert-ai: brief allows 0-5 clarifying questions");
   return structuredClone(report);
 }
 
@@ -345,9 +345,9 @@ export function parseCritiqueReport(value: unknown, evidenceIds: ReadonlySet<str
   conform(CRITIQUE_OUTPUT_SCHEMA, value, "critique");
   const report = value as CritiqueReport;
   if (!text(report.summary) || report.items.length > 20 || report.items.some((item) => !text(item.issue)))
-    throw new Error("digital-life: invalid structured critique report");
+    throw new Error("expert-ai: invalid structured critique report");
   for (const item of report.items) {
-    if (!inputStageIds.has(item.targetStageId)) throw new Error(`digital-life: critique target ${item.targetStageId} was not supplied to this stage`);
+    if (!inputStageIds.has(item.targetStageId)) throw new Error(`expert-ai: critique target ${item.targetStageId} was not supplied to this stage`);
     cited(item.evidenceIds, evidenceIds);
   }
   return structuredClone(report);
@@ -366,18 +366,18 @@ export function parseSynthesisReport(
   // Findings, assumptions and next actions share the analysis rules and citation checks.
   parseReviewReport({ ...base, disagreements: [] }, evidenceIds);
   if (disagreements.length > 20 || options.length > 10 || validationPlan.length > 20 || !texts(missingStages))
-    throw new Error("digital-life: invalid structured synthesis report");
+    throw new Error("expert-ai: invalid structured synthesis report");
   for (const item of disagreements) {
-    if (!text(item.topic) || item.positions.length < 2) throw new Error("digital-life: each disagreement needs a topic and at least 2 positions");
+    if (!text(item.topic) || item.positions.length < 2) throw new Error("expert-ai: each disagreement needs a topic and at least 2 positions");
     if (item.positions.some((position) => !inputStageIds.has(position.stageId) || !text(position.position)))
-      throw new Error("digital-life: disagreement position cites a stage not supplied to synthesis");
+      throw new Error("expert-ai: disagreement position cites a stage not supplied to synthesis");
     if (item.resolution === "experiment" && (item.test === undefined || !text(item.test)))
-      throw new Error("digital-life: experiment resolutions need a test");
+      throw new Error("expert-ai: experiment resolutions need a test");
   }
   if (options.some((item) => !text(item.name) || !text(item.tradeoffs)) || validationPlan.some((item) => !text(item.task) || !text(item.decides) || !text(item.stopCondition)))
-    throw new Error("digital-life: invalid structured synthesis report");
+    throw new Error("expert-ai: invalid structured synthesis report");
   const missing = requiredMissing.filter((id) => !missingStages.includes(id));
-  if (missing.length > 0) throw new Error(`digital-life: missingStages must list ${missing.join(", ")}`);
+  if (missing.length > 0) throw new Error(`expert-ai: missingStages must list ${missing.join(", ")}`);
   return structuredClone(report);
 }
 
@@ -628,7 +628,7 @@ export function nextStages(run: TeamRun): NextStage[] {
 
 /** Validate a stage request and compute what each call may see. Throws {@link TeamRunError} without side effects. */
 export function planStage(run: TeamRun, kind: TeamStageKind, memberIds?: readonly string[]): StageCall[] {
-  const reject = (message: string): TeamRunError => new TeamRunError(`digital-life: ${message}`, nextStages(run));
+  const reject = (message: string): TeamRunError => new TeamRunError(`expert-ai: ${message}`, nextStages(run));
   if (isTerminal(run.status)) throw reject(`team run ${run.id} is finished (${run.status})`);
   if (run.status === "running") throw reject("another stage of this run is still running");
   const analysts = withRole(run, "analyst");
@@ -671,11 +671,11 @@ export function planStage(run: TeamRun, kind: TeamStageKind, memberIds?: readonl
 
 /** Append a brief version (e.g. the user's answers to clarifying questions). */
 export function amendBrief(run: TeamRun, text: string, now = new Date().toISOString()): void {
-  if (isTerminal(run.status)) throw new TeamRunError(`digital-life: team run ${run.id} is finished (${run.status})`, []);
-  if (run.status === "running") throw new TeamRunError("digital-life: another stage of this run is still running", []);
+  if (isTerminal(run.status)) throw new TeamRunError(`expert-ai: team run ${run.id} is finished (${run.status})`, []);
+  if (run.status === "running") throw new TeamRunError("expert-ai: another stage of this run is still running", []);
   if (run.stages.some((s) => s.kind === "analysis"))
-    throw new TeamRunError("digital-life: cannot amend the brief after analysis has started", nextStages(run));
-  if (text.trim() === "" || text.length > 20_000) throw new TeamRunError("digital-life: brief amendment must contain 1-20000 characters", nextStages(run));
+    throw new TeamRunError("expert-ai: cannot amend the brief after analysis has started", nextStages(run));
+  if (text.trim() === "" || text.length > 20_000) throw new TeamRunError("expert-ai: brief amendment must contain 1-20000 characters", nextStages(run));
   run.briefs.push({ version: briefVersion(run) + 1, text, source: "amendment", createdAt: now });
 }
 
@@ -874,7 +874,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { DigitalLifeRecord } from "../src/types.js";
+import type { ExpertRecord } from "../src/types.js";
 import type { ExpertTeam, ReviewReport, TeamRun } from "../src/expert-types.js";
 import { readAnyReviewRun } from "../src/host/review.js";
 import { createTeamRun } from "../src/host/team-run.js";
@@ -883,7 +883,7 @@ import { executeTeamStage, resolveTeamMembers, type TeamInvocation } from "../sr
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true }))); });
 
-const records: DigitalLifeRecord[] = ["alpha", "beta", "critic", "lead"].map((id) => ({
+const records: ExpertRecord[] = ["alpha", "beta", "critic", "lead"].map((id) => ({
   id, name: id, description: "Check evidence", category: "science", tags: [], persona: `Methods of ${id}`, enabled: true,
 }));
 const team: ExpertTeam = { id: "plan-review", name: "Plan review", purpose: "Review plans", analystIds: ["alpha", "beta"], reviewerId: "critic", coordinatorId: "lead", responsibilities: { alpha: "统计方法" } };
@@ -1005,7 +1005,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { assertObjectJsonSchema } from "@deepseek-ai/dsh-tools";
-import type { DigitalLifeRecord } from "../src/types.js";
+import type { ExpertRecord } from "../src/types.js";
 import type { ReviewReport, ReviewRun, SynthesisReport, TeamRun } from "../src/expert-types.js";
 import { listReviewRuns, parseReviewReport, readAnyReviewRun, readReviewRun, renderReviewMarkdown, REVIEW_OUTPUT_SCHEMA, saveReviewRun } from "../src/host/review.js";
 import { runExpertReview, type RunReviewOptions, type TeamInvocation } from "../src/host/team-exec.js";
@@ -1015,7 +1015,7 @@ import { packageBinding, packageFetcher } from "./expert-fixture.js";
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true }))); });
 
-const records: DigitalLifeRecord[] = ["alpha", "beta", "critic"].map((id) => ({
+const records: ExpertRecord[] = ["alpha", "beta", "critic"].map((id) => ({
   id, name: id, description: "Check evidence", category: "science", tags: [], persona: `Methods of ${id}`, enabled: true,
 }));
 function report(summary = "Check the baseline", evidenceIds = ["input:brief@1"]): ReviewReport {
@@ -1169,7 +1169,7 @@ describe("saved review records", () => {
 ```ts
 export async function saveReviewRun(run: AnyReviewRun, stateDir?: string): Promise<void> {
   const path = runPath(run.id, stateDir);
-  await mkdir(join(digitalLifeHome(process.env, stateDir), ".expert-reviews"), { recursive: true, mode: 0o700 });
+  await mkdir(join(expertAiHome(process.env, stateDir), ".expert-reviews"), { recursive: true, mode: 0o700 });
   const temporary = `${path}.${randomUUID()}.tmp`;
   try {
     await writeFile(temporary, JSON.stringify(run, null, 2), { mode: 0o600, flag: "wx" });
@@ -1182,36 +1182,36 @@ export async function saveReviewRun(run: AnyReviewRun, stateDir?: string): Promi
 /** Read either a legacy fixed review (v1) or a team run (v2). */
 export async function readAnyReviewRun(id: string, stateDir?: string): Promise<AnyReviewRun> {
   const value = JSON.parse(await readFile(runPath(id, stateDir), "utf8")) as AnyReviewRun;
-  if (value?.id !== id) throw new Error("digital-life: invalid saved review");
+  if (value?.id !== id) throw new Error("expert-ai: invalid saved review");
   if (value.schemaVersion === 1) {
     if (!Array.isArray(value.steps) || !Array.isArray(value.evidence) || !value.request || typeof value.request.question !== "string")
-      throw new Error("digital-life: invalid saved review");
+      throw new Error("expert-ai: invalid saved review");
     return value;
   }
   if (value.schemaVersion !== 2 || !Array.isArray(value.briefs) || value.briefs.length === 0 || !Array.isArray(value.members) ||
       !Array.isArray(value.stages) || !Array.isArray(value.evidence) || typeof value.budget !== "object")
-    throw new Error("digital-life: invalid saved review");
+    throw new Error("expert-ai: invalid saved review");
   return value;
 }
 
 /** Read a legacy v1 review; v1 records are read-only. */
 export async function readReviewRun(id: string, stateDir?: string): Promise<ReviewRun> {
   const value = await readAnyReviewRun(id, stateDir);
-  if (value.schemaVersion !== 1) throw new Error("digital-life: invalid saved review");
+  if (value.schemaVersion !== 1) throw new Error("expert-ai: invalid saved review");
   return value;
 }
 
 /** Read a team run (v2). */
 export async function readTeamRun(id: string, stateDir?: string): Promise<TeamRun> {
   const value = await readAnyReviewRun(id, stateDir);
-  if (value.schemaVersion !== 2) throw new Error("digital-life: legacy reviews are read-only");
+  if (value.schemaVersion !== 2) throw new Error("expert-ai: legacy reviews are read-only");
   return value;
 }
 
 export async function listReviewRuns(stateDir?: string): Promise<ReviewSummary[]> {
   let paths: string[];
   try {
-    paths = await readdir(join(digitalLifeHome(process.env, stateDir), ".expert-reviews"));
+    paths = await readdir(join(expertAiHome(process.env, stateDir), ".expert-reviews"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
@@ -1230,7 +1230,7 @@ export async function listReviewRuns(stateDir?: string): Promise<ReviewSummary[]
 ```ts
 import { randomUUID } from "node:crypto";
 import type { ObjectJsonSchema } from "@deepseek-ai/dsh-tools";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import type { ExpertReference, ExpertTeam, ReviewRequest, TeamMember, TeamMemberRole, TeamRun, TeamStageKind } from "../expert-types.js";
 import { identityFor } from "./identity.js";
 import { loadExpertPackage, readExpertReference, sha256 } from "./expert-packages.js";
@@ -1248,13 +1248,13 @@ const PACKAGE_REFERENCES = ["references/frameworks.md", "references/principles.m
 
 /** Snapshot member identities, roles and package evidence at run start. */
 export async function resolveTeamMembers(
-  lineup: TeamLineup, brief: string, records: readonly DigitalLifeRecord[], teams: readonly ExpertTeam[], stateDir?: string,
+  lineup: TeamLineup, brief: string, records: readonly ExpertRecord[], teams: readonly ExpertTeam[], stateDir?: string,
 ): Promise<{ members: TeamMember[]; evidence: ExpertReference[]; teamId?: string }> {
   let team: Omit<ExpertTeam, "id" | "name" | "purpose">;
   let teamId: string | undefined;
   if ("teamId" in lineup) {
     const saved = teams.find((item) => item.id === lineup.teamId);
-    if (saved === undefined) throw new Error(`digital-life: expert team not found: ${lineup.teamId}`);
+    if (saved === undefined) throw new Error(`expert-ai: expert team not found: ${lineup.teamId}`);
     team = saved;
     teamId = saved.id;
   } else team = lineup;
@@ -1263,7 +1263,7 @@ export async function resolveTeamMembers(
   const coordinatorId = team.coordinatorId ?? team.reviewerId;
   if (!selected.some((record) => record.id === coordinatorId)) {
     const coordinator = records.find((item) => item.id === coordinatorId && item.enabled);
-    if (coordinator === undefined) throw new Error(`digital-life: enabled expert not found: ${coordinatorId}`);
+    if (coordinator === undefined) throw new Error(`expert-ai: enabled expert not found: ${coordinatorId}`);
     selected.push(coordinator);
   }
   const members: TeamMember[] = [];
@@ -1402,7 +1402,7 @@ export async function executeTeamStage(options: ExecuteStageOptions): Promise<Te
 ```ts
 export interface RunReviewOptions {
   request: ReviewRequest;
-  records: readonly DigitalLifeRecord[];
+  records: readonly ExpertRecord[];
   teams: readonly ExpertTeam[];
   sessionId: string;
   signal: AbortSignal;
@@ -1433,7 +1433,7 @@ export async function runExpertReview(options: RunReviewOptions): Promise<TeamRu
   await stage("analysis");
   if (run.status !== "open") return run;
   if (!run.stages.some((s) => s.kind === "analysis" && s.status === "completed")) {
-    markFailed(run, "digital-life: all analysts failed; no synthesis was attempted");
+    markFailed(run, "expert-ai: all analysts failed; no synthesis was attempted");
     touch(run);
     await saveReviewRun(run, options.stateDir);
     return run;
@@ -1444,7 +1444,7 @@ export async function runExpertReview(options: RunReviewOptions): Promise<TeamRu
     // A failed review would make planStage("synthesis") throw; the shortcut has no retry.
     if (result?.status !== "completed") break;
   }
-  markFailed(run, run.stages.findLast((s) => s.status === "failed")?.error ?? "digital-life: review did not finish");
+  markFailed(run, run.stages.findLast((s) => s.status === "failed")?.error ?? "expert-ai: review did not finish");
   touch(run);
   await saveReviewRun(run, options.stateDir);
   return run;
@@ -1575,9 +1575,9 @@ const synthesis: SynthesisReport = { summary: "Synthesis", findings: [], assumpt
 import { randomUUID } from "node:crypto";
 import type { Agent } from "@deepseek-ai/dsh-agent";
 import { defineTool, type ToolExecution } from "@deepseek-ai/dsh-tools";
-import type { ResolvedDigitalLifeSettings, DigitalLifeRecord } from "../types.js";
+import type { ResolvedExpertSettings, ExpertRecord } from "../types.js";
 import type { AnyReviewRun, ReviewRequest, TeamRun, TeamStageKind } from "../expert-types.js";
-import { digitalLifeHome } from "./identity.js";
+import { expertAiHome } from "./identity.js";
 import { importMimeograph, loadExpertCatalog, loadExpertPackage, readExpertReference, recordForPackage, resolveRevision } from "./expert-packages.js";
 import { listReviewRuns, readAnyReviewRun, readTeamRun, renderReviewMarkdown, saveReviewRun, validateReviewRequest } from "./review.js";
 import { amendBrief, createTeamRun, expireIfIdle, isTerminal, nextStages, recoverInterrupted, TeamRunError, type NextStage } from "./team-run.js";
@@ -1603,14 +1603,14 @@ function explain(error: unknown): never {
 
 function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: string; coordinatorId?: string; responsibilities?: unknown }): TeamLineup {
   if (args.teamId !== undefined) {
-    if (args.analystIds !== undefined || args.reviewerId !== undefined) throw new Error("digital-life: pass either teamId or analystIds/reviewerId, not both");
+    if (args.analystIds !== undefined || args.reviewerId !== undefined) throw new Error("expert-ai: pass either teamId or analystIds/reviewerId, not both");
     return { teamId: args.teamId };
   }
-  if (args.analystIds === undefined || args.reviewerId === undefined) throw new Error("digital-life: pass teamId or analystIds and reviewerId");
+  if (args.analystIds === undefined || args.reviewerId === undefined) throw new Error("expert-ai: pass teamId or analystIds and reviewerId");
   const responsibilities = args.responsibilities;
   if (responsibilities !== undefined && (typeof responsibilities !== "object" || responsibilities === null || Array.isArray(responsibilities) ||
       Object.values(responsibilities).some((value) => typeof value !== "string" || value.trim() === "" || value.length > 200)))
-    throw new Error("digital-life: responsibilities must map member ids to 1-200 characters");
+    throw new Error("expert-ai: responsibilities must map member ids to 1-200 characters");
   return {
     analystIds: args.analystIds, reviewerId: args.reviewerId,
     ...(args.coordinatorId === undefined ? {} : { coordinatorId: args.coordinatorId }),
@@ -1642,7 +1642,7 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
   const owned = async (runId: string, exec: ToolExecution): Promise<TeamRun> => {
     const stateDir = options.stateDir();
     const run = await refresh(await readTeamRun(runId, stateDir), stateDir) as TeamRun;
-    if (exec.agent?.id !== run.sessionId) throw new Error("digital-life: only the session that started this team run can change it");
+    if (exec.agent?.id !== run.sessionId) throw new Error("expert-ai: only the session that started this team run can change it");
     return run;
   };
   const ensureCapacity = async (stateDir?: string): Promise<void> => {
@@ -1653,13 +1653,13 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
       if (run.schemaVersion === 2 && !isTerminal(run.status)) open.push(run);
     }
     if (open.length >= MAX_OPEN_RUNS)
-      throw new Error(`digital-life: ${MAX_OPEN_RUNS} team runs are unfinished; continue or cancel one first: ${open.map((run) => `${run.id} (${run.status}): ${run.briefs[0]!.text.slice(0, 60)}`).join("; ")}`);
+      throw new Error(`expert-ai: ${MAX_OPEN_RUNS} team runs are unfinished; continue or cancel one first: ${open.map((run) => `${run.id} (${run.status}): ${run.briefs[0]!.text.slice(0, 60)}`).join("; ")}`);
   };
   const invokerFor = (parent: Agent) => {
     const settings = options.current();
     const provider = parent.ctx.subagents.getProvider(settings.provider);
     if (!provider?.capabilities.persona || !provider.capabilities.toolFilter)
-      throw new Error("digital-life: review provider must support persona and toolFilter");
+      throw new Error("expert-ai: review provider must support persona and toolFilter");
     return async ({ member, kind, prompt, signal, outputSchema }: TeamInvocation): Promise<unknown> => {
       signal.throwIfAborted();
       const child = await parent.ctx.subagents.start(settings.provider, {
@@ -1687,9 +1687,9 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
   };
   /** Run `work` while holding the run's lock and exposing an explicit-cancel controller. */
   const holding = async <T,>(runId: string, work: (cancel: AbortSignal) => Promise<T>): Promise<T> => {
-    if (active.has(runId)) throw new Error("digital-life: another stage of this run is still running");
+    if (active.has(runId)) throw new Error("expert-ai: another stage of this run is still running");
     const controller = new AbortController();
-    active.set(runId, { controller, home: digitalLifeHome(process.env, options.stateDir()) });
+    active.set(runId, { controller, home: expertAiHome(process.env, options.stateDir()) });
     try { return await work(controller.signal); } finally { active.delete(runId); }
   };
   // Plain object literals so the `json` output schema (JsonValue) accepts them.
@@ -1698,7 +1698,7 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
 
   const review = async (request: ReviewRequest, exec: ToolExecution): Promise<TeamRun> => {
     const parent = exec.agent;
-    if (parent === undefined) throw new Error("digital-life: review requires an agent-backed session");
+    if (parent === undefined) throw new Error("expert-ai: review requires an agent-backed session");
     const settings = options.current();
     validateReviewRequest(request, settings.records);
     const invoke = invokerFor(parent);
@@ -1711,7 +1711,7 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
         request, records: settings.records, teams: settings.teams, sessionId: parent.id, invoke,
         signal: AbortSignal.any([exec.signal, controller.signal]),
         ...(stateDir === undefined ? {} : { stateDir }),
-        onStart(id) { runId = id; active.set(id, { controller, home: digitalLifeHome(process.env, stateDir) }); },
+        onStart(id) { runId = id; active.set(id, { controller, home: expertAiHome(process.env, stateDir) }); },
       });
     } finally {
       if (runId !== undefined) active.delete(runId);
@@ -1755,8 +1755,8 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
           output: runOutput,
           async execute(args, exec) {
             const parent = exec.agent;
-            if (parent === undefined) throw new Error("digital-life: team runs require an agent-backed session");
-            if (args.brief.trim() === "" || args.brief.length > 20_000) throw new Error("digital-life: brief must be 1-20000 characters");
+            if (parent === undefined) throw new Error("expert-ai: team runs require an agent-backed session");
+            if (args.brief.trim() === "" || args.brief.length > 20_000) throw new Error("expert-ai: brief must be 1-20000 characters");
             const settings = options.current();
             const stateDir = options.stateDir();
             invokerFor(parent);
@@ -1780,7 +1780,7 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
           },
           async execute(args, exec) {
             const run = await owned(args.runId, exec);
-            if (active.has(run.id)) throw new Error("digital-life: another stage of this run is still running");
+            if (active.has(run.id)) throw new Error("expert-ai: another stage of this run is still running");
             try { amendBrief(run, args.text); } catch (error) { explain(error); }
             run.updatedAt = new Date().toISOString();
             await saveReviewRun(run, options.stateDir());
@@ -1831,7 +1831,7 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
               job.controller.abort(new Error("Team run cancelled"));
               return { runId: run.id, status: "cancelled", nextStages: [], markdown: "已请求取消；正在执行的阶段会标记为 cancelled。" };
             }
-            if (isTerminal(run.status)) throw new Error(`digital-life: team run ${run.id} is finished (${run.status})`);
+            if (isTerminal(run.status)) throw new Error(`expert-ai: team run ${run.id} is finished (${run.status})`);
             run.status = "cancelled";
             run.updatedAt = new Date().toISOString();
             await saveReviewRun(run, options.stateDir());
@@ -1861,11 +1861,11 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
           const id = string(input.id, "id");
           const job = active.get(id);
           if (job !== undefined) {
-            if (job.home !== digitalLifeHome(process.env, stateDir)) throw new Error("digital-life: review is not running");
+            if (job.home !== expertAiHome(process.env, stateDir)) throw new Error("expert-ai: review is not running");
             job.controller.abort(new Error("Review cancelled by user"));
           } else {
             const run = await refresh(await readAnyReviewRun(id, stateDir), stateDir);
-            if (run.schemaVersion !== 2 || isTerminal(run.status)) throw new Error("digital-life: review is not running");
+            if (run.schemaVersion !== 2 || isTerminal(run.status)) throw new Error("expert-ai: review is not running");
             run.status = "cancelled";
             run.updatedAt = new Date().toISOString();
             await saveReviewRun(run, stateDir);
@@ -1895,7 +1895,7 @@ git commit -m "feat: add team orchestration tools for the main agent"
 ## Task 8: 系统提示中的 `@团队` 规则
 
 **Files:**
-- Modify: `src/host/index.ts:188-191`（`DIGITAL_LIFE_MODE_PROMPT`）、`src/host/index.ts:278-283`（`## 协作` 块）
+- Modify: `src/host/index.ts:188-191`（`EXPERT_AI_MODE_PROMPT`）、`src/host/index.ts:278-283`（`## 协作` 块）
 - Test: `tests/validation.test.ts:84-91`
 
 - [ ] **Step 1: 写失败测试。** 在 `tests/validation.test.ts` 的 `routes mentions of other digital lives through consultation tools` 用例末尾（`})` 之前）追加：
@@ -1908,7 +1908,7 @@ git commit -m "feat: add team orchestration tools for the main agent"
 
 - [ ] **Step 2:** `pnpm vitest run tests/validation.test.ts`，预期 FAIL：`expected ... to contain '@<团队ID>'`。
 
-- [ ] **Step 3: 实现。** 在 `src/host/index.ts` 中 `DIGITAL_LIFE_MODE_PROMPT` 定义之前加：
+- [ ] **Step 3: 实现。** 在 `src/host/index.ts` 中 `EXPERT_AI_MODE_PROMPT` 定义之前加：
 
 ```ts
 /** Main-agent rule for `@<team id>` mentions; the Host enforces stage order, isolation and budget. */
@@ -1916,7 +1916,7 @@ const TEAM_ROUTING_RULE =
   "- 当用户使用 @<团队ID> 点名已保存的专家团时，必须调用 start_team_run（传入 teamId），再按推荐顺序调用 run_team_stage；若简报产生补问，先交给用户，回答后调用 amend_team_brief 再继续；如实转述汇总，自己的补充单独标明。";
 ```
 
-  `DIGITAL_LIFE_MODE_PROMPT` 数组末尾加一项 `TEAM_ROUTING_RULE,`；`## 协作` 块中 `consult_digital_life_category` 那一行之后加一项 `TEAM_ROUTING_RULE,`。
+  `EXPERT_AI_MODE_PROMPT` 数组末尾加一项 `TEAM_ROUTING_RULE,`；`## 协作` 块中 `consult_expert_category` 那一行之后加一项 `TEAM_ROUTING_RULE,`。
 
 - [ ] **Step 4:** `pnpm vitest run tests/validation.test.ts` 预期 PASS。
 
@@ -2098,13 +2098,13 @@ export interface MentionCandidate {
 
 /**
  * Rank `@` candidates: experts first, then saved teams whose id no expert already uses.
- * @param records Enabled digital-life records.
+ * @param records Enabled expert records.
  * @param teams Saved teams.
  * @param query Text typed after `@`.
  * @returns Matching candidates.
  */
 export function mentionCandidates(
-  records: readonly Pick<DigitalLifeRecord, "id" | "name" | "description" | "tags">[],
+  records: readonly Pick<ExpertRecord, "id" | "name" | "description" | "tags">[],
   teams: readonly ExpertTeam[],
   query: string,
 ): MentionCandidate[] {
@@ -2233,7 +2233,7 @@ import { IconUsersOutlineMedium } from "@deepseek-ai/dsh-client-ui-primitives";
   - 在 `const records = (): …` 定义之后加：
 
 ```ts
-  const teams = (): NonNullable<DigitalLifeSettings["teams"]> => form.getSnapshot().value?.teams ?? [];
+  const teams = (): NonNullable<ExpertSettings["teams"]> => form.getSnapshot().value?.teams ?? [];
 ```
 
   - `source` 中的 `candidates` 与 `lexicon` 替换为（`subscribeLexicon` 已订阅整个表单，团队变化同样会触发，不用改）：
@@ -2555,7 +2555,7 @@ const RESOLUTION_KEYS = {
 ```tsx
 type Labels = { code: { copyLabel: string; copiedLabel: string }; footnotes: string };
 
-function SynthesisSection({ run, t, labels }: { run: TeamRun; t: TranslateNS<"digital-life">; labels: Labels }): ReactNode {
+function SynthesisSection({ run, t, labels }: { run: TeamRun; t: TranslateNS<"expert-ai">; labels: Labels }): ReactNode {
   const synthesis = latestSynthesis(run);
   if (synthesis === undefined) return <p className={css.muted}>{t("noSynthesis")}</p>;
   return (
@@ -2609,7 +2609,7 @@ export function TeamRunView({
   onCancel,
 }: {
   run: TeamRun;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
   labels: Labels;
   statusLabel: string;
   busy: boolean;

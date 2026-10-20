@@ -17,11 +17,11 @@
 ### 2.1 当前落地字段
 
 ```ts
-interface DigitalLifeRecord {
+interface ExpertRecord {
   id: string;
   name: string;
   description: string;
-  category: DigitalLifeCategory;
+  category: ExpertCategory;
   customCategory?: string;
   tags: string[];
   persona: string;
@@ -46,7 +46,7 @@ interface DigitalLifeRecord {
 不要将所有信息继续塞入 `tags`。后续分层增加：
 
 ```ts
-interface DigitalLifeTeamProfile {
+interface ExpertTeamProfile {
   capabilities: Capability[];
   teamRoles: TeamRoleId[];
   constraints?: AgentConstraints;
@@ -150,7 +150,7 @@ interface ThinkTankRole {
   required: boolean;
   count?: number;
   memberIds?: string[];
-  preferredCategories?: DigitalLifeCategory[];
+  preferredCategories?: ExpertCategory[];
   requiredCapabilities?: string[];
   preferredTags?: string[];
   excludedTags?: string[];
