@@ -37,7 +37,7 @@ export function TeamEditor({
   existing: boolean;
   records: readonly ExpertRecord[];
   teams: readonly ExpertTeam[];
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
   /** Persist the team; resolves to an error message, or undefined once saved. */
   onSave: (team: ExpertTeam) => Promise<string | undefined>;
   onCancel: () => void;

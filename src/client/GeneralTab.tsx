@@ -35,7 +35,7 @@ export function GeneralTab({
   t,
 }: {
   form: ConfigForm<ExpertSettings>;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
 }): ReactNode {
   const [staged, setStaged] = useState<Staged | undefined>(undefined);
   // The model subscribes to the form, so it is created and disposed with the
@@ -68,7 +68,7 @@ export function GeneralTab({
   );
 }
 
-function GeneralFields({ model, store, t }: Staged & { t: TranslateNS<"digital-life"> }): ReactNode {
+function GeneralFields({ model, store, t }: Staged & { t: TranslateNS<"expert-ai"> }): ReactNode {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const actions = model.actions();
   const disabled = !state.shell.writable || state.shell.saving;
@@ -79,7 +79,7 @@ function GeneralFields({ model, store, t }: Staged & { t: TranslateNS<"digital-l
     extra: { numeric?: boolean; placeholder?: string },
   ): ReactNode => (
     <SettingsValueField
-      id={`digital-life-${name}`}
+      id={`expert-ai-${name}`}
       label={t(name)}
       hint={t(hint)}
       text={state.fields[name].text}

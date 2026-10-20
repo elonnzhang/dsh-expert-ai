@@ -22,7 +22,7 @@ export function ExpertLibraryDialog({
 }: {
   api: Pick<ExpertWorkbenchApi, "catalog" | "importExpert">;
   writable: boolean;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
   /** Called with the imported record id. */
   onImported: (id: string) => void;
   onClose: () => void;
@@ -95,12 +95,12 @@ export function ExpertLibraryDialog({
     >
       <div className={css.panel}>
         <div className={css.field}>
-          <label className={css.label} htmlFor="digital-life-revision">
+          <label className={css.label} htmlFor="expert-ai-revision">
             {t("expertRevision")}
           </label>
           <div className={css.fileRow}>
             <Input
-              id="digital-life-revision"
+              id="expert-ai-revision"
               className={`${css.control} ${css.grow}`}
               value={ref}
               placeholder={DEFAULT_REF}

@@ -27,13 +27,13 @@ export interface AgentPresetSelectorInjected {
   records: () => readonly ExpertRecord[];
   selectLife: (id: string) => Promise<void>;
   developerTools: ObservableSnapshot<boolean>;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
 }
 
 export type AgentPresetSelectorProps =
   PropsRuntime<"conversation.hero.agentPreset"> & AgentPresetSelectorInjected;
 
-/** Render the Harness-styled Agent preset and digital-life selectors. */
+/** Render the Harness-styled Agent preset and expert-ai selectors. */
 export function AgentPresetSelector({
   load,
   select,
@@ -76,7 +76,7 @@ export function AgentPresetSelector({
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         setLoadError(message);
-        console.error("digital-life: failed to load agent presets", error);
+        console.error("expert-ai: failed to load agent presets", error);
       });
   }, [developerToolsEnabled, load]);
 
@@ -115,14 +115,14 @@ export function AgentPresetSelector({
           void select(id)
             .then(() => {
               setCurrent(id);
-              if (id !== "digital-life-mode") {
+              if (id !== "expert-ai-mode") {
                 setLife("");
                 setTeam("");
               }
             })
             .catch((error: unknown) => {
               setCurrent(previous);
-              console.error("digital-life: failed to select agent preset", error);
+              console.error("expert-ai: failed to select agent preset", error);
             })
             .finally(() => setBusy(false));
         }}
@@ -146,7 +146,7 @@ export function AgentPresetSelector({
           </button>
         }
       />
-      {current === "digital-life-mode" && (
+      {current === "expert-ai-mode" && (
         <Menu
           className={`${css.seatWrap} ${css.lifeWrap}`}
           open={lifeOpen}
@@ -173,7 +173,7 @@ export function AgentPresetSelector({
                 setTeam("");
               })
               .catch((error) => {
-                console.error("digital-life: failed to select digital life", error);
+                console.error("expert-ai: failed to select digital life", error);
               });
           }}
           align="start"

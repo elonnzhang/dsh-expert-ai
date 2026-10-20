@@ -7,7 +7,7 @@ const record: ExpertRecord = {
   persona: '关注用户价值和现金流。', enabled: true,
 }
 
-describe('digital-life configuration', () => {
+describe('expert-ai configuration', () => {
   it('accepts a valid record', () => {
     expect(() => { validateSettings({ records: [record] }) }).not.toThrow()
   })
@@ -100,7 +100,7 @@ it('accepts an agent file instead of inline persona', () => {
   }).not.toThrow()
 })
 
-describe('digital-life expert teams', () => {
+describe('expert teams', () => {
   const team = { id: 'plan-review', name: '方案评审', purpose: '', analystIds: ['a', 'b'], reviewerId: 'c' }
 
   it('parses teams with defaults and accepts a valid lineup', () => {

@@ -29,7 +29,7 @@ export function preserveLegacyBinding(binding: LegacyExpertBinding): ExpertBindi
 
 function bindingPath(sessionId: string, stateDir?: string): string {
   if (!/^[a-z0-9][a-z0-9-]{0,127}$/.test(sessionId))
-    throw new Error(`digital-life: invalid session id "${sessionId}"`);
+    throw new Error(`expert-ai: invalid session id "${sessionId}"`);
   return join(expertAiHome(process.env, stateDir), "sessions", `${sessionId}.json`);
 }
 
@@ -64,7 +64,7 @@ export async function loadBinding(
   }
   const value: unknown = JSON.parse(content);
   if (typeof value !== "object" || value === null || !(isBinding(value) || isLegacyBinding(value)))
-    throw new Error(`digital-life: invalid binding for session "${sessionId}"`);
+    throw new Error(`expert-ai: invalid binding for session "${sessionId}"`);
   return value;
 }
 

@@ -1,8 +1,8 @@
 - insert:
-    - id: preset-digital-life-mode
+    - id: preset-expert-ai-mode
       name: '@deepseek-ai/dsh-agent-preset'
       config:
-        id: digital-life-mode
+        id: expert-ai-mode
         name: 数字生命模式
         description: 与选定的数字生命建立独立对话，或向其他数字生命咨询。
         order: 5

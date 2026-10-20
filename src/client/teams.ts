@@ -16,7 +16,7 @@ export interface TeamIssue {
 /**
  * List the members that block launching a review with this team.
  * @param team Saved lineup.
- * @param records Current digital-life records.
+ * @param records Current expert records.
  * @returns Missing or disabled members, analysts first, then reviewer and coordinator.
  */
 export function teamIssues(
@@ -154,7 +154,7 @@ export interface MentionCandidate {
 
 /**
  * Rank `@` candidates: experts first, then saved teams whose id no expert already uses.
- * @param records Enabled digital-life records.
+ * @param records Enabled expert records.
  * @param teams Saved teams.
  * @param query Text typed after `@`.
  * @returns Matching candidates.

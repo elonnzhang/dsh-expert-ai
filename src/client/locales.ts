@@ -1,7 +1,7 @@
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import type { ExpertRecord } from "../types.js";
 
-/** UI copy for the digital-life settings and session controls. */
+/** UI copy for the expert-ai settings and session controls. */
 export const zh = {
   nav: "数字生命",
   expertAiPanel: "专家 AI",
@@ -62,7 +62,7 @@ export const zh = {
   edit: "编辑",
   remove: "删除",
   loading: "正在加载数字生命配置…",
-  unavailable: "当前 Host 未暴露 digital-life 配置。",
+  unavailable: "当前 Host 未暴露 expert-ai 配置。",
   readingIdentity: "正在读取人格文件…",
   required: "请填写标红的必填字段。",
   invalidId: "ID 只能包含小写字母、数字和连字符。",
@@ -292,8 +292,8 @@ export const en = {
   enabled: "Enabled",
   edit: "Edit",
   remove: "Delete",
-  loading: "Loading digital-life configuration…",
-  unavailable: "The Host has not exposed the digital-life configuration.",
+  loading: "Loading digital life configuration…",
+  unavailable: "The Host has not exposed the expert-ai configuration.",
   readingIdentity: "Reading identity file…",
   required: "Complete the required fields marked in red.",
   invalidId: "ID may contain only lowercase letters, digits, and hyphens.",
@@ -365,7 +365,7 @@ export const en = {
   chooseLifeRequired: "Choose a digital life",
   independentGreeting: "Hello. Start this standalone conversation, briefly confirm that it has begun, and ask what I would like to discuss.",
   sessionGreeting: "Hello. Start this standalone conversation in the identity of “{name}”. Role description: {description}. Briefly introduce how you can help.",
-  tabsLabel: "Digital-life settings",
+  tabsLabel: "Digital life settings",
   tabExperts: "Experts",
   tabTeams: "Expert teams",
   tabGeneral: "General",
@@ -450,7 +450,7 @@ export const en = {
   copyCode: "Copy",
   copiedCode: "Copied",
   footnotes: "Footnotes",
-  generalHint: "These settings apply to every digital-life consultation and review once saved.",
+  generalHint: "These settings apply to every digital life consultation and review once saved.",
   readOnly: "This configuration is read-only.",
   saveFailed: "The Host did not accept the change. Check the values and try again.",
   saving: "Saving…",
@@ -462,12 +462,12 @@ export const en = {
   maxBatchSizeHint: "Most digital lives consulted per category request; defaults to 3.",
 } satisfies Record<ExpertKey, string>;
 
-export const NS = "digital-life";
+export const NS = "expert-ai";
 
 /** Localize built-in domains while preserving user-defined domain text. */
 export function categoryLabel(
   record: Pick<ExpertRecord, "category" | "customCategory">,
-  t: TranslateNS<"digital-life">,
+  t: TranslateNS<"expert-ai">,
 ): string {
   if (record.category === "custom") return record.customCategory ?? t("categoryCustom");
   switch (record.category) {

@@ -37,41 +37,41 @@ export const REVIEW_OUTPUT_SCHEMA: ObjectJsonSchema = {
 
 export function validateReviewRequest(request: ReviewRequest, records: readonly ExpertRecord[]): ExpertRecord[] {
   if (typeof request?.question !== "string" || request.question.trim() === "" || request.question.length > 20_000)
-    throw new Error("digital-life: review question must contain 1-20000 characters");
+    throw new Error("expert-ai: review question must contain 1-20000 characters");
   if (!Array.isArray(request.expertIds) || request.expertIds.length < 1 || request.expertIds.length > 3 ||
       request.expertIds.some((id) => typeof id !== "string") || new Set(request.expertIds).size !== request.expertIds.length ||
       typeof request.reviewerId !== "string" || request.expertIds.includes(request.reviewerId))
-    throw new Error("digital-life: choose 1-3 different analysts and a separate reviewer");
+    throw new Error("expert-ai: choose 1-3 different analysts and a separate reviewer");
   return [...request.expertIds, request.reviewerId].map((id) => {
     const record = records.find((item) => item.id === id && item.enabled);
-    if (record === undefined) throw new Error(`digital-life: enabled expert not found: ${id}`);
+    if (record === undefined) throw new Error(`expert-ai: enabled expert not found: ${id}`);
     return record;
   });
 }
 
 export function parseReviewReport(value: unknown, evidenceIds: ReadonlySet<string>): ReviewReport {
-  if (typeof value !== "object" || value === null) throw new Error("digital-life: review output must be an object");
+  if (typeof value !== "object" || value === null) throw new Error("expert-ai: review output must be an object");
   if (validateJsonSchemaValue(REVIEW_OUTPUT_SCHEMA, value).length > 0 || JSON.stringify(value).length > 24_000)
-    throw new Error("digital-life: review output does not match the schema or exceeds the report limit");
+    throw new Error("expert-ai: review output does not match the schema or exceeds the report limit");
   const report = value as ReviewReport;
   const text = (item: unknown): item is string => typeof item === "string" && item.trim() !== "" && item.length <= 8_000;
   const texts = (items: unknown): items is string[] => Array.isArray(items) && items.length <= 30 && items.every(text);
   if (!text(report.summary) || !Array.isArray(report.findings) || report.findings.length > 30 ||
       !texts(report.assumptions) || !texts(report.disagreements) || !texts(report.nextActions))
-    throw new Error("digital-life: invalid structured review report");
+    throw new Error("expert-ai: invalid structured review report");
   for (const finding of report.findings) {
     if (typeof finding !== "object" || finding === null || !text(finding.claim) ||
         !["observation", "inference", "proposal"].includes(finding.kind) || !Array.isArray(finding.evidenceIds) ||
         finding.evidenceIds.length > 20 || finding.evidenceIds.some((id) => typeof id !== "string" || !evidenceIds.has(id)))
-      throw new Error("digital-life: invalid finding or citation to evidence not supplied to this step");
+      throw new Error("expert-ai: invalid finding or citation to evidence not supplied to this step");
     if (finding.kind === "observation" && finding.evidenceIds.length === 0)
-      throw new Error("digital-life: observations require supplied evidence");
+      throw new Error("expert-ai: observations require supplied evidence");
   }
   return structuredClone(report);
 }
 
 function runPath(id: string, stateDir?: string): string {
-  if (!RUN_ID.test(id)) throw new Error("digital-life: invalid review id");
+  if (!RUN_ID.test(id)) throw new Error("expert-ai: invalid review id");
   return join(expertAiHome(process.env, stateDir), ".expert-reviews", `${id}.json`);
 }
 
@@ -90,10 +90,10 @@ export async function saveReviewRun(run: AnyReviewRun, stateDir?: string): Promi
 /** Read either a legacy fixed review (v1) or a team run (v2). */
 export async function readAnyReviewRun(id: string, stateDir?: string): Promise<AnyReviewRun> {
   const value = JSON.parse(await readFile(runPath(id, stateDir), "utf8")) as AnyReviewRun;
-  if (value?.id !== id) throw new Error("digital-life: invalid saved review");
+  if (value?.id !== id) throw new Error("expert-ai: invalid saved review");
   if (value.schemaVersion === 1) {
     if (!Array.isArray(value.steps) || !Array.isArray(value.evidence) || !value.request || typeof value.request.question !== "string")
-      throw new Error("digital-life: invalid saved review");
+      throw new Error("expert-ai: invalid saved review");
     return value;
   }
   if (value.schemaVersion !== 2 || !Array.isArray(value.briefs) || value.briefs.length === 0 || !Array.isArray(value.members) ||
@@ -101,21 +101,21 @@ export async function readAnyReviewRun(id: string, stateDir?: string): Promise<A
         !Array.isArray((member as { roles?: unknown }).roles) || (member as { roles: unknown[] }).roles.some((role) =>
           !["coordinator", "analyst", "reviewer"].includes(String(role)))) || !Array.isArray(value.stages) || !Array.isArray(value.evidence) ||
       typeof value.budget !== "object" || value.budget === null)
-    throw new Error("digital-life: invalid saved review");
+    throw new Error("expert-ai: invalid saved review");
   return value;
 }
 
 /** Read a legacy v1 review; v1 records are read-only. */
 export async function readReviewRun(id: string, stateDir?: string): Promise<ReviewRun> {
   const value = await readAnyReviewRun(id, stateDir);
-  if (value.schemaVersion !== 1) throw new Error("digital-life: invalid saved review");
+  if (value.schemaVersion !== 1) throw new Error("expert-ai: invalid saved review");
   return value;
 }
 
 /** Read a team run (v2). */
 export async function readTeamRun(id: string, stateDir?: string): Promise<TeamRun> {
   const value = await readAnyReviewRun(id, stateDir);
-  if (value.schemaVersion !== 2) throw new Error("digital-life: legacy reviews are read-only");
+  if (value.schemaVersion !== 2) throw new Error("expert-ai: legacy reviews are read-only");
   return value;
 }
 
@@ -278,7 +278,7 @@ export async function runExpertReview(options: RunReviewOptions): Promise<Review
     const rejected = analyses.find((result) => result.status === "rejected");
     if (rejected?.status === "rejected") throw rejected.reason;
     if (!run.steps.some((step) => step.role === "analyst" && step.status === "completed"))
-      throw new Error("digital-life: all analysts failed; no synthesis was attempted");
+      throw new Error("expert-ai: all analysts failed; no synthesis was attempted");
     await execute(run.steps.find((step) => step.role === "critic")!);
     signal.throwIfAborted();
     await execute(run.steps.find((step) => step.role === "synthesizer")!);

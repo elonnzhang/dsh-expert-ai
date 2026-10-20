@@ -32,7 +32,7 @@ import css from "./settings.module.css";
 type Editing = { record: ExpertRecord; existing: boolean; importedFile?: string };
 
 /**
- * List, search, add, import, edit, enable, and delete digital-life records.
+ * List, search, add, import, edit, enable, and delete expert records.
  * @returns The 专家 tab panel body.
  */
 export function ExpertsTab({
@@ -51,7 +51,7 @@ export function ExpertsTab({
   form: ConfigForm<ExpertSettings>;
   loadIdentity: (id: string) => Promise<string>;
   expertApi: ExpertWorkbenchApi;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
   /** Show a transient confirmation. */
   notify: (text: string) => void;
 }): ReactNode {

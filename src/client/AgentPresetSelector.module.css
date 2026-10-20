@@ -1,6 +1,6 @@
 /* The host's hero row (ConversationRoot .heroWorkspaceRow) is one nowrap flex
    line shared with the workspace chip, so this group has to absorb the
-   row's overflow itself — otherwise the digital-life seat spills past the
+   row's overflow itself — otherwise the expert-ai seat spills past the
    column's right edge on a narrow viewport (phone width). Every level of the
    chain must therefore be shrinkable: this row, each Menu wrapper, and the
    label span that finally ellipsizes. */
@@ -23,7 +23,7 @@
 }
 /* Shrink order: the preset name is static text the user can spare, the persona
    name is the choice that matters, so the preset seat surrenders its label
-   (down to the bare glyph) before the digital-life seat gives up a character. */
+   (down to the bare glyph) before the expert-ai seat gives up a character. */
 .presetWrap {
   flex-shrink: 12;
 }

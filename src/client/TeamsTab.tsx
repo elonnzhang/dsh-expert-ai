@@ -45,7 +45,7 @@ export function TeamsTab({
   expertApi: ExpertWorkbenchApi;
   /** Review history is scoped to the state directory; remount it when it changes. */
   stateDir: string;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
   /** Show a transient confirmation. */
   notify: (text: string) => void;
 }): ReactNode {
@@ -153,7 +153,7 @@ export function TeamsTab({
                     onClick={() => {
                       setMode("team");
                       setTeamId(team.id);
-                      document.getElementById("digital-life-review-title")?.scrollIntoView({ block: "start" });
+                      document.getElementById("expert-ai-review-title")?.scrollIntoView({ block: "start" });
                     }}
                   >
                     {t("useTeam")}

@@ -24,12 +24,12 @@ interface Options {
 }
 
 function object(value: unknown): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error("digital-life: expected an object");
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error("expert-ai: expected an object");
   return value as Record<string, unknown>;
 }
 
 function string(value: unknown, label: string): string {
-  if (typeof value !== "string" || value.trim() === "") throw new Error(`digital-life: ${label} is required`);
+  if (typeof value !== "string" || value.trim() === "") throw new Error(`expert-ai: ${label} is required`);
   return value;
 }
 
@@ -61,7 +61,7 @@ async function withCapacityLock<T>(stateDir: string | undefined, work: () => Pro
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
   }
-  if (handle === undefined) throw new Error("digital-life: timed out waiting for the team-run capacity lock");
+  if (handle === undefined) throw new Error("expert-ai: timed out waiting for the team-run capacity lock");
   const heartbeat = setInterval(() => { void handle?.utimes(new Date(), new Date()).catch(() => {}); }, 5_000);
   try {
     return await work();
@@ -80,14 +80,14 @@ function explain(error: unknown): never {
 
 function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: string; coordinatorId?: string; responsibilities?: unknown }): TeamLineup {
   if (args.teamId !== undefined) {
-    if (args.analystIds !== undefined || args.reviewerId !== undefined) throw new Error("digital-life: pass either teamId or analystIds/reviewerId, not both");
+    if (args.analystIds !== undefined || args.reviewerId !== undefined) throw new Error("expert-ai: pass either teamId or analystIds/reviewerId, not both");
     return { teamId: args.teamId };
   }
-  if (args.analystIds === undefined || args.reviewerId === undefined) throw new Error("digital-life: pass teamId or analystIds and reviewerId");
+  if (args.analystIds === undefined || args.reviewerId === undefined) throw new Error("expert-ai: pass teamId or analystIds and reviewerId");
   const responsibilities = args.responsibilities;
   if (responsibilities !== undefined && (typeof responsibilities !== "object" || responsibilities === null || Array.isArray(responsibilities) ||
       Object.values(responsibilities).some((value) => typeof value !== "string" || value.trim() === "" || value.length > 200)))
-    throw new Error("digital-life: responsibilities must map member ids to 1-200 characters");
+    throw new Error("expert-ai: responsibilities must map member ids to 1-200 characters");
   return {
     analystIds: args.analystIds, reviewerId: args.reviewerId,
     ...(args.coordinatorId === undefined ? {} : { coordinatorId: args.coordinatorId }),
@@ -98,7 +98,7 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
 export function createExpertService(options: Options) {
   const recordFor = (id: string): ExpertRecord => {
     const record = options.current().records.find((item) => item.id === id && item.enabled);
-    if (record === undefined) throw new Error(`digital-life: enabled expert not found: ${id}`);
+    if (record === undefined) throw new Error(`expert-ai: enabled expert not found: ${id}`);
     return record;
   };
   // runId → controller for explicit cancellation of the stage currently executing.
@@ -126,7 +126,7 @@ export function createExpertService(options: Options) {
     const stateDir = options.stateDir();
     const run = await refresh(await readTeamRun(runId, stateDir), stateDir) as TeamRun;
     if (exec.agent?.id !== run.sessionId)
-      throw new Error(`digital-life: only the session that started this team run can change it. ${describeNext(nextStages(run))}`);
+      throw new Error(`expert-ai: only the session that started this team run can change it. ${describeNext(nextStages(run))}`);
     return run;
   };
   const ensureCapacity = async (stateDir?: string): Promise<void> => {
@@ -137,7 +137,7 @@ export function createExpertService(options: Options) {
       if (run.schemaVersion === 2 && !isTerminal(run.status)) open.push(run);
     }
     if (open.length >= MAX_OPEN_RUNS)
-      throw new Error(`digital-life: ${MAX_OPEN_RUNS} team runs are unfinished; continue or cancel one first: ${open.map((run) => `${run.id} (${run.status}): ${run.briefs[0]!.text.slice(0, 60)}`).join("; ")}`);
+      throw new Error(`expert-ai: ${MAX_OPEN_RUNS} team runs are unfinished; continue or cancel one first: ${open.map((run) => `${run.id} (${run.status}): ${run.briefs[0]!.text.slice(0, 60)}`).join("; ")}`);
   };
   /**
    * Build the stage invoker for a session.
@@ -148,7 +148,7 @@ export function createExpertService(options: Options) {
     const settings = options.current();
     const provider = host.subagents.getProvider(settings.provider);
     if (!provider?.capabilities.persona || !provider.capabilities.toolFilter)
-      throw new Error("digital-life: review provider must support persona and toolFilter");
+      throw new Error("expert-ai: review provider must support persona and toolFilter");
     return async ({ member, kind, prompt, signal, outputSchema }: TeamInvocation): Promise<unknown> => {
       signal.throwIfAborted();
       const child = await host.subagents.start(settings.provider, {
@@ -179,7 +179,7 @@ export function createExpertService(options: Options) {
   };
   /** Run `work` while holding the run's lock and exposing an explicit-cancel controller. */
   const holding = async <T,>(runId: string, work: (cancel: AbortSignal, stop: AbortSignal) => Promise<T>): Promise<T> => {
-    if (active.has(runId)) throw new Error("digital-life: another stage of this run is still running");
+    if (active.has(runId)) throw new Error("expert-ai: another stage of this run is still running");
     const controller = new AbortController();
     const stop = new AbortController();
     active.set(runId, { controller, stop, home: expertAiHome(process.env, options.stateDir()) });
@@ -191,7 +191,7 @@ export function createExpertService(options: Options) {
 
   const review = async (host: Agent["ctx"], request: ReviewRequest, exec: ToolExecution): Promise<TeamRun> => {
     const parent = exec.agent;
-    if (parent === undefined) throw new Error("digital-life: review requires an agent-backed session");
+    if (parent === undefined) throw new Error("expert-ai: review requires an agent-backed session");
     const settings = options.current();
     validateReviewRequest(request, settings.records);
     const invoke = invokerFor(host, parent);
@@ -223,7 +223,7 @@ export function createExpertService(options: Options) {
     },
     guardStages(target: Pick<Agent, "ctx">): () => void {
       return target.ctx.tools.guard((exec) => exec.agent !== undefined && stageChildren.has(exec.agent.id) && exec.name !== STRUCTURED_OUTPUT_TOOL
-        ? `digital-life: team stage subagents may only call ${STRUCTURED_OUTPUT_TOOL}; ${exec.name} is not available`
+        ? `expert-ai: team stage subagents may only call ${STRUCTURED_OUTPUT_TOOL}; ${exec.name} is not available`
         : undefined);
     },
     registerTools(target: Pick<Agent, "ctx">): () => void {
@@ -246,7 +246,7 @@ export function createExpertService(options: Options) {
           output: { schema: { type: "json" }, render: (_args, value) => [{ type: "text", text: JSON.stringify(value, null, 2) }] },
           async execute(args) {
             const record = recordFor(args.id);
-            if (record.expertPackage === undefined) throw new Error("digital-life: expert has no imported package");
+            if (record.expertPackage === undefined) throw new Error("expert-ai: expert has no imported package");
             const stateDir = options.stateDir();
             if (args.path === undefined) {
               const manifest = await loadExpertPackage(record.expertPackage, stateDir);
@@ -300,8 +300,8 @@ export function createExpertService(options: Options) {
           output: runOutput,
           async execute(args, exec) {
             const parent = exec.agent;
-            if (parent === undefined) throw new Error("digital-life: team runs require an agent-backed session");
-            if (args.brief.trim() === "" || args.brief.length > 20_000) throw new Error("digital-life: brief must be 1-20000 characters");
+            if (parent === undefined) throw new Error("expert-ai: team runs require an agent-backed session");
+            if (args.brief.trim() === "" || args.brief.length > 20_000) throw new Error("expert-ai: brief must be 1-20000 characters");
             const settings = options.current();
             const stateDir = options.stateDir();
             invokerFor(target.ctx, parent);
@@ -311,7 +311,7 @@ export function createExpertService(options: Options) {
               if (!("teamId" in lineup) && lineup.responsibilities !== undefined) {
                 const members = new Set([...lineup.analystIds, lineup.reviewerId, lineup.coordinatorId ?? lineup.reviewerId]);
                 if (Object.keys(lineup.responsibilities).some((id) => !members.has(id)))
-                  throw new Error("digital-life: responsibilities must name members of this lineup");
+                  throw new Error("expert-ai: responsibilities must name members of this lineup");
               }
               const resolved = await resolveTeamMembers(lineup, args.brief, settings.records, settings.teams, stateDir);
               const run = createTeamRun({ id: `review-${randomUUID()}`, sessionId: parent.id, brief: args.brief, ...resolved });
@@ -333,7 +333,7 @@ export function createExpertService(options: Options) {
           },
           async execute(args, exec) {
             const run = await owned(args.runId, exec);
-            if (active.has(run.id)) throw new Error(`digital-life: another stage of this run is still running. ${describeNext([])}`);
+            if (active.has(run.id)) throw new Error(`expert-ai: another stage of this run is still running. ${describeNext([])}`);
             try { amendBrief(run, args.text); } catch (error) { explain(error); }
             run.updatedAt = new Date().toISOString();
             await saveReviewRun(run, options.stateDir());
@@ -384,7 +384,7 @@ export function createExpertService(options: Options) {
               job.controller.abort(new Error("Team run cancelled"));
               return { runId: run.id, status: "cancelled", nextStages: [], markdown: "已请求取消；正在执行的阶段会标记为 cancelled。" };
             }
-            if (isTerminal(run.status)) throw new Error(`digital-life: team run ${run.id} is finished (${run.status}). ${describeNext([])}`);
+            if (isTerminal(run.status)) throw new Error(`expert-ai: team run ${run.id} is finished (${run.status}). ${describeNext([])}`);
             run.status = "cancelled";
             run.updatedAt = new Date().toISOString();
             await saveReviewRun(run, options.stateDir());
@@ -428,17 +428,17 @@ export function createExpertService(options: Options) {
           const id = string(input.id, "id");
           const job = active.get(id);
           if (job !== undefined) {
-            if (job.home !== expertAiHome(process.env, stateDir)) throw new Error("digital-life: review is not running");
+            if (job.home !== expertAiHome(process.env, stateDir)) throw new Error("expert-ai: review is not running");
             job.controller.abort(new Error("Review cancelled by user"));
           } else {
             const run = await refresh(await readAnyReviewRun(id, stateDir), stateDir);
-            if (run.schemaVersion !== 2 || isTerminal(run.status)) throw new Error("digital-life: review is not running");
+            if (run.schemaVersion !== 2 || isTerminal(run.status)) throw new Error("expert-ai: review is not running");
             run.status = "cancelled";
             run.updatedAt = new Date().toISOString();
             await saveReviewRun(run, stateDir);
           }
           value = { cancelled: true };
-        } else throw new Error(`digital-life: unknown expert endpoint ${endpoint}`);
+        } else throw new Error(`expert-ai: unknown expert endpoint ${endpoint}`);
         return { ok: true as const, value };
       } catch (error) {
         return { ok: false as const, error: { code: "internal" as const, message: error instanceof Error ? error.message : String(error), details: {} } };

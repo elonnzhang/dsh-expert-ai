@@ -1,7 +1,7 @@
 import type { ConnectionFetchRoute, ConnectionRpcResult, HostConnectionHandle } from "@deepseek-ai/dsh-client-connection";
 import { expertAiEndpoint } from "../constants.js";
 
-/** Every endpoint the Host serves; each is one exact route below `/api/digital-life/`. */
+/** Every endpoint the Host serves; each is one exact route below `/api/expert-ai/`. */
 export const HOST_ENDPOINTS = [
   "project",
   "greeting",

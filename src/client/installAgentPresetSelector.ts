@@ -54,11 +54,11 @@ function presetDisplayText(
 
 export type PrepareExpertSession = (record: ExpertRecord) => Promise<SessionId>;
 
-/** Install the composite Agent preset and digital-life selector into the Hero slot; the returned disposer removes it and its composer blocks. */
+/** Install the composite Agent preset and expert-ai selector into the Hero slot; the returned disposer removes it and its composer blocks. */
 export function installAgentPresetSelector(
   ctx: ClientContext,
   records: () => readonly ExpertRecord[],
-  t: TranslateNS<"digital-life">,
+  t: TranslateNS<"expert-ai">,
   prepareSession: PrepareExpertSession,
 ): () => void {
   // The Host `dsh-session` and Client Session Controller both merge a `sessions`
@@ -76,7 +76,7 @@ export function installAgentPresetSelector(
   const rpcOf = (): ClientConnectionRpc => {
     const connection = ctx.get("connection") as ConnectionHandle | undefined;
     if (connection === undefined)
-      throw new Error("digital-life: connection service is unavailable");
+      throw new Error("expert-ai: connection service is unavailable");
     return connection.rpc as unknown as ClientConnectionRpc;
   };
   const lifeFor = async (sessionId: SessionId): Promise<string | undefined> => {
@@ -120,18 +120,18 @@ export function installAgentPresetSelector(
     () => {
       const stop = sessions.list.subscribe(() => {
         void applyStagedPreset().catch((error) => {
-          ctx.logger.error("digital-life: failed to apply staged preset", error);
+          ctx.logger.error("expert-ai: failed to apply staged preset", error);
         });
       });
       return stop;
     },
-    "digital-life: staged preset",
+    "expert-ai: staged preset",
   );
   const stopDeveloperToolsGate = ctx.effect(
     () => developerTools.subscribe(() => {
       if (!developerTools.getSnapshot()) stagedPreset.id = undefined;
     }),
-    "digital-life: Developer tools gate",
+    "expert-ai: Developer tools gate",
   );
   // The hero seat is a `session-maybe` slot, so the framework supplies the
   // current session id (or undefined on the new-session screen). All per-life
@@ -147,7 +147,7 @@ export function installAgentPresetSelector(
       developerTools: developerTools as ObservableSnapshot<boolean>,
       async selectLife(id) {
         const record = records().find((item) => item.id === id);
-        if (record === undefined) throw new Error(`digital-life: unknown record "${id}"`);
+        if (record === undefined) throw new Error(`expert-ai: unknown record "${id}"`);
         if (sessionId === undefined) {
           const createdSessionId = await prepareSession(record);
           selectedLifeBySession.set(createdSessionId, id);
@@ -184,11 +184,11 @@ export function installAgentPresetSelector(
           presets.find((item: AgentPresetRow) => item.isDefault)?.id ||
           presets[0]?.id ||
           "";
-        const life = sessionId === undefined || selectedPreset !== "digital-life-mode"
+        const life = sessionId === undefined || selectedPreset !== "expert-ai-mode"
           ? undefined
           : await lifeFor(sessionId);
         if (sessionId !== undefined) {
-          if (selectedPreset === "digital-life-mode") setLifeBlock(sessionId, life);
+          if (selectedPreset === "expert-ai-mode") setLifeBlock(sessionId, life);
           else clearLifeBlock(sessionId);
         }
         return {
@@ -215,7 +215,7 @@ export function installAgentPresetSelector(
           selectedPreset = id;
           stagedPreset.id = id;
           void applyStagedPreset().catch((error) => {
-            ctx.logger.error("digital-life: failed to apply staged preset", error);
+            ctx.logger.error("expert-ai: failed to apply staged preset", error);
           });
           return;
         }
@@ -227,7 +227,7 @@ export function installAgentPresetSelector(
         const result = await remote.agentPresets.select(sessionId, id);
         if (!result.ok) throw new Error(result.error.message);
         selectedPreset = id;
-        if (id === "digital-life-mode") {
+        if (id === "expert-ai-mode") {
           setLifeBlock(sessionId, await lifeFor(sessionId));
         } else {
           const unbound = await callHost(rpcOf(), "unbind", { sessionId });

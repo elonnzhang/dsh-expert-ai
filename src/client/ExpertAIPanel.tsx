@@ -52,7 +52,7 @@ export interface ExpertAIPanelInjected {
   teams: () => readonly ExpertTeam[];
   /** Host-backed expert workbench operations. */
   expertApi: ExpertWorkbenchApi;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
 }
 
 export type ExpertAIPanelProps = PropsRuntime<"main"> & ExpertAIPanelInjected;

@@ -20,7 +20,7 @@ afterEach(async () => {
 })
 
 async function start() {
-  const root = await mkdtemp(join(tmpdir(), 'digital-life-rpc-channel-'))
+  const root = await mkdtemp(join(tmpdir(), 'expert-ai-rpc-channel-'))
   const ctx = new Context()
   const routes = new Map<string, FetchRoute>()
   cleanups.push(async () => {
@@ -70,10 +70,10 @@ async function start() {
 }
 
 const envelope = (endpoint: string, payload: unknown, rpcId = 'rpc-1') =>
-  ({ type: 'client-request', rpcId, method: `digital-life/${endpoint}`, payload })
+  ({ type: 'client-request', rpcId, method: `expert-ai/${endpoint}`, payload })
 
 function post(routes: Map<string, FetchRoute>, endpoint: string, body: unknown, contentType = 'application/json') {
-  const route = routes.get(`/api/digital-life/${endpoint}`)
+  const route = routes.get(`/api/expert-ai/${endpoint}`)
   if (route === undefined) throw new Error(`no route for ${endpoint}`)
   return route.fetch(new Request(`http://127.0.0.1${route.path}`, {
     method: 'POST',
@@ -82,7 +82,7 @@ function post(routes: Map<string, FetchRoute>, endpoint: string, body: unknown, 
   }))
 }
 
-describe('the digital-life Host routes', () => {
+describe('the expert-ai Host routes', () => {
   it('cannot use rpc.handle from a plugin context, as in the Harness', async () => {
     const { ctx } = await start()
     let refusal: unknown
@@ -92,7 +92,7 @@ describe('the digital-life Host routes', () => {
       apply: (inner: Context) => {
         const { connection } = inner as unknown as RpcOwner
         try {
-          connection.rpc.handle('/digital-life')
+          connection.rpc.handle('/expert-ai')
         } catch (error) {
           refusal = error
         }
@@ -101,10 +101,10 @@ describe('the digital-life Host routes', () => {
     expect(String(refusal)).toContain('cannot get property "webServer" without inject')
   })
 
-  it('activates and serves each endpoint as one exact POST route below /api/digital-life', async () => {
+  it('activates and serves each endpoint as one exact POST route below /api/expert-ai', async () => {
     const { fiber, routes } = await start()
     await fiber.await()
-    expect([...routes.keys()].sort()).toEqual(HOST_ENDPOINTS.map((endpoint) => `/api/digital-life/${endpoint}`).sort())
+    expect([...routes.keys()].sort()).toEqual(HOST_ENDPOINTS.map((endpoint) => `/api/expert-ai/${endpoint}`).sort())
     for (const route of routes.values()) expect(route).toMatchObject({ methods: ['POST'], requestBody: 'buffered' })
   })
 
@@ -128,13 +128,13 @@ describe('the digital-life Host routes', () => {
     expect(await response.json()).toEqual({
       type: 'server-response',
       rpcId: 'rpc-1',
-      result: { ok: false, error: { code: 'internal', message: 'digital-life: unknown digital life "nobody"', details: {} } },
+      result: { ok: false, error: { code: 'internal', message: 'expert-ai: unknown digital life "nobody"', details: {} } },
     })
   })
 
   it.each([
     ['a body that is not JSON', '{', 'application/json', 400],
-    ['a message that is not a client-request', { type: 'ping', rpcId: 'x', method: 'digital-life/bind' }, 'application/json', 400],
+    ['a message that is not a client-request', { type: 'ping', rpcId: 'x', method: 'expert-ai/bind' }, 'application/json', 400],
     ['a message addressed to another endpoint', envelope('unbind', { sessionId: 's' }), 'application/json', 400],
     ['a body not declared as JSON', envelope('bind', {}), 'text/plain', 415],
   ])('refuses %s', async (_label, body, contentType, status) => {

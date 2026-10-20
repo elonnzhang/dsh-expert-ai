@@ -36,7 +36,7 @@ export function ReviewLauncher({
   mode: LaunchMode;
   /** Saved team chosen in team mode. */
   teamId: string;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
   onModeChange: (mode: LaunchMode) => void;
   onTeamChange: (id: string) => void;
   /** Open the team editor prefilled with the ad-hoc lineup. */
@@ -82,11 +82,11 @@ export function ReviewLauncher({
   };
 
   return (
-    <section className={css.block} aria-labelledby="digital-life-review-title">
+    <section className={css.block} aria-labelledby="expert-ai-review-title">
       <div className={css.blockHead}>
-        <h3 id="digital-life-review-title">{t("planReview")}</h3>
+        <h3 id="expert-ai-review-title">{t("planReview")}</h3>
         <SegmentedControl<LaunchMode>
-          id="digital-life-launch-mode"
+          id="expert-ai-launch-mode"
           label={t("launchMode")}
           value={mode}
           options={[

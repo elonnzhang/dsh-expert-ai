@@ -45,13 +45,13 @@ import type { AnyReviewRun, ExpertCatalogEntry, ReviewSummary } from "../expert-
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
-    "digital-life": ExpertKey;
+    "expert-ai": ExpertKey;
   }
 }
 
 declare module "@deepseek-ai/dsh-api-session-controller/client" {
   interface SessionReferenceSourceMap {
-    /** A digital-life session retained while its opening greeting is written. */
+    /** An expert-ai session retained while its opening greeting is written. */
     expertAi: unknown;
   }
 }
@@ -74,12 +74,12 @@ export const inject = [
 ];
 
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), "digital-life: dictionaries");
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), "expert-ai: dictionaries");
   const t = ctx.locale.bind(NS);
   const form = ctx.configForms.get<ExpertSettings>(EXPERT_AI_ENTRY_ID);
   const callExpert = async <T,>(endpoint: string, payload: unknown): Promise<T> => {
     const connection = ctx.get("connection") as ConnectionHandle | undefined;
-    if (connection === undefined) throw new Error("digital-life: connection service is unavailable");
+    if (connection === undefined) throw new Error("expert-ai: connection service is unavailable");
     const result = await callHost(connection.rpc as unknown as ClientConnectionRpc, endpoint, payload);
     if (!result.ok) throw new Error(result.error.message);
     return result.value as T;
@@ -138,7 +138,7 @@ export function apply(ctx: ClientContext): void {
     async loadIdentity(id) {
       const connection = ctx.get("connection") as ConnectionHandle | undefined;
       if (connection === undefined)
-        throw new Error("digital-life: connection service is unavailable");
+        throw new Error("expert-ai: connection service is unavailable");
       const rpc = connection.rpc as unknown as ClientConnectionRpc;
       const result = await callHost(rpc, "identity", { recordId: id });
       if (!result.ok) throw new Error(result.error.message);
@@ -157,10 +157,10 @@ export function apply(ctx: ClientContext): void {
     if (!roster.ok && roster.error.code !== "gateway/invocation-unavailable")
       throw new Error(roster.error.message);
     const modeAvailable = roster.ok && roster.value.presets.some(
-      (preset: AgentPresetRow) => preset.id === "digital-life-mode" && preset.broken === undefined,
+      (preset: AgentPresetRow) => preset.id === "expert-ai-mode" && preset.broken === undefined,
     );
     if (modeAvailable) {
-      const selected = await remote.agentPresets.select(sessionId, "digital-life-mode");
+      const selected = await remote.agentPresets.select(sessionId, "expert-ai-mode");
       if (!selected.ok) throw new Error(selected.error.message);
     }
   };
@@ -172,13 +172,13 @@ export function apply(ctx: ClientContext): void {
   const prepareSession = async (target?: BindTarget) => {
     const connection = ctx.get("connection") as ConnectionHandle | undefined;
     if (connection === undefined)
-      throw new Error("digital-life: connection service is unavailable");
+      throw new Error("expert-ai: connection service is unavailable");
     const rpc = connection.rpc as unknown as ClientConnectionRpc;
     const project = await callHost(rpc, "project", {});
     if (!project.ok) throw new Error(project.error.message);
     const cwd = (project.value as { cwd?: unknown }).cwd;
     if (typeof cwd !== "string" || cwd === "")
-      throw new Error("digital-life: project directory is unavailable");
+      throw new Error("expert-ai: project directory is unavailable");
     const sessionId = await sessions.create({ cwd });
     const reference = sessions.retain(sessionId, { source: "expertAi" });
     try {
@@ -208,7 +208,7 @@ export function apply(ctx: ClientContext): void {
     try {
       const connection = ctx.get("connection") as ConnectionHandle | undefined;
       if (connection === undefined)
-        throw new Error("digital-life: connection service is unavailable");
+        throw new Error("expert-ai: connection service is unavailable");
       const rpc = connection.rpc as unknown as ClientConnectionRpc;
       const text =
         record === undefined
@@ -282,7 +282,7 @@ export function apply(ctx: ClientContext): void {
         ctx.slots.register(
           {
             name: "sidebar.footer.action",
-            id: "digital-life-chat-panel",
+            id: "expert-ai-chat-panel",
             order: -10,
             locale: NS,
             inject: chatInjected,
@@ -321,5 +321,5 @@ export function apply(ctx: ClientContext): void {
       for (const dispose of disposers.reverse()) void dispose();
     };
   };
-  ctx.effect(() => mountWhile(form, "conversation", mountConversation), "digital-life: conversation");
+  ctx.effect(() => mountWhile(form, "conversation", mountConversation), "expert-ai: conversation");
 }

@@ -24,7 +24,7 @@ export async function resolveTeamMembers(
   let teamId: string | undefined;
   if ("teamId" in lineup) {
     const saved = teams.find((item) => item.id === lineup.teamId);
-    if (saved === undefined) throw new Error(`digital-life: expert team not found: ${lineup.teamId}`);
+    if (saved === undefined) throw new Error(`expert-ai: expert team not found: ${lineup.teamId}`);
     team = saved;
     teamId = saved.id;
   } else team = lineup;
@@ -33,7 +33,7 @@ export async function resolveTeamMembers(
   const coordinatorId = team.coordinatorId ?? team.reviewerId;
   if (!selected.some((record) => record.id === coordinatorId)) {
     const coordinator = records.find((item) => item.id === coordinatorId && item.enabled);
-    if (coordinator === undefined) throw new Error(`digital-life: enabled expert not found: ${coordinatorId}`);
+    if (coordinator === undefined) throw new Error(`expert-ai: enabled expert not found: ${coordinatorId}`);
     selected.push(coordinator);
   }
   const members: TeamMember[] = [];
@@ -202,7 +202,7 @@ export async function runExpertReview(options: RunReviewOptions): Promise<TeamRu
   if (options.signal.aborted && !options.cancel?.aborted) return run;
   if (run.status !== "open") return run;
   if (!run.stages.some((s) => s.kind === "analysis" && s.status === "completed")) {
-    markFailed(run, "digital-life: all analysts failed; no synthesis was attempted");
+    markFailed(run, "expert-ai: all analysts failed; no synthesis was attempted");
     touch(run);
     await saveReviewRun(run, options.stateDir);
     return run;
@@ -214,7 +214,7 @@ export async function runExpertReview(options: RunReviewOptions): Promise<TeamRu
     // A failed review would make planStage("synthesis") throw; the shortcut has no retry.
     if (result?.status !== "completed") break;
   }
-  markFailed(run, run.stages.findLast((s) => s.status === "failed")?.error ?? "digital-life: review did not finish");
+  markFailed(run, run.stages.findLast((s) => s.status === "failed")?.error ?? "expert-ai: review did not finish");
   touch(run);
   await saveReviewRun(run, options.stateDir);
   return run;

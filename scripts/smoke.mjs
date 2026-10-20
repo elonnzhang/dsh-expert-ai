@@ -23,7 +23,7 @@ if (!existsSync(clientTypes)) problems.push(`missing client declarations: ${clie
 
 if (existsSync(hostEntry)) {
   const plugin = await import(pathToFileURL(hostEntry).href);
-  if (plugin.name !== "digital-life") problems.push("Host export name is not digital-life");
+  if (plugin.name !== "expert-ai") problems.push("Host export name is not expert-ai");
   if (typeof plugin.apply !== "function") problems.push("Host export apply is missing");
   if (typeof plugin.Config !== "function") problems.push("Host export Config is missing");
 }

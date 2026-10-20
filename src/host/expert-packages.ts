@@ -36,13 +36,13 @@ function validRef(value: string): boolean {
 
 function validatePackageLocation(location: ExpertPackageLocation): void {
   if (location.source !== "mimeographs" || !SLUG.test(location.slug) || !REVISION.test(location.revision))
-    throw new Error("digital-life: invalid expert package; use a slug and a full lowercase commit SHA");
+    throw new Error("expert-ai: invalid expert package; use a slug and a full lowercase commit SHA");
 }
 
 export function validatePackageBinding(binding: ExpertPackageBinding): void {
   validatePackageLocation(binding);
   if (typeof binding.ref !== "string" || !validRef(binding.ref))
-    throw new Error("digital-life: invalid expert package; a branch or tag is required");
+    throw new Error("expert-ai: invalid expert package; a branch or tag is required");
 }
 
 export function packageAgentBinding(binding: ExpertPackageLocation): string {
@@ -59,14 +59,14 @@ function fileAllowed(path: string): boolean {
 }
 
 async function fetchText(path: string, revision: string, fetcher: typeof fetch): Promise<string> {
-  if (!REVISION.test(revision)) throw new Error("digital-life: a full commit SHA is required");
+  if (!REVISION.test(revision)) throw new Error("expert-ai: a full commit SHA is required");
   const response = await fetcher(`https://raw.githubusercontent.com/${REPOSITORY}/${revision}/${path}`, {
     signal: AbortSignal.timeout(20_000),
     redirect: "error",
   });
-  if (!response.ok) throw new Error(`digital-life: download failed (${response.status}): ${path}`);
+  if (!response.ok) throw new Error(`expert-ai: download failed (${response.status}): ${path}`);
   const reader = response.body?.getReader();
-  if (reader === undefined) throw new Error(`digital-life: empty download: ${path}`);
+  if (reader === undefined) throw new Error(`expert-ai: empty download: ${path}`);
   const chunks: Uint8Array[] = [];
   let bytes = 0;
   try {
@@ -74,7 +74,7 @@ async function fetchText(path: string, revision: string, fetcher: typeof fetch):
       const chunk = await reader.read();
       if (chunk.done) break;
       bytes += chunk.value.byteLength;
-      if (bytes > MAX_FILE_BYTES) throw new Error(`digital-life: download exceeds ${MAX_FILE_BYTES} bytes: ${path}`);
+      if (bytes > MAX_FILE_BYTES) throw new Error(`expert-ai: download exceeds ${MAX_FILE_BYTES} bytes: ${path}`);
       chunks.push(chunk.value);
     }
   } finally {
@@ -82,7 +82,7 @@ async function fetchText(path: string, revision: string, fetcher: typeof fetch):
     reader.releaseLock();
   }
   const text = Buffer.concat(chunks).toString("utf8");
-  if (text.trim() === "") throw new Error(`digital-life: empty download: ${path}`);
+  if (text.trim() === "") throw new Error(`expert-ai: empty download: ${path}`);
   return text;
 }
 
@@ -133,7 +133,7 @@ export async function resolveRevision(
   home?: string,
 ): Promise<{ revision: string; cached: boolean }> {
   const value = ref.trim();
-  if (!validRef(value)) throw new Error("digital-life: invalid version; use a branch or tag");
+  if (!validRef(value)) throw new Error("expert-ai: invalid version; use a branch or tag");
   const path = value.split("/").map(encodeURIComponent).join("/");
   let response: Response;
   try {
@@ -147,15 +147,15 @@ export async function resolveRevision(
     if (known !== undefined && REVISION.test(known)) return { revision: known, cached: true };
     throw error;
   }
-  if (response.status === 404 || response.status === 422) throw new Error(`digital-life: version not found: ${value}`);
+  if (response.status === 404 || response.status === 422) throw new Error(`expert-ai: version not found: ${value}`);
   if (!response.ok) {
     // Rate limits and outages are transient; a previously resolved commit is still a valid pin.
     const known = home === undefined ? undefined : (await cachedRefs(home))[value];
     if (known !== undefined && REVISION.test(known)) return { revision: known, cached: true };
-    throw new Error(`digital-life: version lookup failed (${response.status}): ${value}`);
+    throw new Error(`expert-ai: version lookup failed (${response.status}): ${value}`);
   }
   const sha = (await response.text()).trim().toLowerCase();
-  if (!REVISION.test(sha)) throw new Error(`digital-life: version lookup returned an invalid commit: ${value}`);
+  if (!REVISION.test(sha)) throw new Error(`expert-ai: version lookup returned an invalid commit: ${value}`);
   if (home !== undefined) {
     const refs = await cachedRefs(home);
     if (refs[value] !== sha) await writeCached(join(cacheRoot(home), "refs.json"), JSON.stringify({ ...refs, [value]: sha }, null, 2));
@@ -172,7 +172,7 @@ export async function loadExpertCatalog(
   fetcher: typeof fetch = fetch,
   home?: string,
 ): Promise<ExpertCatalogEntry[]> {
-  if (!REVISION.test(revision)) throw new Error("digital-life: a full commit SHA is required");
+  if (!REVISION.test(revision)) throw new Error("expert-ai: a full commit SHA is required");
   const cachePath = home === undefined ? undefined : join(cacheRoot(home), "catalogs", `${revision}.json`);
   const cached = cachePath === undefined ? undefined : await readCached(cachePath);
   if (cached !== undefined) {
@@ -191,9 +191,9 @@ export async function loadExpertCatalog(
 function parseCatalog(text: string): ExpertCatalogEntry[] {
   const data: unknown = JSON.parse(text);
   if (typeof data !== "object" || data === null || !Array.isArray((data as { experts?: unknown }).experts))
-    throw new Error("digital-life: invalid expert catalog");
+    throw new Error("expert-ai: invalid expert catalog");
   const experts = (data as { experts: unknown[] }).experts;
-  if (experts.length > 500) throw new Error("digital-life: expert catalog is too large");
+  if (experts.length > 500) throw new Error("expert-ai: expert catalog is too large");
   const ids = new Set<string>();
   return experts.map((value) => {
     const item = value as Record<string, unknown>;
@@ -201,11 +201,11 @@ function parseCatalog(text: string): ExpertCatalogEntry[] {
         typeof item.name !== "string" || item.name.trim() === "" || typeof item.description !== "string" ||
         typeof item.category !== "string" || !Object.hasOwn(CATEGORIES, item.category) ||
         item.path !== `mimeographs/${item.slug}` || ids.has(item.slug))
-      throw new Error("digital-life: invalid or duplicate catalog entry");
+      throw new Error("expert-ai: invalid or duplicate catalog entry");
     const files = item.files as { agents?: unknown; skill?: unknown; references?: unknown } | undefined;
     if (files?.agents !== true || files.skill !== true || !Array.isArray(files.references) ||
         files.references.length > 24 || files.references.some((path: unknown) => typeof path !== "string" || !REFERENCE.test(path)))
-      throw new Error(`digital-life: invalid reference list for ${item.slug}`);
+      throw new Error(`expert-ai: invalid reference list for ${item.slug}`);
     ids.add(item.slug);
     return {
       slug: item.slug,
@@ -219,9 +219,9 @@ function parseCatalog(text: string): ExpertCatalogEntry[] {
 
 export async function loadExpertPackage(binding: ExpertPackageLocation, stateDir?: string): Promise<ExpertPackageManifest> {
   const root = packageRoot(binding, stateDir);
-  if ((await lstat(root)).isSymbolicLink()) throw new Error("digital-life: symlinked expert packages are not supported");
+  if ((await lstat(root)).isSymbolicLink()) throw new Error("expert-ai: symlinked expert packages are not supported");
   const raw = await readFile(join(root, "manifest.json"), "utf8");
-  if (Buffer.byteLength(raw) > MAX_FILE_BYTES) throw new Error("digital-life: expert manifest is too large");
+  if (Buffer.byteLength(raw) > MAX_FILE_BYTES) throw new Error("expert-ai: expert manifest is too large");
   const value = JSON.parse(raw) as ExpertPackageManifest;
   if (value === null || value.schemaVersion !== 1 || value.source !== binding.source || value.slug !== binding.slug ||
       value.revision !== binding.revision || value.sourceType !== "public-method" || value.reviewStatus !== "unreviewed" ||
@@ -232,20 +232,20 @@ export async function loadExpertPackage(binding: ExpertPackageLocation, stateDir
         !Number.isInteger(file.bytes) || file.bytes < 1 || file.bytes > MAX_FILE_BYTES) ||
       new Set(value.files.map((file) => file.path)).size !== value.files.length ||
       ["AGENTS.md", "SKILL.md", "LICENSE"].some((path) => !value.files.some((file) => file.path === path)))
-    throw new Error("digital-life: invalid expert manifest");
+    throw new Error("expert-ai: invalid expert manifest");
   return value;
 }
 
 async function verifiedFile(manifest: ExpertPackageManifest, path: string, stateDir?: string): Promise<string> {
   const entry = manifest.files.find((file) => file.path === path);
-  if (entry === undefined || !fileAllowed(path)) throw new Error("digital-life: file is not in the expert manifest");
+  if (entry === undefined || !fileAllowed(path)) throw new Error("expert-ai: file is not in the expert manifest");
   const root = await realpath(packageRoot(manifest, stateDir));
   const file = await realpath(join(root, path));
-  if (!file.startsWith(`${root}${sep}`)) throw new Error("digital-life: reference escapes its expert package");
-  if ((await lstat(file)).size !== entry.bytes) throw new Error(`digital-life: expert file size changed: ${path}`);
+  if (!file.startsWith(`${root}${sep}`)) throw new Error("expert-ai: reference escapes its expert package");
+  if ((await lstat(file)).size !== entry.bytes) throw new Error(`expert-ai: expert file size changed: ${path}`);
   const text = await readFile(file, "utf8");
   if (Buffer.byteLength(text) !== entry.bytes || sha256(text) !== entry.sha256)
-    throw new Error(`digital-life: expert file integrity check failed: ${path}`);
+    throw new Error(`expert-ai: expert file integrity check failed: ${path}`);
   return text;
 }
 
@@ -268,13 +268,13 @@ export async function importMimeograph(
     // An incomplete existing package must not be silently replaced.
     try {
       await lstat(packageRoot(binding, stateDir));
-      throw new Error("digital-life: incomplete expert package; refusing to overwrite it");
+      throw new Error("expert-ai: incomplete expert package; refusing to overwrite it");
     } catch (missing) {
       if ((missing as NodeJS.ErrnoException).code !== "ENOENT") throw missing;
     }
   }
   const expert = (await loadExpertCatalog(binding.revision, fetcher, expertAiHome(process.env, stateDir))).find((entry) => entry.slug === binding.slug);
-  if (expert === undefined) throw new Error(`digital-life: unknown upstream expert ${binding.slug}`);
+  if (expert === undefined) throw new Error(`expert-ai: unknown upstream expert ${binding.slug}`);
   const paths = ["AGENTS.md", "SKILL.md", "LICENSE", ...expert.references];
   const contents = await Promise.all(paths.map(async (path) => ({
     path,
@@ -344,8 +344,8 @@ export async function readExpertReference(
   stateDir?: string,
   maxCharacters = 12_000,
 ): Promise<ExpertReference> {
-  if (record.expertPackage === undefined) throw new Error("digital-life: this expert has no imported reference package");
-  if (!REFERENCE.test(path)) throw new Error("digital-life: only declared references/*.md files can be read");
+  if (record.expertPackage === undefined) throw new Error("expert-ai: this expert has no imported reference package");
+  if (!REFERENCE.test(path)) throw new Error("expert-ai: only declared references/*.md files can be read");
   const manifest = await loadExpertPackage(record.expertPackage, stateDir);
   const text = await verifiedFile(manifest, path, stateDir);
   return {

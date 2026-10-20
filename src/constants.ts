@@ -1,6 +1,6 @@
-export const EXPERT_AI_NAMESPACE = "digital-life";
+export const EXPERT_AI_NAMESPACE = "expert-ai";
 
-/** The Host serves each endpoint on this shared channel as `digital-life/<endpoint>`. */
+/** The Host serves each endpoint on this shared channel as `expert-ai/<endpoint>`. */
 export const EXPERT_AI_RPC_CHANNEL = "/api";
 
 export const expertAiEndpoint = (endpoint: string): string => `${EXPERT_AI_NAMESPACE}/${endpoint}`;

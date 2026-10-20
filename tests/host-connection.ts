@@ -22,13 +22,13 @@ export function fakeHostConnection() {
     },
   }
   const call = async (endpoint: string, payload: unknown = {}): Promise<RpcReply> => {
-    const route = routes.get(`/api/digital-life/${endpoint}`)
+    const route = routes.get(`/api/expert-ai/${endpoint}`)
     if (route === undefined) return { ok: false, error: { code: 'not-found', message: `no route for ${endpoint}` } }
     const response = await route.fetch(
       new Request(`http://127.0.0.1${route.path}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'client-request', rpcId: 'rpc-1', method: `digital-life/${endpoint}`, payload }),
+        body: JSON.stringify({ type: 'client-request', rpcId: 'rpc-1', method: `expert-ai/${endpoint}`, payload }),
       }),
     )
     return ((await response.json()) as { result: RpcReply }).result

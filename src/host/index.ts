@@ -46,7 +46,7 @@ import type {
   ResolvedExpertSettings,
 } from "../types.js";
 
-export const name = "digital-life";
+export const name = "expert-ai";
 export const inject = ["tools", "subagents", "agents", "connection", "sandboxPolicy"];
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
@@ -183,25 +183,25 @@ export function validateSettings(settings: ExpertSettings): void {
   for (const rawRecord of settings.records ?? []) {
     const record = normalizeRecord(rawRecord);
     if (!ID_PATTERN.test(record.id))
-      throw new Error(`digital-life: id "${record.id}" must match ${String(ID_PATTERN)}`);
-    if (record.name.trim() === "") throw new Error(`digital-life: name is required for "${record.id}"`);
-    if (record.description.trim() === "") throw new Error(`digital-life: description is required for "${record.id}"`);
+      throw new Error(`expert-ai: id "${record.id}" must match ${String(ID_PATTERN)}`);
+    if (record.name.trim() === "") throw new Error(`expert-ai: name is required for "${record.id}"`);
+    if (record.description.trim() === "") throw new Error(`expert-ai: description is required for "${record.id}"`);
     if (record.tags.some((tag) => tag.trim() === ""))
-      throw new Error(`digital-life: tags cannot be empty for "${record.id}"`);
+      throw new Error(`expert-ai: tags cannot be empty for "${record.id}"`);
     if (record.category === "custom" && (record.customCategory?.trim() ?? "").length < 2)
-      throw new Error(`digital-life: custom category requires a meaningful customCategory for "${record.id}"`);
+      throw new Error(`expert-ai: custom category requires a meaningful customCategory for "${record.id}"`);
     if (record.persona.trim() === "" && (record.agent?.trim() ?? "") === "")
-      throw new Error(`digital-life: persona is required unless agent is set for "${record.id}"`);
+      throw new Error(`expert-ai: persona is required unless agent is set for "${record.id}"`);
     if (record.agent !== undefined && record.agent.trim() === "")
-      throw new Error(`digital-life: agent cannot be empty for "${record.id}"`);
+      throw new Error(`expert-ai: agent cannot be empty for "${record.id}"`);
     if (record.expertPackage !== undefined) {
       validatePackageBinding(record.expertPackage);
       if (record.agent !== packageAgentBinding(record.expertPackage))
-        throw new Error("digital-life: imported expert identity must stay bound to its immutable package");
+        throw new Error("expert-ai: imported expert identity must stay bound to its immutable package");
     }
     const presentation = presentationProblem(record);
-    if (presentation !== undefined) throw new Error(`digital-life: ${presentation} for "${record.id}"`);
-    if (ids.has(record.id)) throw new Error(`digital-life: duplicate id "${record.id}"`);
+    if (presentation !== undefined) throw new Error(`expert-ai: ${presentation} for "${record.id}"`);
+    if (ids.has(record.id)) throw new Error(`expert-ai: duplicate id "${record.id}"`);
     ids.add(record.id);
   }
   // Team members are not checked against records: deleting an expert must not
@@ -209,28 +209,28 @@ export function validateSettings(settings: ExpertSettings): void {
   const teamIds = new Set<string>();
   for (const team of settings.teams ?? []) {
     if (!ID_PATTERN.test(team.id))
-      throw new Error(`digital-life: team id "${team.id}" must match ${String(ID_PATTERN)}`);
-    if (teamIds.has(team.id)) throw new Error(`digital-life: duplicate team id "${team.id}"`);
+      throw new Error(`expert-ai: team id "${team.id}" must match ${String(ID_PATTERN)}`);
+    if (teamIds.has(team.id)) throw new Error(`expert-ai: duplicate team id "${team.id}"`);
     teamIds.add(team.id);
-    if (team.name.trim() === "") throw new Error(`digital-life: team name is required for "${team.id}"`);
+    if (team.name.trim() === "") throw new Error(`expert-ai: team name is required for "${team.id}"`);
     if (team.analystIds.length < 1 || team.analystIds.length > 3 || new Set(team.analystIds).size !== team.analystIds.length)
-      throw new Error(`digital-life: team "${team.id}" needs 1-3 unique analysts`);
+      throw new Error(`expert-ai: team "${team.id}" needs 1-3 unique analysts`);
     if (team.reviewerId.trim() === "" || team.analystIds.includes(team.reviewerId))
-      throw new Error(`digital-life: team "${team.id}" needs a reviewer who is not an analyst`);
+      throw new Error(`expert-ai: team "${team.id}" needs a reviewer who is not an analyst`);
     if (team.coordinatorId !== undefined && team.coordinatorId.trim() === "")
-      throw new Error(`digital-life: team "${team.id}" coordinator id must not be blank`);
+      throw new Error(`expert-ai: team "${team.id}" coordinator id must not be blank`);
     // 3 analysts + reviewer + coordinator; the coordinator may also hold another role.
     const members = new Set([...team.analystIds, team.reviewerId, team.coordinatorId ?? team.reviewerId]);
     for (const [memberId, text] of Object.entries(team.responsibilities ?? {})) {
       if (!members.has(memberId))
-        throw new Error(`digital-life: team "${team.id}" has a responsibility for non-member "${memberId}"`);
+        throw new Error(`expert-ai: team "${team.id}" has a responsibility for non-member "${memberId}"`);
       if (text.trim() === "" || text.length > 200)
-        throw new Error(`digital-life: team "${team.id}" responsibility for "${memberId}" must contain 1-200 characters`);
+        throw new Error(`expert-ai: team "${team.id}" responsibility for "${memberId}" must contain 1-200 characters`);
     }
     if (team.persona !== undefined && (team.persona.trim() === "" || team.persona.length > TEAM_PERSONA_LIMIT))
-      throw new Error(`digital-life: team "${team.id}" persona must contain 1-${TEAM_PERSONA_LIMIT} characters`);
+      throw new Error(`expert-ai: team "${team.id}" persona must contain 1-${TEAM_PERSONA_LIMIT} characters`);
   }
-  if ((settings.maxBatchSize ?? 3) < 1) throw new Error("digital-life: maxBatchSize must be positive");
+  if ((settings.maxBatchSize ?? 3) < 1) throw new Error("expert-ai: maxBatchSize must be positive");
 }
 
 function resolved(settings: ExpertSettings): ResolvedExpertSettings {
@@ -244,12 +244,12 @@ function resolved(settings: ExpertSettings): ResolvedExpertSettings {
 
 function findRecord(settings: ResolvedExpertSettings, id: string): ExpertRecord {
   const record = settings.records.find((item) => item.id === id);
-  if (record === undefined) throw new Error(`digital-life: unknown digital life "${id}"`);
-  if (!record.enabled) throw new Error(`digital-life: digital life "${id}" is disabled`);
+  if (record === undefined) throw new Error(`expert-ai: unknown digital life "${id}"`);
+  if (!record.enabled) throw new Error(`expert-ai: digital life "${id}" is disabled`);
   return record;
 }
 
-/** Ensure a digital-life session runs in the read-only file sandbox. */
+/** Ensure an expert-ai session runs in the read-only file sandbox. */
 function enforceReadOnlySandbox(session: Session): void {
   setSandboxMode(session, "read-only");
 }
@@ -276,7 +276,7 @@ export const DEFAULT_TEAM_PERSONA = [
   "你说话克制、中立、条理清楚；不偏袒任何一位成员的观点，不用多数票掩盖分歧，信息不足时先向用户补问。",
 ].join("\n");
 
-const OPENING_MESSAGE_SOURCE = { provider: "digital-life", model: "opening" } as const;
+const OPENING_MESSAGE_SOURCE = { provider: "expert-ai", model: "opening" } as const;
 
 /** Append the local opening message without entering the agent loop. */
 export function appendOpeningAssistantMessage(session: Session, text: string): void {
@@ -288,7 +288,7 @@ export function appendOpeningAssistantMessage(session: Session, text: string): v
   );
   if (alreadyAppended) return;
   if (session.deriveMessages().length > 0)
-    throw new Error("digital-life: opening greeting requires a session without messages");
+    throw new Error("expert-ai: opening greeting requires a session without messages");
 
   const message = createAssistantMessage({
     content: [{ type: "text", text }],
@@ -446,7 +446,7 @@ function outputText(run: SubagentRun, result: SubagentResult): string {
     .filter((block) => block.type === "text")
     .map((block) => block.text)
     .join("");
-  if (text === "") throw new Error(`digital-life: ${String(run.id)} returned no text`);
+  if (text === "") throw new Error(`expert-ai: ${String(run.id)} returned no text`);
   return text;
 }
 
@@ -458,12 +458,12 @@ async function consult(
   provider: string,
   stateDir?: string,
 ): Promise<string> {
-  if (exec.agent === undefined) throw new Error("digital-life consultation requires an agent-backed session");
+  if (exec.agent === undefined) throw new Error("expert-ai consultation requires an agent-backed session");
   const available = ctx.subagents.getProvider(provider);
-  if (available === undefined) throw new Error(`digital-life: subagent provider "${provider}" is unavailable`);
-  if (!available.capabilities.persona) throw new Error(`digital-life: provider "${provider}" does not support persona`);
+  if (available === undefined) throw new Error(`expert-ai: subagent provider "${provider}" is unavailable`);
+  if (!available.capabilities.persona) throw new Error(`expert-ai: provider "${provider}" does not support persona`);
   if (record.toolFilter !== undefined && !available.capabilities.toolFilter) {
-    throw new Error(`digital-life: provider "${provider}" does not support toolFilter`);
+    throw new Error(`expert-ai: provider "${provider}" does not support toolFilter`);
   }
   const identity = await identityFor(record, stateDir);
   const run = await ctx.subagents.start(provider, {
@@ -478,7 +478,7 @@ async function consult(
   try {
     const result = await run.result;
     if (result.stopReason !== "completed") {
-      throw new Error(`digital-life: consultation with "${record.name}" ended with ${result.stopReason}`);
+      throw new Error(`expert-ai: consultation with "${record.name}" ended with ${result.stopReason}`);
     }
     return outputText(run, result);
   } finally {
@@ -573,7 +573,7 @@ function registerTools(
               .filter((record) => record.enabled && record.category === args.category)
               .slice(0, settings.maxBatchSize);
             if (records.length === 0)
-              throw new Error(`digital-life: no enabled records in category "${args.category}"`);
+              throw new Error(`expert-ai: no enabled records in category "${args.category}"`);
             const results = await Promise.allSettled(
               records.map(async (record) => ({
                 id: record.id,
@@ -612,7 +612,7 @@ export function apply(ctx: Context, config: Config): void {
     // A session can switch between a digital life and a team, so the mode text is replaced too.
     modeDisposers.get(agent)?.();
     modeDisposers.set(agent, agent.ctx.systemPrompt.section({
-      name: "digital-life:source",
+      name: "expert-ai:source",
       order: 1,
       text: binding.team === undefined ? EXPERT_AI_MODE_PROMPT : TEAM_MODE_PROMPT,
     }));
@@ -621,7 +621,7 @@ export function apply(ctx: Context, config: Config): void {
     const disposers = ([["pre", 2], ["persona", 3], ["suf", 4]] as const)
       .filter(([part]) => binding[part] !== "")
       .map(([part, order]) => agent.ctx.systemPrompt.section({
-        name: `digital-life:${part}`,
+        name: `expert-ai:${part}`,
         order,
         text: binding[part],
       }));
@@ -648,7 +648,7 @@ export function apply(ctx: Context, config: Config): void {
     let team: HostedTeam;
     if (typeof input.teamId === "string") {
       const saved = settings.teams.find((item) => item.id === input.teamId);
-      if (saved === undefined) throw new Error(`digital-life: expert team not found: ${input.teamId}`);
+      if (saved === undefined) throw new Error(`expert-ai: expert team not found: ${input.teamId}`);
       team = saved;
     } else {
       const lineup = input.lineup as { analystIds?: unknown; reviewerId?: unknown } | undefined;
@@ -657,7 +657,7 @@ export function apply(ctx: Context, config: Config): void {
       if (!Array.isArray(analystIds) || analystIds.length < 1 || analystIds.length > 3 ||
           analystIds.some((id) => typeof id !== "string") || new Set(analystIds).size !== analystIds.length ||
           typeof reviewerId !== "string" || analystIds.includes(reviewerId))
-        throw new Error("digital-life: choose 1-3 different analysts and a separate reviewer");
+        throw new Error("expert-ai: choose 1-3 different analysts and a separate reviewer");
       team = { name: "临时专家团", analystIds: analystIds as string[], reviewerId };
     }
     for (const id of new Set([...team.analystIds, team.reviewerId, team.coordinatorId ?? team.reviewerId])) findRecord(settings, id);
@@ -677,7 +677,7 @@ export function apply(ctx: Context, config: Config): void {
     try {
       await saveBinding(sessionId, upgraded, stateDir());
     } catch (error) {
-      ctx.logger.warn(`digital-life: kept the saved prompt of session "${sessionId}"`, error);
+      ctx.logger.warn(`expert-ai: kept the saved prompt of session "${sessionId}"`, error);
     }
     return upgraded;
   };
@@ -686,7 +686,7 @@ export function apply(ctx: Context, config: Config): void {
     const binding = await loadBinding(agent.id, stateDir());
     if (binding !== undefined) {
       try { bindAgent(agent, await upgradeBinding(agent.id, binding)); }
-      catch (error) { ctx.logger.warn(`digital-life: could not restore session "${agent.id}"`, error); }
+      catch (error) { ctx.logger.warn(`expert-ai: could not restore session "${agent.id}"`, error); }
     }
     return undefined;
   });
@@ -703,9 +703,9 @@ export function apply(ctx: Context, config: Config): void {
   };
   const stateDir = (): string | undefined => source().stateDir?.trim() || undefined;
   const expertService = createExpertService({ current: () => resolved(source()), stateDir });
-  ctx.effect(() => () => expertService.dispose(), "digital-life: expert service lifecycle");
+  ctx.effect(() => () => expertService.dispose(), "expert-ai: expert service lifecycle");
   // Not tied to the tools: a stage still running when conversation goes off must stay restricted.
-  ctx.effect(() => expertService.guardStages({ ctx }), "digital-life: team stage guard");
+  ctx.effect(() => expertService.guardStages({ ctx }), "expert-ai: team stage guard");
   // Preferences edited through Settings apply to the running fiber in place;
   // opt out of an auto-generated page (the plugin ships its own settings.section).
   ctx.inject(["settings"], (child) => {
@@ -722,7 +722,7 @@ export function apply(ctx: Context, config: Config): void {
               ok: false,
               error: {
                 code: "internal",
-                message: `digital-life: "${endpoint}" needs the conversation feature`,
+                message: `expert-ai: "${endpoint}" needs the conversation feature`,
                 details: {},
               },
             };
@@ -802,7 +802,7 @@ export function apply(ctx: Context, config: Config): void {
               ok: false,
               error: {
                 code: "internal",
-                message: `unknown digital-life endpoint "${endpoint}"`,
+                message: `unknown expert-ai endpoint "${endpoint}"`,
                 details: {},
               },
             };
@@ -837,7 +837,7 @@ export function apply(ctx: Context, config: Config): void {
           };
         },
       ),
-    "digital-life: host RPC",
+    "expert-ai: host RPC",
   );
   // Validate the live configuration on load and reject a bad settings write
   // before it commits (mirrors the previous installSettingsSection.validate).

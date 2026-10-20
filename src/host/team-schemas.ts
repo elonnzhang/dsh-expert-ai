@@ -97,22 +97,22 @@ const text = (value: string, limit = 8_000): boolean => value.trim() !== "" && v
 const texts = (values: readonly string[], min = 0, max = 30): boolean =>
   values.length >= min && values.length <= max && values.every((value) => text(value));
 function conform(schema: ObjectJsonSchema, value: unknown, label: string): void {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error(`digital-life: ${label} output must be an object`);
+  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error(`expert-ai: ${label} output must be an object`);
   if (validateJsonSchemaValue(schema, value).length > 0 || JSON.stringify(value).length > 24_000)
-    throw new Error(`digital-life: ${label} output does not match the schema or exceeds the report limit`);
+    throw new Error(`expert-ai: ${label} output does not match the schema or exceeds the report limit`);
 }
 function cited(ids: readonly string[], evidenceIds: ReadonlySet<string>): void {
   if (ids.length > 20 || ids.some((id) => !evidenceIds.has(id)))
-    throw new Error("digital-life: citation to evidence not supplied to this stage");
+    throw new Error("expert-ai: citation to evidence not supplied to this stage");
 }
 
 /** Parse a coordinator brief: 1-8 acceptance criteria and 0-5 clarifying questions. */
 export function parseBriefReport(value: unknown): BriefReport {
   conform(BRIEF_OUTPUT_SCHEMA, value, "brief");
   const report = value as BriefReport;
-  if (!text(report.objective) || !texts(report.constraints)) throw new Error("digital-life: invalid structured brief report");
-  if (!texts(report.acceptanceCriteria, 1, 8)) throw new Error("digital-life: brief needs 1-8 acceptance criteria");
-  if (!texts(report.clarifyingQuestions, 0, 5)) throw new Error("digital-life: brief allows 0-5 clarifying questions");
+  if (!text(report.objective) || !texts(report.constraints)) throw new Error("expert-ai: invalid structured brief report");
+  if (!texts(report.acceptanceCriteria, 1, 8)) throw new Error("expert-ai: brief needs 1-8 acceptance criteria");
+  if (!texts(report.clarifyingQuestions, 0, 5)) throw new Error("expert-ai: brief allows 0-5 clarifying questions");
   return structuredClone(report);
 }
 
@@ -121,9 +121,9 @@ export function parseCritiqueReport(value: unknown, evidenceIds: ReadonlySet<str
   conform(CRITIQUE_OUTPUT_SCHEMA, value, "critique");
   const report = value as CritiqueReport;
   if (!text(report.summary) || report.items.length > 20 || report.items.some((item) => !text(item.issue)))
-    throw new Error("digital-life: invalid structured critique report");
+    throw new Error("expert-ai: invalid structured critique report");
   for (const item of report.items) {
-    if (!inputStageIds.has(item.targetStageId)) throw new Error(`digital-life: critique target ${item.targetStageId} was not supplied to this stage`);
+    if (!inputStageIds.has(item.targetStageId)) throw new Error(`expert-ai: critique target ${item.targetStageId} was not supplied to this stage`);
     cited(item.evidenceIds, evidenceIds);
   }
   return structuredClone(report);
@@ -142,18 +142,18 @@ export function parseSynthesisReport(
   // Findings, assumptions and next actions share the analysis rules and citation checks.
   parseReviewReport({ ...base, disagreements: [] }, evidenceIds);
   if (disagreements.length > 20 || options.length > 10 || validationPlan.length > 20 || !texts(missingStages))
-    throw new Error("digital-life: invalid structured synthesis report");
+    throw new Error("expert-ai: invalid structured synthesis report");
   for (const item of disagreements) {
-    if (!text(item.topic) || item.positions.length < 2) throw new Error("digital-life: each disagreement needs a topic and at least 2 positions");
+    if (!text(item.topic) || item.positions.length < 2) throw new Error("expert-ai: each disagreement needs a topic and at least 2 positions");
     if (item.positions.some((position) => !inputStageIds.has(position.stageId) || !text(position.position)))
-      throw new Error("digital-life: disagreement position cites a stage not supplied to synthesis");
+      throw new Error("expert-ai: disagreement position cites a stage not supplied to synthesis");
     if (item.resolution === "experiment" && (item.test === undefined || !text(item.test)))
-      throw new Error("digital-life: experiment resolutions need a test");
+      throw new Error("expert-ai: experiment resolutions need a test");
   }
   if (options.some((item) => !text(item.name) || !text(item.tradeoffs)) || validationPlan.some((item) => !text(item.task) || !text(item.decides) || !text(item.stopCondition)))
-    throw new Error("digital-life: invalid structured synthesis report");
+    throw new Error("expert-ai: invalid structured synthesis report");
   const missing = requiredMissing.filter((id) => !missingStages.includes(id));
-  if (missing.length > 0) throw new Error(`digital-life: missingStages must list ${missing.join(", ")}`);
+  if (missing.length > 0) throw new Error(`expert-ai: missingStages must list ${missing.join(", ")}`);
   return structuredClone(report);
 }
 

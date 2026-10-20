@@ -11,7 +11,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
-describe("digital-life session binding", () => {
+describe("expert-ai session binding", () => {
   it("appends the opening assistant message without an agent request", () => {
     const session = Session.create("session-opening" as never);
 
@@ -22,7 +22,7 @@ describe("digital-life session binding", () => {
     expect(session.deriveMessages()[0]).toMatchObject({
       role: "assistant",
       content: [{ type: "text", text: "欢迎开始" }],
-      source: { provider: "digital-life", model: "opening" },
+      source: { provider: "expert-ai", model: "opening" },
     });
     expect(session.snapshotEvents().map((event) => event.type)).toEqual([
       "turn/start",
@@ -34,7 +34,7 @@ describe("digital-life session binding", () => {
   });
 
   it("restores the selected identity across host restarts", async () => {
-    const root = await mkdtemp(join(tmpdir(), "digital-life-binding-"));
+    const root = await mkdtemp(join(tmpdir(), "expert-ai-binding-"));
     roots.push(root);
     const sessionId = "session-1234";
     const binding = { recordId: "research-guide", pre: "Header", persona: "Be a researcher", suf: "Rules" };
@@ -46,7 +46,7 @@ describe("digital-life session binding", () => {
   });
 
   it("restores a team-hosted binding and rejects ambiguous owners", async () => {
-    const root = await mkdtemp(join(tmpdir(), "digital-life-binding-"));
+    const root = await mkdtemp(join(tmpdir(), "expert-ai-binding-"));
     roots.push(root);
     const binding = { team: { id: "plan-review", name: "方案评审" }, pre: "Header", persona: "Host", suf: "Rules" };
     await saveBinding("session-team", binding, root);
@@ -59,13 +59,13 @@ describe("digital-life session binding", () => {
   });
 
   it("rejects paths outside the managed session directory", async () => {
-    const root = await mkdtemp(join(tmpdir(), "digital-life-binding-"));
+    const root = await mkdtemp(join(tmpdir(), "expert-ai-binding-"));
     roots.push(root);
     await expect(saveBinding("../other", { recordId: "life", pre: "", persona: "text", suf: "" }, root)).rejects.toThrow(/invalid session id/);
   });
 
   it("accepts unprefixed UUID sessions created by the Harness spawn provider", async () => {
-    const root = await mkdtemp(join(tmpdir(), "digital-life-binding-"));
+    const root = await mkdtemp(join(tmpdir(), "expert-ai-binding-"));
     roots.push(root);
     const id = "64e6f29a-0464-4db3-8909-ec50e14f93d9";
     expect(await loadBinding(id, root)).toBeUndefined();
@@ -75,7 +75,7 @@ describe("digital-life session binding", () => {
   });
 
   it("still reads bindings saved before the prompt was split", async () => {
-    const root = await mkdtemp(join(tmpdir(), "digital-life-binding-"));
+    const root = await mkdtemp(join(tmpdir(), "expert-ai-binding-"));
     roots.push(root);
     const sessionId = "session-legacy";
     await mkdir(join(root, "expert-ai", "sessions"), { recursive: true });
@@ -86,7 +86,7 @@ describe("digital-life session binding", () => {
   });
 
   it("preserves the saved identity when upgrading a legacy binding", async () => {
-    const root = await mkdtemp(join(tmpdir(), "digital-life-binding-"));
+    const root = await mkdtemp(join(tmpdir(), "expert-ai-binding-"));
     roots.push(root);
     const legacy = { recordId: "mentor", prompt: "Original identity and rules" };
     const upgraded = preserveLegacyBinding(legacy);

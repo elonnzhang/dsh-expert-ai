@@ -10,7 +10,7 @@
  * reaches the actual footerActions row, and match the attribute in any mode so
  * the collapsed rail stacks its icons vertically too.
  */
-:global(div:has([data-digital-life-chat])) {
+:global(div:has([data-expert-ai-chat])) {
   flex-direction: column;
 }
 .root {

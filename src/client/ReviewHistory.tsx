@@ -54,7 +54,7 @@ export function ReviewHistory({
   t,
 }: {
   api: Pick<ExpertWorkbenchApi, "listReviews" | "readReview" | "cancelReview" | "openReviewSession">;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
 }): ReactNode {
   const [reviews, setReviews] = useState<ReviewSummary[]>([]);
   const [report, setReport] = useState<Report | undefined>(undefined);
@@ -131,9 +131,9 @@ export function ReviewHistory({
 
   const labels = { code: { copyLabel: t("copyCode"), copiedLabel: t("copiedCode") }, footnotes: t("footnotes") };
   return (
-    <section className={css.block} aria-labelledby="digital-life-history-title">
+    <section className={css.block} aria-labelledby="expert-ai-history-title">
       <div className={css.blockHead}>
-        <h3 id="digital-life-history-title">{t("reviewHistory")}</h3>
+        <h3 id="expert-ai-history-title">{t("reviewHistory")}</h3>
         <Button
           size="sm"
           icon={<IconRefreshOutlineRegular size={14} />}

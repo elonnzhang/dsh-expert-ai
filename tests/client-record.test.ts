@@ -13,7 +13,7 @@ const draft: ExpertRecord = {
   enabled: true,
 };
 
-describe("digital-life record normalization", () => {
+describe("expert-ai record normalization", () => {
   it("preserves inline persona when the agent path is omitted", () => {
     const normalized = normalizeExpertRecord(draft);
 
@@ -51,7 +51,7 @@ describe("digital-life record normalization", () => {
   });
 });
 
-describe("digital-life presentation fields", () => {
+describe("expert-ai presentation fields", () => {
   const avatar = { mime: "image/png" as const, data: "iVBORw0KGgo=" };
 
   it("trims the title and the source note and drops blank ones", () => {

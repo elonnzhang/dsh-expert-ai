@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { importMimeograph, loadExpertCatalog, MIMEOGRAPHS_REVISION, readExpertReference, recordForPackage } from "../lib/index.js";
 
-const stateDir = await mkdtemp(join(tmpdir(), "digital-life-expert-smoke-"));
+const stateDir = await mkdtemp(join(tmpdir(), "expert-ai-smoke-"));
 try {
   const catalog = await loadExpertCatalog();
   assert.ok(catalog.some((entry) => entry.slug === "andrej-karpathy"));

@@ -53,7 +53,7 @@ export async function createProject(stateDir?: string): Promise<string> {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     }
   }
-  throw new Error("digital-life: unable to allocate a project directory");
+  throw new Error("expert-ai: unable to allocate a project directory");
 }
 
 /** WorkBuddy-compatible canonical agent location. */
@@ -126,7 +126,7 @@ async function readIdentityFile(path: string): Promise<string> {
  */
 export async function readAgentIdentity(path: string, stateDir?: string): Promise<string> {
   const unreadable = (error: unknown): Error =>
-    new Error(`digital-life: cannot load agent "${path}": ${String(error)}`);
+    new Error(`expert-ai: cannot load agent "${path}": ${String(error)}`);
   let missing: unknown;
   for (const candidate of agentFileCandidates(path, stateDir)) {
     try {
@@ -149,7 +149,7 @@ export async function identityFor(record: ExpertRecord, stateDir?: string): Prom
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
   if (record.persona.trim() !== "") return record.persona.trim();
-  throw new Error(`digital-life: no identity configured for "${record.id}"`);
+  throw new Error(`expert-ai: no identity configured for "${record.id}"`);
 }
 
 /** Write beside the target, then rename over it, so a reader never sees a truncated file. */
@@ -180,7 +180,7 @@ async function persist(
     ? record.persona.trim() || await identityFor(withoutAgent, stateDir)
     : record.persona.trim();
   if (identity === "")
-    throw new Error(`digital-life: no identity configured for "${record.id}"`);
+    throw new Error(`expert-ai: no identity configured for "${record.id}"`);
   const path = agentPath(record.id, stateDir);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   await writeAtomically(path, agentDocument(record, identity));

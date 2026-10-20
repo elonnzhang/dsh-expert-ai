@@ -15,7 +15,7 @@ import { categoryLabel } from "./locales.js";
 export interface ChatPanelInjected {
   records: () => readonly ExpertRecord[];
   createSession: (record?: ExpertRecord) => Promise<SessionId>;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
 }
 
 export type ChatPanelProps = PropsRuntime<"sidebar.footer.action"> & ChatPanelInjected;
@@ -38,7 +38,7 @@ export function ChatPanel({ wide, records, createSession, t }: ChatPanelProps) {
     setOpen(false);
     setError(undefined);
     void createSession(record).catch((error) => {
-      console.error("digital-life: failed to start standalone session", error);
+      console.error("expert-ai: failed to start standalone session", error);
       setError(error instanceof Error ? error.message : String(error));
       setOpen(true);
     });
@@ -46,7 +46,7 @@ export function ChatPanel({ wide, records, createSession, t }: ChatPanelProps) {
   return (
     <div
       ref={root}
-      data-digital-life-chat={wide ? "wide" : "rail"}
+      data-expert-ai-chat={wide ? "wide" : "rail"}
       className={`${css.root} ${wide ? "" : css.railRoot}`}
     >
       <button

@@ -116,7 +116,7 @@ function avatarOf(state: State, record: ExpertRecord): ExpertIdentityAvatar | un
   if (record.avatar === undefined) return undefined;
   const problem = avatarProblem(record.avatar);
   if (problem === undefined) return { mime: record.avatar.mime, data: record.avatar.data };
-  state.ctx.logger.warn(`digital-life: avatar of "${record.id}" is not published: ${problem}`);
+  state.ctx.logger.warn(`expert-ai: avatar of "${record.id}" is not published: ${problem}`);
   return undefined;
 }
 
@@ -145,11 +145,11 @@ async function load(state: State, record: ExpertRecord): Promise<Loaded | undefi
   try {
     persona = (await identityFor(record, state.options.stateDir())).trim();
   } catch (error) {
-    state.ctx.logger.warn(`digital-life: identity "${record.id}" is unavailable`, error);
+    state.ctx.logger.warn(`expert-ai: identity "${record.id}" is unavailable`, error);
     return undefined;
   }
   if (persona === "") {
-    state.ctx.logger.warn(`digital-life: identity "${record.id}" has no persona`);
+    state.ctx.logger.warn(`expert-ai: identity "${record.id}" has no persona`);
     return undefined;
   }
   return { summary: summaryOf(state, record, persona), persona };
@@ -186,7 +186,7 @@ async function settle(state: State, announce: boolean): Promise<void> {
   const change: ExpertIdentityChange = withdrawn.length === 0 ? { ids } : { ids, withdrawn };
   // Not awaited, so a listener that calls get() cannot deadlock the queue; parallel isolates failures.
   void state.ctx.parallel("expert-identity/changed", change).catch((error: unknown) => {
-    state.ctx.logger.warn(`digital-life: listeners of expert-identity/changed failed for ${ids.join(", ")}: ${errorNames(error)}`);
+    state.ctx.logger.warn(`expert-ai: listeners of expert-identity/changed failed for ${ids.join(", ")}: ${errorNames(error)}`);
   });
 }
 
@@ -201,7 +201,7 @@ function enqueue(state: State, failure: string, announce: boolean, work: () => P
     try {
       await settle(state, announce);
     } catch (error) {
-      state.ctx.logger.error("digital-life: failed to publish identities", error);
+      state.ctx.logger.error("expert-ai: failed to publish identities", error);
     }
   });
 }
@@ -239,14 +239,14 @@ export class ExpertIdentityProvider extends Service implements ExpertIdentitySer
       await initializeIdentities(records, dir);
       seeded = { dir };
     };
-    enqueue(state, "digital-life: failed to initialize identities", false, () => seed(initial, initialDir));
+    enqueue(state, "expert-ai: failed to initialize identities", false, () => seed(initial, initialDir));
     ctx.on("loader/volatile-update", () => {
       const next = options.saved();
       const dir = options.stateDir();
-      enqueue(state, "digital-life: failed to persist identities", true, async () => {
+      enqueue(state, "expert-ai: failed to persist identities", true, async () => {
         if (seeded === undefined || seeded.dir !== dir) {
           await seed(next, dir).catch((error: unknown) => {
-            ctx.logger.error("digital-life: failed to initialize identities", error);
+            ctx.logger.error("expert-ai: failed to initialize identities", error);
           });
         }
         await reconcileIdentities([...onDisk.values()], next, dir, (id, record) => {

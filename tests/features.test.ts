@@ -30,7 +30,7 @@ afterEach(async () => {
 })
 
 async function start(initial: ExpertFeature[], options: { records?: typeof RECORDS; subagents?: unknown } = {}) {
-  const root = await mkdtemp(join(tmpdir(), 'digital-life-features-'))
+  const root = await mkdtemp(join(tmpdir(), 'expert-ai-features-'))
   const ctx = new Context()
   cleanups.push(async () => {
     await ctx.fiber.dispose()
@@ -46,7 +46,7 @@ async function start(initial: ExpertFeature[], options: { records?: typeof RECOR
   ctx.provide('sandboxPolicy', { defaultMode: 'read-only' })
   const state = { features: initial }
   const live = <T,>(read: () => T) => ({ get: read })
-  const fiber = await ctx.plugin({ name: 'digital-life', inject: plugin.inject, apply: plugin.apply }, {
+  const fiber = await ctx.plugin({ name: 'expert-ai', inject: plugin.inject, apply: plugin.apply }, {
     features: live(() => state.features),
     provider: live(() => 'spawn'),
     maxBatchSize: live(() => 3),
@@ -133,7 +133,7 @@ describe('with the identity feature only', () => {
 
   it('serves nothing beyond the known endpoints', async () => {
     const h = await start(IDENTITY_ONLY)
-    expect(h.routes()).toContain('/api/digital-life/identity')
+    expect(h.routes()).toContain('/api/expert-ai/identity')
     expect((await h.rpc('expert/unknown')).error?.code).toBe('not-found')
   })
 
@@ -170,7 +170,7 @@ describe('with the conversation feature', () => {
     const { agent, session, sections } = h.session('s-on')
     await h.created(agent)
     expect(sections.map((section) => section.name)).toEqual([
-      'digital-life:source', 'digital-life:pre', 'digital-life:persona', 'digital-life:suf',
+      'expert-ai:source', 'expert-ai:pre', 'expert-ai:persona', 'expert-ai:suf',
     ])
     expect(sections.slice(1).map((section) => section.text)).toEqual(['Before', 'Persona', 'After'])
     expect(sandboxModes(session)).toEqual(['read-only'])
@@ -181,7 +181,7 @@ describe('with the conversation feature', () => {
     const { sections } = h.session('s-bind')
     expect(await h.rpc('bind', { sessionId: 's-bind', recordId: 'mentor' }))
       .toEqual({ ok: true, value: { sessionId: 's-bind', recordId: 'mentor' } })
-    expect(sections.map((section) => section.name)).toContain('digital-life:persona')
+    expect(sections.map((section) => section.name)).toContain('expert-ai:persona')
     expect(await loadBinding('s-bind', h.root)).toMatchObject({ recordId: 'mentor' })
   })
 })

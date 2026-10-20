@@ -31,7 +31,7 @@ export interface ExpertSettingSectionInjected {
   form: ConfigForm<ExpertSettings>;
   loadIdentity: (id: string) => Promise<string>;
   expertApi: ExpertWorkbenchApi;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
 }
 
 type Props = PropsRuntime<"settings.section"> & {
@@ -39,8 +39,8 @@ type Props = PropsRuntime<"settings.section"> & {
 } & Omit<ExpertSettingSectionInjected, "hooks">;
 
 const tabIds = (value: Tab): Pick<SegmentedTab<Tab>, "id" | "panelId"> => ({
-  id: `digital-life-tab-${value}`,
-  panelId: `digital-life-panel-${value}`,
+  id: `expert-ai-tab-${value}`,
+  panelId: `expert-ai-panel-${value}`,
 });
 
 const tabLabel = (icon: ReactNode, text: string): ReactNode => (
@@ -50,7 +50,7 @@ const tabLabel = (icon: ReactNode, text: string): ReactNode => (
   </span>
 );
 
-/** Render the digital-life settings as 专家 / 专家团 / 通用设置 tabs. */
+/** Render the expert-ai settings as 专家 / 专家团 / 通用设置 tabs. */
 export function ExpertSettingSection(props: Props): ReactNode {
   const t = props.t;
   const snapshot = props.useSettings((value) => value);

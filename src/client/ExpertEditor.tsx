@@ -18,7 +18,7 @@ const SOURCE_COPY = {
 } as const satisfies Record<ExpertIdentitySourceKind, { label: ExpertKey; hint: ExpertKey }>;
 
 /**
- * Add or edit one digital-life record in a dialog.
+ * Add or edit one expert record in a dialog.
  * @returns The editor dialog.
  */
 export function ExpertEditor({
@@ -36,7 +36,7 @@ export function ExpertEditor({
   /** Name of the Agent file `initial` was imported from, if any. */
   importedFile?: string | undefined;
   ids: ReadonlySet<string>;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
   /** Persist the draft; resolves to an error message, or undefined once saved. */
   onSave: (draft: ExpertRecord) => Promise<string | undefined>;
   onCancel: () => void;
@@ -223,11 +223,11 @@ export function ExpertEditor({
           </label>
         ) : null}
         <div className={css.field}>
-          <label className={css.label} htmlFor="digital-life-title">
+          <label className={css.label} htmlFor="expert-ai-title">
             {t("titleLabel")}
           </label>
           <Input
-            id="digital-life-title"
+            id="expert-ai-title"
             className={controlClass("title")}
             value={draft.title ?? ""}
             onChange={(event) => {
@@ -238,11 +238,11 @@ export function ExpertEditor({
           <span className={css.hint}>{t("titleHint")}</span>
         </div>
         <div className={css.field}>
-          <label className={css.label} htmlFor="digital-life-source">
+          <label className={css.label} htmlFor="expert-ai-source">
             {t("sourceKind")}
           </label>
           <MenuSelect
-            id="digital-life-source"
+            id="expert-ai-source"
             value={sourceKind}
             placeholder={t("sourceKind")}
             options={EXPERT_SOURCE_KINDS.map((kind) => ({ value: kind, label: t(SOURCE_COPY[kind].label) }))}
@@ -256,11 +256,11 @@ export function ExpertEditor({
           <span className={css.hint}>{t(SOURCE_COPY[sourceKind].hint)}</span>
         </div>
         <div className={`${css.field} ${css.full}`}>
-          <label className={css.label} htmlFor="digital-life-source-note">
+          <label className={css.label} htmlFor="expert-ai-source-note">
             {t("sourceNote")}
           </label>
           <Input
-            id="digital-life-source-note"
+            id="expert-ai-source-note"
             className={controlClass("source")}
             value={draft.source?.note ?? ""}
             onChange={(event) => {
@@ -300,12 +300,12 @@ export function ExpertEditor({
           </span>
         </div>
         <div className={`${css.field} ${css.full}`}>
-          <label className={css.label} htmlFor="digital-life-agent">
+          <label className={css.label} htmlFor="expert-ai-agent">
             {t("agent")}
           </label>
           <div className={css.fileRow}>
             <Input
-              id="digital-life-agent"
+              id="expert-ai-agent"
               className={`${css.control} ${css.grow}`}
               value={draft.agent ?? (existing ? `agents/${draft.id}.md` : "")}
               onChange={(event) => {

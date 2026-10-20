@@ -42,7 +42,7 @@ const RESOLUTION_KEYS = {
 
 type Labels = { code: { copyLabel: string; copiedLabel: string }; footnotes: string };
 
-function SynthesisSection({ run, t, labels }: { run: TeamRun; t: TranslateNS<"digital-life">; labels: Labels }): ReactNode {
+function SynthesisSection({ run, t, labels }: { run: TeamRun; t: TranslateNS<"expert-ai">; labels: Labels }): ReactNode {
   const synthesis = latestSynthesis(run);
   if (synthesis === undefined) return <p className={css.muted}>{t("noSynthesis")}</p>;
   return (
@@ -90,7 +90,7 @@ export function TeamRunView({
   onCancel,
 }: {
   run: TeamRun;
-  t: TranslateNS<"digital-life">;
+  t: TranslateNS<"expert-ai">;
   labels: Labels;
   statusLabel: string;
   busy: boolean;

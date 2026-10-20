@@ -59,7 +59,7 @@ export function apply(ctx) {
     record({ event: "expert-identity/changed", ids: change.ids, withdrawn: change.withdrawn ?? [], after });
   });
   ctx.on("settings/document-updated", (namespace, revision) => {
-    if (namespace === "digital-life") record({ event: "settings/document-updated", revision });
+    if (namespace === "expert-ai") record({ event: "settings/document-updated", revision });
   });
 
   ctx.effect(() => ctx.connection.fetch.register({

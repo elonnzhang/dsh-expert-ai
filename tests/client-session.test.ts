@@ -125,11 +125,11 @@ function setup(
       connection: {
         rpc: {
           call: async (channel: string, method: string, payload?: unknown) => {
-            if (channel !== "/api" || !method.startsWith("digital-life/")) throw new Error(`unexpected RPC target ${channel}/${method}`);
-            const endpoint = method.slice("digital-life/".length);
+            if (channel !== "/api" || !method.startsWith("expert-ai/")) throw new Error(`unexpected RPC target ${channel}/${method}`);
+            const endpoint = method.slice("expert-ai/".length);
             calls.push(endpoint);
             if (endpoint === "bind") bindPayloads.push(payload);
-            if (endpoint === "project") return { ok: true, value: { cwd: "/tmp/digital-life/projects/test" } };
+            if (endpoint === "project") return { ok: true, value: { cwd: "/tmp/expert-ai/projects/test" } };
             if (endpoint === "binding") return { ok: true, value: bindingValue };
             if (endpoint === "expert/import") return { ok: true, value: { record: {
               ...record, id: "mimeograph-test-expert", name: "Imported expert",
@@ -247,7 +247,7 @@ function setup(
   };
 }
 
-describe("digital-life standalone sessions", () => {
+describe("expert-ai standalone sessions", () => {
   it("imports an expert without replacing other records", async () => {
     const fixture = setup([]);
     await fixture.expertApi.importExpert("test-expert", "main");
@@ -276,9 +276,9 @@ describe("digital-life standalone sessions", () => {
 
   it("opens and submits a review request after binding the session", async () => {
     const reviewer = { ...record, id: "critic" };
-    const fixture = setup([{ id: "digital-life-mode" }], { records: [record, reviewer] });
+    const fixture = setup([{ id: "expert-ai-mode" }], { records: [record, reviewer] });
     await fixture.expertApi.startReview({ question: "Review this plan", expertIds: [record.id], reviewerId: reviewer.id, teamId: "plan-review" });
-    expect(fixture.calls).toEqual(["project", "create", "list", "select:digital-life-mode", "bind", "open", "prompt", "release"]);
+    expect(fixture.calls).toEqual(["project", "create", "list", "select:expert-ai-mode", "bind", "open", "prompt", "release"]);
     // The `t` mock echoes locale keys, so the submission carries the instruction key.
     // The real instruction text that names start_team_run is covered by locales.test.ts.
     expect(JSON.stringify(fixture.promptContent)).toContain("reviewRequestInstruction");
@@ -296,17 +296,17 @@ describe("digital-life standalone sessions", () => {
 
   it("hosts an ad-hoc review session by its lineup", async () => {
     const reviewer = { ...record, id: "critic" };
-    const fixture = setup([{ id: "digital-life-mode" }], { records: [record, reviewer] });
+    const fixture = setup([{ id: "expert-ai-mode" }], { records: [record, reviewer] });
     await fixture.expertApi.startReview({ question: "Review this plan", expertIds: [record.id], reviewerId: reviewer.id });
     expect(fixture.bindPayloads).toEqual([{ sessionId: "session-1", lineup: { analystIds: [record.id], reviewerId: reviewer.id } }]);
   });
 
   it("does not block a session hosted by an expert team", async () => {
-    const fixture = setup([{ id: "digital-life-mode" }]);
+    const fixture = setup([{ id: "expert-ai-mode" }]);
     fixture.setBinding({ team: { id: "plan-review", name: "方案评审" } });
     const selector = fixture.heroInjected;
     if (selector === undefined) throw new Error("Hero selector was not injected");
-    await expect(selector.load()).resolves.toMatchObject({ current: "digital-life-mode", team: "方案评审" });
+    await expect(selector.load()).resolves.toMatchObject({ current: "expert-ai-mode", team: "方案评审" });
     expect(fixture.blocks).toEqual([]);
   });
 
@@ -314,22 +314,22 @@ describe("digital-life standalone sessions", () => {
     expect(inject).toContain("remote.agentPresets");
   });
 
-  it("lets the native preset seat win and selects an available digital-life mode before binding", async () => {
-    const fixture = setup([{ id: "digital-life-mode" }]);
+  it("lets the native preset seat win and selects an available expert-ai mode before binding", async () => {
+    const fixture = setup([{ id: "expert-ai-mode" }]);
     await fixture.createSession(record);
     expect(fixture.heroPriority).toBeLessThan(0);
-    expect(fixture.createdCwd).toBe("/tmp/digital-life/projects/test");
-    expect(fixture.calls).toEqual(["project", "create", "list", "select:digital-life-mode", "bind", "greeting", "open", "release"]);
+    expect(fixture.createdCwd).toBe("/tmp/expert-ai/projects/test");
+    expect(fixture.calls).toEqual(["project", "create", "list", "select:expert-ai-mode", "bind", "greeting", "open", "release"]);
   });
 
-  it("still binds a persona when the deployment has no digital-life mode", async () => {
+  it("still binds a persona when the deployment has no expert-ai mode", async () => {
     const { calls, createSession } = setup([{ id: "standard" }]);
     await createSession(record);
     expect(calls).toEqual(["project", "create", "list", "bind", "greeting", "open", "release"]);
   });
 
-  it("does not select a broken digital-life mode", async () => {
-    const { calls, createSession } = setup([{ id: "digital-life-mode", broken: "Unavailable" }]);
+  it("does not select a broken expert-ai mode", async () => {
+    const { calls, createSession } = setup([{ id: "expert-ai-mode", broken: "Unavailable" }]);
     await createSession(record);
     expect(calls).toEqual(["project", "create", "list", "bind", "greeting", "open", "release"]);
   });
@@ -341,30 +341,30 @@ describe("digital-life standalone sessions", () => {
   });
 
   it("does not bind or prompt after a preset selection refusal", async () => {
-    const { calls, createSession } = setup([{ id: "digital-life-mode" }], { selectFails: true });
+    const { calls, createSession } = setup([{ id: "expert-ai-mode" }], { selectFails: true });
     await expect(createSession(record)).rejects.toThrow("Cannot select preset");
-    expect(calls).toEqual(["project", "create", "list", "select:digital-life-mode", "release"]);
+    expect(calls).toEqual(["project", "create", "list", "select:expert-ai-mode", "release"]);
   });
 
   it("uses the isolated project for an independent Chat session", async () => {
     const fixture = setup([]);
     await fixture.createSession();
-    expect(fixture.createdCwd).toBe("/tmp/digital-life/projects/test");
+    expect(fixture.createdCwd).toBe("/tmp/expert-ai/projects/test");
     expect(fixture.calls).toEqual(["project", "create", "greeting", "open", "release"]);
   });
 
   it("blocks the composer until the current digital life is selected", async () => {
-    const fixture = setup([{ id: "digital-life-mode" }]);
+    const fixture = setup([{ id: "expert-ai-mode" }]);
     const selector = fixture.heroInjected;
     if (selector === undefined) throw new Error("Hero selector was not injected");
-    await expect(selector.load()).resolves.toMatchObject({ current: "digital-life-mode" });
+    await expect(selector.load()).resolves.toMatchObject({ current: "expert-ai-mode" });
     expect(fixture.blocks).toEqual([{ sessionId: "session-1", reason: "chooseLifeRequired" }]);
     await selector.selectLife(record.id);
     expect(fixture.blocks).toEqual([]);
   });
 
   it("creates a plugin project when a digital life is chosen without a workspace", async () => {
-    const fixture = setup([{ id: "digital-life-mode" }]);
+    const fixture = setup([{ id: "expert-ai-mode" }]);
     const selector = fixture.stagedHeroInjected;
     if (selector === undefined) throw new Error("Staged hero selector was not injected");
     await selector.selectLife(record.id);
@@ -372,12 +372,12 @@ describe("digital-life standalone sessions", () => {
       "project",
       "create",
       "list",
-      "select:digital-life-mode",
+      "select:expert-ai-mode",
       "bind",
       "open",
       "release",
     ]);
-    expect(fixture.createdCwd).toBe("/tmp/digital-life/projects/test");
+    expect(fixture.createdCwd).toBe("/tmp/expert-ai/projects/test");
   });
 
   it("applies a preset staged on the new-session screen", async () => {
@@ -394,7 +394,7 @@ describe("digital-life standalone sessions", () => {
     const fixture = setup([{ id: "standard" }]);
     const selector = fixture.heroInjected;
     if (selector === undefined) throw new Error("Hero selector was not injected");
-    fixture.publishBlankSession("digital-life-mode");
+    fixture.publishBlankSession("expert-ai-mode");
     await selector.select("standard");
     expect(fixture.calls).toContain("select:standard");
     expect(fixture.calls).toContain("unbind");
@@ -415,7 +415,7 @@ const ALL_SLOTS = [
   "sidebar.panellist",
 ];
 
-describe("digital-life conversation switch", () => {
+describe("expert-ai conversation switch", () => {
   it("registers only the settings section while conversation is off", () => {
     const fixture = setup([], { features: ["identity"] });
     expect(fixture.slots()).toEqual(["settings.section"]);
@@ -477,7 +477,7 @@ describe("digital-life conversation switch", () => {
   });
 
   it("releases the composer block when conversation is switched off", async () => {
-    const fixture = setup([{ id: "digital-life-mode" }]);
+    const fixture = setup([{ id: "expert-ai-mode" }]);
     await fixture.heroInjected?.load();
     expect(fixture.blocks).toEqual([{ sessionId: "session-1", reason: "chooseLifeRequired" }]);
     fixture.setFeatures(["identity"]);

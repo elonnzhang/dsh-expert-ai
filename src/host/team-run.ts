@@ -89,7 +89,7 @@ export function nextStages(run: TeamRun): NextStage[] {
 
 /** Validate a stage request and compute what each call may see. Throws {@link TeamRunError} without side effects. */
 export function planStage(run: TeamRun, kind: TeamStageKind, memberIds?: readonly string[]): StageCall[] {
-  const reject = (message: string): TeamRunError => new TeamRunError(`digital-life: ${message}`, nextStages(run));
+  const reject = (message: string): TeamRunError => new TeamRunError(`expert-ai: ${message}`, nextStages(run));
   if (isTerminal(run.status)) throw reject(`team run ${run.id} is finished (${run.status})`);
   if (run.status === "running") throw reject("another stage of this run is still running");
   const analysts = withRole(run, "analyst");
@@ -134,11 +134,11 @@ export function planStage(run: TeamRun, kind: TeamStageKind, memberIds?: readonl
 
 /** Append a brief version (e.g. the user's answers to clarifying questions). */
 export function amendBrief(run: TeamRun, text: string, now = new Date().toISOString()): void {
-  if (isTerminal(run.status)) throw new TeamRunError(`digital-life: team run ${run.id} is finished (${run.status})`, []);
-  if (run.status === "running") throw new TeamRunError("digital-life: another stage of this run is still running", []);
+  if (isTerminal(run.status)) throw new TeamRunError(`expert-ai: team run ${run.id} is finished (${run.status})`, []);
+  if (run.status === "running") throw new TeamRunError("expert-ai: another stage of this run is still running", []);
   if (run.stages.some((s) => s.kind === "analysis"))
-    throw new TeamRunError("digital-life: cannot amend the brief after analysis has started", nextStages(run));
-  if (text.trim() === "" || text.length > 20_000) throw new TeamRunError("digital-life: brief amendment must contain 1-20000 characters", nextStages(run));
+    throw new TeamRunError("expert-ai: cannot amend the brief after analysis has started", nextStages(run));
+  if (text.trim() === "" || text.length > 20_000) throw new TeamRunError("expert-ai: brief amendment must contain 1-20000 characters", nextStages(run));
   run.briefs.push({ version: briefVersion(run) + 1, text, source: "amendment", createdAt: now });
 }
 

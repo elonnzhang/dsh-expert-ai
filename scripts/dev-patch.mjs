@@ -2,7 +2,7 @@
 /**
  * Generate a local --patch overlay for the built Host and Client.
  * `--conversation` also turns the conversation feature on and adds the
- * digital-life-mode preset; without it the overlay is identity-only.
+ * expert-ai-mode preset; without it the overlay is identity-only.
  * The paths must be absolute because dsh resolves overlay module names from
  * the profile directory, not from the overlay file's directory.
  */
@@ -13,7 +13,7 @@ import { renderDevPatch } from "./render-dev-patch.mjs";
 const root = resolve(import.meta.dirname, "..");
 const host = resolve(root, "lib/index.js");
 const client = resolve(root, "lib/client.js");
-const preset = resolve(root, "digital-life-mode.patch.yml");
+const preset = resolve(root, "expert-ai-mode.patch.yml");
 const conversation = process.argv.includes("--conversation");
 for (const entry of [host, client]) {
   if (!existsSync(entry)) {
