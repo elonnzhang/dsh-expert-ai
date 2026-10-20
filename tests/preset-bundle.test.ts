@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderDevPatch } from "../scripts/render-dev-patch.mjs";
+import { DIGITAL_LIFE_NAMESPACE } from "../src/constants.js";
 
 const root = resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
@@ -33,5 +34,10 @@ describe("digital-life preset bundle", () => {
     const overlay = renderDevPatch({ ...entries, conversation: true });
     expect(overlay).toContain("      config:\n        features: [identity, conversation]\n    - id: dev-digital-life-client");
     expect(overlay.endsWith(preset)).toBe(true);
+  });
+
+  it("keys the overlay Host entry by the id the Client reads its settings form with", () => {
+    for (const conversation of [false, true])
+      expect(renderDevPatch({ ...entries, conversation })).toContain(`    - id: ${DIGITAL_LIFE_NAMESPACE}\n      name: '/dev/lib/index.js'`);
   });
 });

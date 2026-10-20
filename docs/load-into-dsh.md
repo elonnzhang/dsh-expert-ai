@@ -54,7 +54,8 @@ Client 产物。Host 半边与 `cordis.patch.yml` 变化仍需重启 `dsh web`�
 不安装到 Profile 时，可生成绝对路径 overlay：
 
 请先在目标 Profile 中移除已安装的 `dsh-digital-life`，或使用一个未安装插件的开发
-Profile；否则原有 bundle 行与 overlay 行会同时生效。
+Profile。overlay 的 Host 条目与组合包共用 id `digital-life`（Client 按这个 id 读取设置
+表单），两者并存会得到两个同 id 的条目。
 
 ```sh
 cd /path/to/dsh-digital-life
