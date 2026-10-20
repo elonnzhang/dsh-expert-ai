@@ -33,10 +33,10 @@ describe('expert agent identity', () => {
     expect(expertAiHome(process.env, join(root, 'expert-ai'))).toBe(join(root, 'expert-ai'))
   })
 
-  it('treats any other stateDir, including a former data directory name, as the parent', async () => {
+  it('treats any stateDir without the expert-ai suffix as the parent', async () => {
     const root = await home()
     expect(expertAiHome(process.env, join(root, 'state'))).toBe(join(root, 'state', 'expert-ai'))
-    expect(expertAiHome(process.env, join(root, 'digital-life'))).toBe(join(root, 'digital-life', 'expert-ai'))
+    expect(expertAiHome(process.env, join(root, 'other-plugin'))).toBe(join(root, 'other-plugin', 'expert-ai'))
   })
 
   it('creates isolated project directories under the expert-ai home', async () => {
