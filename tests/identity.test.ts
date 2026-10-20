@@ -28,6 +28,21 @@ describe('expert agent identity', () => {
     expect(expertAiHome()).toBe(join(root, 'expert-ai'))
   })
 
+  it('keeps Harness directories separate when DSH_HOME ends in expert-ai', async () => {
+    const root = join(await home(), 'expert-ai')
+    vi.stubEnv('DSH_HOME', root)
+    expect(expertAiHome()).toBe(join(root, 'expert-ai'))
+    expect(expertAiHome(process.env, '  ')).toBe(join(root, 'expert-ai'))
+    const profileFile = join(root, 'profiles', 'web', 'marker.txt')
+    await mkdir(join(root, 'profiles', 'web'), { recursive: true })
+    await writeFile(profileFile, 'Harness profile')
+    const profileRecord = { ...record, id: 'profiles' }
+    await initializeIdentities([profileRecord])
+    await reconcileIdentities([profileRecord], [])
+    expect(await readFile(profileFile, 'utf8')).toBe('Harness profile')
+    await expect(readFile(agentPath('profiles'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
   it('does not append expert-ai twice when stateDir already names the data directory', async () => {
     const root = await home()
     expect(expertAiHome(process.env, join(root, 'expert-ai'))).toBe(join(root, 'expert-ai'))

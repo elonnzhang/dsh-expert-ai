@@ -24,7 +24,8 @@ export function expertAiHome(
   env: Record<string, string | undefined> = process.env,
   stateDir?: string,
 ): string {
-  const configured = stateDir?.trim() || env.DSH_HOME?.trim();
+  const explicitStateDir = stateDir?.trim();
+  const configured = explicitStateDir || env.DSH_HOME?.trim();
   if (configured === undefined || configured === "")
     return join(homedir(), ".dsh", "expert-ai");
   const expanded = configured === "~"
@@ -33,9 +34,9 @@ export function expertAiHome(
       ? join(homedir(), configured.slice(2))
       : configured;
   const root = resolve(expanded);
-  // `stateDir` may name the data directory itself (ending in `expert-ai`) or
-  // its parent; never append the segment twice.
-  return root.endsWith(`${sep}expert-ai`) ? root : join(root, "expert-ai");
+  // Only an explicit `stateDir` may name the data directory itself.
+  // DSH_HOME always names the Harness root, even when it ends in `expert-ai`.
+  return explicitStateDir && root.endsWith(`${sep}expert-ai`) ? root : join(root, "expert-ai");
 }
 
 /** Create an empty working directory for a standalone Chat session. */
