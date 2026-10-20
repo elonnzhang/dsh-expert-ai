@@ -27,7 +27,7 @@ interface Staged {
 }
 
 /**
- * Stage and save the runtime settings shared by every digital life.
+ * Stage and save the runtime settings shared by every expert.
  * @returns The 通用设置 tab panel body.
  */
 export function GeneralTab({

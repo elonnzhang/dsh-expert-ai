@@ -128,7 +128,7 @@ describe('the expert-ai Host routes', () => {
     expect(await response.json()).toEqual({
       type: 'server-response',
       rpcId: 'rpc-1',
-      result: { ok: false, error: { code: 'internal', message: 'expert-ai: unknown digital life "nobody"', details: {} } },
+      result: { ok: false, error: { code: 'internal', message: 'expert-ai: unknown expert "nobody"', details: {} } },
     })
   })
 

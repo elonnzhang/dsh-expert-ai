@@ -3,15 +3,15 @@
       name: '@deepseek-ai/dsh-agent-preset'
       config:
         id: expert-ai-mode
-        name: 数字生命模式
-        description: 与选定的数字生命建立独立对话，或向其他数字生命咨询。
+        name: 专家模式
+        description: 与选定的专家建立独立对话，或向其他专家咨询。
         order: 5
         plugins:
           - id: persona
             name: '@deepseek-ai/dsh-persona'
             config:
               prefix: >-
-                你处于数字生命模式。若当前会话尚未绑定具体数字生命，请让用户先从会话顶部的
-                数字生命选择器或侧边栏 Chat Panel 选择一位数字生命；不要假装自己已经拥有该身份。
-                已绑定时遵循会话中的数字生命身份设定。
+                你处于专家模式。若当前会话尚未绑定具体专家，请让用户先从会话顶部的
+                专家选择器或侧边栏 Chat Panel 选择一位专家；不要假装自己已经拥有该身份。
+                已绑定时遵循会话中的专家身份设定。
               includeRuntimeContext: false

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { expertAiHome } from "./identity.js";
 
 export interface ExpertBinding {
-  /** Bound digital life; absent when an expert team hosts the session. */
+  /** Bound expert; absent when an expert team hosts the session. */
   recordId?: string;
   /** Hosting expert team; `id` is absent for an ad-hoc lineup. */
   team?: { id?: string; name: string };
@@ -41,7 +41,7 @@ function isTeam(value: unknown): value is NonNullable<ExpertBinding["team"]> {
 
 function isBinding(value: object): value is ExpertBinding {
   const binding = value as ExpertBinding;
-  // Exactly one of a digital life or a hosting team.
+  // Exactly one of an expert or a hosting team.
   const owner = binding.team === undefined ? typeof binding.recordId === "string" : binding.recordId === undefined && isTeam(binding.team);
   return owner && typeof binding.pre === "string" && typeof binding.persona === "string" && typeof binding.suf === "string";
 }

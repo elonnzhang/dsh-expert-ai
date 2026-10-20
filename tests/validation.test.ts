@@ -72,7 +72,7 @@ describe('expert-ai configuration', () => {
   it('keeps the identity file as a section of its own', () => {
     const parts = independentSystemPromptPartsFor(record, '  # AGENTS\n身份正文  ')
     expect(parts.persona).toBe('# AGENTS\n身份正文')
-    expect(parts.pre).toContain(`# 数字生命：${record.name}`)
+    expect(parts.pre).toContain(`# 专家：${record.name}`)
     expect(parts.pre).toContain('主领域：企业')
     expect(parts.pre).not.toContain('身份正文')
     expect(parts.suf).toContain('## 对话方式')
@@ -81,10 +81,10 @@ describe('expert-ai configuration', () => {
     expect(independentSystemPromptFor(record, '  # AGENTS\n身份正文  ')).toBe([parts.pre, parts.persona, parts.suf].join('\n\n'))
   })
 
-  it('routes mentions of other digital lives through consultation tools', () => {
+  it('routes mentions of other experts through consultation tools', () => {
     const prompt = independentSystemPromptFor(record)
 
-    expect(prompt).toContain('@<数字生命ID>')
+    expect(prompt).toContain('@<专家ID>')
     expect(prompt).toContain('必须调用 consult_expert')
     expect(prompt).toContain(`@${record.id}`)
     expect(prompt).toContain('调用 consult_expert_category')

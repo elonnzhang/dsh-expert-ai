@@ -353,7 +353,7 @@ describe("expert-ai standalone sessions", () => {
     expect(fixture.calls).toEqual(["project", "create", "greeting", "open", "release"]);
   });
 
-  it("blocks the composer until the current digital life is selected", async () => {
+  it("blocks the composer until the current expert is selected", async () => {
     const fixture = setup([{ id: "expert-ai-mode" }]);
     const selector = fixture.heroInjected;
     if (selector === undefined) throw new Error("Hero selector was not injected");
@@ -363,7 +363,7 @@ describe("expert-ai standalone sessions", () => {
     expect(fixture.blocks).toEqual([]);
   });
 
-  it("creates a plugin project when a digital life is chosen without a workspace", async () => {
+  it("creates a plugin project when an expert is chosen without a workspace", async () => {
     const fixture = setup([{ id: "expert-ai-mode" }]);
     const selector = fixture.stagedHeroInjected;
     if (selector === undefined) throw new Error("Staged hero selector was not injected");
@@ -390,7 +390,7 @@ describe("expert-ai standalone sessions", () => {
     expect(fixture.calls).toContain("select:standard");
   });
 
-  it("unbinds the digital life when switching to a normal preset", async () => {
+  it("unbinds the expert when switching to a normal preset", async () => {
     const fixture = setup([{ id: "standard" }]);
     const selector = fixture.heroInjected;
     if (selector === undefined) throw new Error("Hero selector was not injected");

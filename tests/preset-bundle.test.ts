@@ -18,7 +18,7 @@ describe("expert-ai preset bundle", () => {
     expect(manifest.files).toContain("expert-ai-mode.patch.yml");
     expect(preset).toContain("name: '@deepseek-ai/dsh-agent-preset'");
     expect(preset).toContain("id: expert-ai-mode");
-    expect(preset).toContain("name: 数字生命模式");
+    expect(preset).toContain("name: 专家模式");
     expect(preset).toContain("name: '@deepseek-ai/dsh-persona'");
   });
 

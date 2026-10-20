@@ -164,7 +164,7 @@ export function apply(ctx: ClientContext): void {
       if (!selected.ok) throw new Error(selected.error.message);
     }
   };
-  /** Who a new session is bound to: a digital life, a saved team, or an ad-hoc lineup. */
+  /** Who a new session is bound to: an expert, a saved team, or an ad-hoc lineup. */
   type BindTarget =
     | { recordId: string }
     | { teamId: string }

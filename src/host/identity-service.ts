@@ -220,7 +220,7 @@ async function getIdentity(state: State, id: string): Promise<ExpertIdentity | u
 }
 
 /**
- * Publishes the configured digital lifes as the `expertIdentity` cordis service
+ * Publishes the configured experts as the `expertIdentity` cordis service
  * and announces `expert-identity/changed` after settings change what they publish.
  */
 export class ExpertIdentityProvider extends Service implements ExpertIdentityService {

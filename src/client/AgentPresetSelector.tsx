@@ -21,7 +21,7 @@ export interface AgentPresetOption {
 
 /** Callbacks and records injected by the Client installer. */
 export interface AgentPresetSelectorInjected {
-  /** `team` names the expert team hosting the session when no digital life is bound. */
+  /** `team` names the expert team hosting the session when no expert is bound. */
   load: () => Promise<{ options: AgentPresetOption[]; current: string; life?: string; team?: string }>;
   select: (id: string) => Promise<void>;
   records: () => readonly ExpertRecord[];
@@ -173,7 +173,7 @@ export function AgentPresetSelector({
                 setTeam("");
               })
               .catch((error) => {
-                console.error("expert-ai: failed to select digital life", error);
+                console.error("expert-ai: failed to select expert", error);
               });
           }}
           align="start"

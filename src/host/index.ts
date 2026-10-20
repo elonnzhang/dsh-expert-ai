@@ -244,8 +244,8 @@ function resolved(settings: ExpertSettings): ResolvedExpertSettings {
 
 function findRecord(settings: ResolvedExpertSettings, id: string): ExpertRecord {
   const record = settings.records.find((item) => item.id === id);
-  if (record === undefined) throw new Error(`expert-ai: unknown digital life "${id}"`);
-  if (!record.enabled) throw new Error(`expert-ai: digital life "${id}" is disabled`);
+  if (record === undefined) throw new Error(`expert-ai: unknown expert "${id}"`);
+  if (!record.enabled) throw new Error(`expert-ai: expert "${id}" is disabled`);
   return record;
 }
 
@@ -259,7 +259,7 @@ const TEAM_ROUTING_RULE =
   "- 当用户使用 @<团队ID> 点名已保存的专家团时，必须调用 start_team_run（传入 teamId），再按推荐顺序调用 run_team_stage；若简报产生补问，先交给用户，回答后调用 amend_team_brief 再继续；如实转述汇总，自己的补充单独标明。";
 
 const EXPERT_AI_MODE_PROMPT = [
-  "你当前处于数字生命模式：本会话已绑定一位数字生命，身份、人格和协作规则以下方的数字生命设定为准。",
+  "你当前处于专家模式：本会话已绑定一位专家，身份、人格和协作规则以下方的专家设定为准。",
   "本会话的文件沙箱是只读的：可以读取文件，但不能修改；需要改动时给出方案，由用户自行执行。",
   TEAM_ROUTING_RULE,
 ].join("\n");
@@ -305,7 +305,7 @@ export function appendOpeningAssistantMessage(session: Session, text: string): v
   session.append("turn/end", { turn: 0, reason: { kind: "completed" } });
 }
 
-/** Who the digital life is: name, summary, domain, and tags; shared by both prompt kinds. */
+/** Who the expert is: name, summary, domain, and tags; shared by both prompt kinds. */
 function profileFor(record: ExpertRecord): string {
   const domain = record.category === "custom" ? record.customCategory?.trim() ?? "" : EXPERT_AI_CATEGORY_LABELS[record.category];
   return [
@@ -324,7 +324,7 @@ function referenceInstructionsFor(record: ExpertRecord): string {
   ].join("\n");
 }
 
-/** Durable system prompt of a standalone digital life, split so the identity file is a section of its own. */
+/** Durable system prompt of a standalone expert, split so the identity file is a section of its own. */
 export interface IndependentSystemPrompt {
   /** Header and profile, placed before the identity. */
   pre: string;
@@ -334,13 +334,13 @@ export interface IndependentSystemPrompt {
   suf: string;
 }
 
-/** Build the durable system prompt sections for a selected standalone digital life. */
+/** Build the durable system prompt sections for a selected standalone expert. */
 export function independentSystemPromptPartsFor(
   record: ExpertRecord,
   identity: string = record.persona,
 ): IndependentSystemPrompt {
   const pre = [
-    `# 数字生命：${record.name}（@${record.id}）`,
+    `# 专家：${record.name}（@${record.id}）`,
     profileFor(record),
     "## 人格设定\n下一节是你的人格设定原文，思考和表达始终以它为准。",
   ].filter(Boolean).join("\n\n");
@@ -355,9 +355,9 @@ export function independentSystemPromptPartsFor(
     ].join("\n"),
     [
       "## 协作",
-      `- 当用户使用 @<数字生命ID> 点名其他数字生命（不是 @${record.id}）时，必须调用 consult_expert，将被点名的 ID 和用户问题原样传入，再如实转述对方的回答；你的补充意见要单独标明，不得自行模拟或代替对方回答。`,
+      `- 当用户使用 @<专家ID> 点名其他专家（不是 @${record.id}）时，必须调用 consult_expert，将被点名的 ID 和用户问题原样传入，再如实转述对方的回答；你的补充意见要单独标明，不得自行模拟或代替对方回答。`,
       `- 当用户点名 @${record.id} 时，直接以当前身份回答，不要调用 consult_expert 咨询自己。`,
-      "- 当用户要求咨询某个数字生命类别时，调用 consult_expert_category，忠实呈现各自观点，并单独列出分歧和未成功的咨询。",
+      "- 当用户要求咨询某个专家类别时，调用 consult_expert_category，忠实呈现各自观点，并单独列出分歧和未成功的咨询。",
       TEAM_ROUTING_RULE,
     ].join("\n"),
   ].filter(Boolean).join("\n\n");
@@ -409,7 +409,7 @@ export function teamSystemPromptPartsFor(team: HostedTeam, records: readonly Exp
     ].join("\n"),
     [
       "## 协作",
-      "- 当用户使用 @<数字生命ID> 点名某位数字生命时，调用 consult_expert，将被点名的 ID 和用户问题原样传入，再如实转述对方的回答。",
+      "- 当用户使用 @<专家ID> 点名某位专家时，调用 consult_expert，将被点名的 ID 和用户问题原样传入，再如实转述对方的回答。",
       TEAM_ROUTING_RULE,
     ].join("\n"),
   ].join("\n\n");
@@ -417,7 +417,7 @@ export function teamSystemPromptPartsFor(team: HostedTeam, records: readonly Exp
 }
 
 /**
- * Build the one-shot consultation prompt for a digital life.
+ * Build the one-shot consultation prompt for an expert.
  * The identity itself is installed as the subagent persona, so it is not repeated here.
  */
 export function promptFor(record: ExpertRecord, question: string): ContentBlock[] {
@@ -425,14 +425,14 @@ export function promptFor(record: ExpertRecord, question: string): ContentBlock[
     {
       type: "text",
       text: [
-        `你正在以数字生命“${record.name}”（@${record.id}）的身份回答一次咨询。`,
+        `你正在以专家“${record.name}”（@${record.id}）的身份回答一次咨询。`,
         profileFor(record),
         referenceInstructionsFor(record),
         [
           "## 回答要求",
           "- 这是一次性咨询：只回答本次问题，不要反问或假设还有后续对话；信息不足时说明假设后继续作答。",
-          "- 问题由主代理转交，你的回答可能与其他数字生命的观点并列比较：先给结论再给依据，区分事实、判断和推测。",
-          "- 不要调用 consult_expert 或 consult_expert_category，也不要模拟其他数字生命。",
+          "- 问题由主代理转交，你的回答可能与其他专家的观点并列比较：先给结论再给依据，区分事实、判断和推测。",
+          "- 不要调用 consult_expert 或 consult_expert_category，也不要模拟其他专家。",
           "- 不要声称自己是真实人物本人。使用问题所用的语言。",
         ].join("\n"),
         `<question>\n${question}\n</question>`,
@@ -467,7 +467,7 @@ async function consult(
   }
   const identity = await identityFor(record, stateDir);
   const run = await ctx.subagents.start(provider, {
-    label: `数字生命：${record.name}`,
+    label: `专家：${record.name}`,
     prompt: promptFor(record, question),
     parent: exec.agent,
     signal: exec.signal,
@@ -486,7 +486,7 @@ async function consult(
   }
 }
 
-// register tools for consulting digital life and categories
+// register tools for consulting expert and categories
 function registerTools(
   ctx: Context,
   current: () => ResolvedExpertSettings,
@@ -495,22 +495,22 @@ function registerTools(
 ): () => void {
   const registerFor = (target: Pick<Agent, "ctx">): (() => void) => {
     const localDisposers: Array<() => void> = [registerExpertTools(target)];
-    // 1. specify a digital life to consult
+    // 1. specify an expert to consult
     localDisposers.push(
       target.ctx.tools.register(
         defineTool({
           name: "consult_expert",
-          description: "向一个指定的数字生命咨询问题。使用数字生命 ID；不要选择 provider 或传输方式。",
+          description: "向一个指定的专家咨询问题。使用专家 ID；不要选择 provider 或传输方式。",
           parameters: {
             id: {
               type: "string",
               required: true,
-              description: "数字生命 ID，例如 zhang-xx。",
+              description: "专家 ID，例如 zhang-xx。",
             },
             question: {
               type: "string",
               required: true,
-              description: "需要该数字生命独立回答的问题。",
+              description: "需要该专家独立回答的问题。",
             },
           },
           output: {
@@ -544,23 +544,23 @@ function registerTools(
         }),
       ),
     );
-    // 2. specify a digital life category to consult
+    // 2. specify an expert category to consult
     localDisposers.push(
       target.ctx.tools.register(
         defineTool({
           name: "consult_expert_category",
-          description: "分别咨询一个类别中的数字生命，并返回各自观点供主代理比较和总结",
+          description: "分别咨询一个类别中的专家，并返回各自观点供主代理比较和总结",
           parameters: {
             category: {
               type: "string",
               required: true,
               enum: [...EXPERT_AI_CATEGORIES],
-              description: "要咨询的数字生命类别",
+              description: "要咨询的专家类别",
             },
             question: {
               type: "string",
               required: true,
-              description: "需要每位数字生命独立回答的问题",
+              description: "需要每位专家独立回答的问题",
             },
           },
           output: {
@@ -603,13 +603,13 @@ function registerTools(
   return registerFor({ ctx });
 }
 
-// inject digital life features into the host
+// inject expert features into the host
 export function apply(ctx: Context, config: Config): void {
   const conversationOn = (): boolean => enabledFeatures(config.features.get()).has("conversation");
   const modeDisposers = new WeakMap<Agent, () => void>();
   const personaDisposers = new WeakMap<Agent, () => void>();
   const bindAgent = (agent: Agent, binding: ExpertBinding): void => {
-    // A session can switch between a digital life and a team, so the mode text is replaced too.
+    // A session can switch between an expert and a team, so the mode text is replaced too.
     modeDisposers.get(agent)?.();
     modeDisposers.set(agent, agent.ctx.systemPrompt.section({
       name: "expert-ai:source",
