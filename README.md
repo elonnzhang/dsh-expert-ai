@@ -134,6 +134,24 @@ pnpm dsh plugin --profile web remove dsh-expert-ai
 
 Restart `pnpm dsh web` after installing, updating, or removing the plugin.
 
+### Upgrading from `dsh-digital-life`
+
+The package was renamed to `dsh-expert-ai`; the settings namespace (`digital-life`), the data
+directory (`$DSH_HOME/digital-life`), and every entry id are unchanged. In an existing Profile,
+replace the installed package:
+
+```sh
+pnpm dsh plugin --profile web remove dsh-digital-life
+pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.git
+```
+
+A settings override written under the old package name stays in
+`$DSH_HOME/profiles/<profile>/cordis.patch.yml` as a row like
+`{ id: digital-life, name: dsh-digital-life, config: … }`. The loader applies a row only when its
+`name` matches the entry, so that row is skipped and the entry falls back to the bundle defaults.
+Copy those values into the settings page once (or edit the `name` of the row to `dsh-expert-ai`)
+before making other changes, then delete the stale row.
+
 ### Local development
 
 Link the checkout into the profile once, then iterate against the running server:

@@ -132,6 +132,21 @@ pnpm dsh plugin --profile web remove dsh-expert-ai
 
 安装、更新或卸载后，重新启动 `pnpm dsh web`。
 
+### 从 `dsh-digital-life` 升级
+
+包已改名为 `dsh-expert-ai`；settings 命名空间（`digital-life`）、数据目录（`$DSH_HOME/digital-life`）
+和所有条目 id 保持不变。已有 Profile 需要换装插件：
+
+```sh
+pnpm dsh plugin --profile web remove dsh-digital-life
+pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.git
+```
+
+用旧包名写入的设置覆盖仍留在 `$DSH_HOME/profiles/<profile>/cordis.patch.yml`，形如
+`{ id: digital-life, name: dsh-digital-life, config: … }`。loader 只应用 `name` 与条目一致的
+行，所以该行会被跳过，条目回落到组合包默认值。请在改动其他设置之前，把这些值重新填进设置页
+一次（或把该行的 `name` 改成 `dsh-expert-ai`），然后删除这行旧配置。
+
 ### 本地开发
 
 把插件 checkout link 到 Profile 一次，之后对着运行中的服务迭代：
