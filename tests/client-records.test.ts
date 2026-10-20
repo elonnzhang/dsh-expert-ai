@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { applyAgentMarkdown } from "../src/client/agent-file.js";
 import { EMPTY_RECORD, recordProblem } from "../src/client/records.js";
-import type { DigitalLifeRecord } from "../src/types.js";
+import type { ExpertRecord } from "../src/types.js";
 
-const valid: DigitalLifeRecord = {
+const valid: ExpertRecord = {
   ...EMPTY_RECORD,
   id: "analyst",
   name: "分析师",

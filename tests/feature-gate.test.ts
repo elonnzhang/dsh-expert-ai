@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { mountWhile } from "../src/client/feature-gate.js";
-import type { DigitalLifeFeature } from "../src/types.js";
+import type { ExpertFeature } from "../src/types.js";
 
 type Status = "loading" | "ready" | "unavailable";
 
-const snapshot = (status: Status, features?: DigitalLifeFeature[]) => ({
+const snapshot = (status: Status, features?: ExpertFeature[]) => ({
   status,
   value: status === "ready" ? { ...(features === undefined ? {} : { features }) } : undefined,
   base: undefined,

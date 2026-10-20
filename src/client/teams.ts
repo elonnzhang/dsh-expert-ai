@@ -1,5 +1,5 @@
 import type { ExpertTeam, ReviewRequest } from "../expert-types.js";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 
 /** Most analysts one review accepts (mirrors the Host review validator). */
 export const MAX_ANALYSTS = 3;
@@ -21,7 +21,7 @@ export interface TeamIssue {
  */
 export function teamIssues(
   team: Pick<ExpertTeam, "analystIds" | "reviewerId" | "coordinatorId">,
-  records: readonly Pick<DigitalLifeRecord, "id" | "enabled">[],
+  records: readonly Pick<ExpertRecord, "id" | "enabled">[],
 ): TeamIssue[] {
   const byId = new Map(records.map((record) => [record.id, record]));
   return [...new Set([...team.analystIds, team.reviewerId, ...(team.coordinatorId === undefined ? [] : [team.coordinatorId])])].flatMap((id): TeamIssue[] => {
@@ -160,7 +160,7 @@ export interface MentionCandidate {
  * @returns Matching candidates.
  */
 export function mentionCandidates(
-  records: readonly Pick<DigitalLifeRecord, "id" | "name" | "description" | "tags">[],
+  records: readonly Pick<ExpertRecord, "id" | "name" | "description" | "tags">[],
   teams: readonly ExpertTeam[],
   query: string,
 ): MentionCandidate[] {

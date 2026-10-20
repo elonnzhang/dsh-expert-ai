@@ -24,19 +24,19 @@ import type {
   ConnectionHandle,
 } from "@deepseek-ai/dsh-client-connection/client";
 import { IconUserOutlineRegular, IconUsersOutlineMedium } from "@deepseek-ai/dsh-client-ui-primitives";
-import { DIGITAL_LIFE_NAMESPACE } from "../constants.js";
+import { EXPERT_AI_NAMESPACE } from "../constants.js";
 import { callHost } from "./hostCall.js";
-import type { DigitalLifeRecord, DigitalLifeSettings } from "../types.js";
+import type { ExpertRecord, ExpertSettings } from "../types.js";
 import {
-  DigitalLifeSettingSection,
-  type DigitalLifeSettingSectionInjected,
-} from "./DigitalLifeSettingSection.js";
+  ExpertSettingSection,
+  type ExpertSettingSectionInjected,
+} from "./ExpertSettingSection.js";
 import { ChatPanel, type ChatPanelInjected } from "./ChatPanel.js";
 import {
   installAgentPresetSelector,
-  type PrepareDigitalLifeSession,
+  type PrepareExpertSession,
 } from "./installAgentPresetSelector.js";
-import { en, NS, zh, type DigitalLifeKey } from "./locales.js";
+import { en, NS, zh, type ExpertKey } from "./locales.js";
 import { reviewSubmission, type ExpertWorkbenchApi } from "./ExpertWorkbench.js";
 import { mentionCandidates } from "./teams.js";
 import { ExpertAIPanel, ExpertAIPanelIcon } from "./ExpertAIPanel.js";
@@ -45,19 +45,19 @@ import type { AnyReviewRun, ExpertCatalogEntry, ReviewSummary } from "../expert-
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
-    "digital-life": DigitalLifeKey;
+    "digital-life": ExpertKey;
   }
 }
 
 declare module "@deepseek-ai/dsh-api-session-controller/client" {
   interface SessionReferenceSourceMap {
     /** A digital-life session retained while its opening greeting is written. */
-    digitalLife: unknown;
+    expertAi: unknown;
   }
 }
 
 /** The Host plugin entry id whose settings this Client half edits. */
-const DIGITAL_LIFE_ENTRY_ID = DIGITAL_LIFE_NAMESPACE;
+const EXPERT_AI_ENTRY_ID = EXPERT_AI_NAMESPACE;
 const EXPERT_AI_PANEL_ID = "expert-ai";
 
 export const inject = [
@@ -76,7 +76,7 @@ export const inject = [
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), "digital-life: dictionaries");
   const t = ctx.locale.bind(NS);
-  const form = ctx.configForms.get<DigitalLifeSettings>(DIGITAL_LIFE_ENTRY_ID);
+  const form = ctx.configForms.get<ExpertSettings>(EXPERT_AI_ENTRY_ID);
   const callExpert = async <T,>(endpoint: string, payload: unknown): Promise<T> => {
     const connection = ctx.get("connection") as ConnectionHandle | undefined;
     if (connection === undefined) throw new Error("digital-life: connection service is unavailable");
@@ -89,13 +89,13 @@ export function apply(ctx: ClientContext): void {
       return callExpert<{ ref: string; cached: boolean; experts: ExpertCatalogEntry[] }>("expert/catalog", { ref });
     },
     async importExpert(slug, ref) {
-      const imported = (record: DigitalLifeRecord): boolean =>
+      const imported = (record: ExpertRecord): boolean =>
         record.expertPackage?.slug === slug && record.expertPackage.ref === ref;
       const snapshot = form.getSnapshot();
       if (!snapshot.writable || snapshot.value === undefined) throw new Error(t("unavailable"));
       const existing = snapshot.value.records?.find(imported);
       if (existing !== undefined) return existing.id;
-      const { record } = await callExpert<{ record: DigitalLifeRecord }>("expert/import", { slug, ref });
+      const { record } = await callExpert<{ record: ExpertRecord }>("expert/import", { slug, ref });
       const latest = form.getSnapshot();
       if (!latest.writable || latest.value === undefined) throw new Error(t("unavailable"));
       if (latest.value.stateDir !== snapshot.value.stateDir) throw new Error(t("expertDirectoryChanged"));
@@ -130,7 +130,7 @@ export function apply(ctx: ClientContext): void {
       ctx.uiWorkspace.openSession(sessionId as SessionId);
     },
   };
-  const injected = (): DigitalLifeSettingSectionInjected => ({
+  const injected = (): ExpertSettingSectionInjected => ({
     hooks: { settings: form },
     form,
     t,
@@ -145,14 +145,14 @@ export function apply(ctx: ClientContext): void {
       return (result.value as { identity: string }).identity;
     },
   });
-  const records = (): NonNullable<DigitalLifeSettings["records"]> =>
+  const records = (): NonNullable<ExpertSettings["records"]> =>
     form.getSnapshot().value?.records?.filter((record) => record.enabled) ?? [];
-  const teams = (): NonNullable<DigitalLifeSettings["teams"]> => form.getSnapshot().value?.teams ?? [];
+  const teams = (): NonNullable<ExpertSettings["teams"]> => form.getSnapshot().value?.teams ?? [];
   // The Host `dsh-session` and Client Session Controller both merge a `sessions`
   // service onto Context; read the Client contract explicitly.
   const sessions = ctx.get("sessions") as unknown as ISessions;
   const remote = ctx.get("remote") as ClientRemote;
-  const selectDigitalLifeMode = async (sessionId: SessionId): Promise<void> => {
+  const selectExpertMode = async (sessionId: SessionId): Promise<void> => {
     const roster = await remote.agentPresets.list();
     if (!roster.ok && roster.error.code !== "gateway/invocation-unavailable")
       throw new Error(roster.error.message);
@@ -180,11 +180,11 @@ export function apply(ctx: ClientContext): void {
     if (typeof cwd !== "string" || cwd === "")
       throw new Error("digital-life: project directory is unavailable");
     const sessionId = await sessions.create({ cwd });
-    const reference = sessions.retain(sessionId, { source: "digitalLife" });
+    const reference = sessions.retain(sessionId, { source: "expertAi" });
     try {
       await reference.ready;
       if (target !== undefined) {
-        await selectDigitalLifeMode(sessionId);
+        await selectExpertMode(sessionId);
         const init = await callHost(rpc, "bind", { sessionId, ...target });
         if (!init.ok) throw new Error(init.error.message);
       }
@@ -194,7 +194,7 @@ export function apply(ctx: ClientContext): void {
       throw error;
     }
   };
-  const openDigitalLifeSession: PrepareDigitalLifeSession = async (record) => {
+  const openExpertSession: PrepareExpertSession = async (record) => {
     const { sessionId, reference } = await prepareSession({ recordId: record.id });
     try {
       ctx.uiWorkspace.openSession(sessionId);
@@ -233,20 +233,20 @@ export function apply(ctx: ClientContext): void {
     ctx.slots.register(
       {
         name: "settings.section",
-        id: DIGITAL_LIFE_NAMESPACE,
+        id: EXPERT_AI_NAMESPACE,
         order: 25,
         label: () => t("nav"),
         ...navIcon,
         locale: NS,
         inject: injected,
       },
-      DigitalLifeSettingSection,
+      ExpertSettingSection,
     ),
   );
 
   const source: InputTriggerSource = {
     trigger: "@",
-    name: DIGITAL_LIFE_NAMESPACE,
+    name: EXPERT_AI_NAMESPACE,
     order: 5,
     candidates(_session, { query }) {
       // Experts win an id clash; mentionCandidates hides the shadowed team.
@@ -290,7 +290,7 @@ export function apply(ctx: ClientContext): void {
           ChatPanel,
         ),
       ),
-      installAgentPresetSelector(ctx, records, t, openDigitalLifeSession),
+      installAgentPresetSelector(ctx, records, t, openExpertSession),
       // Expert AI is the full-width workbench surface behind the sidebar entry.
       ctx.slots.inject("main", () =>
         ctx.slots.register(

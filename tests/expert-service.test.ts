@@ -6,7 +6,7 @@ import type { Agent } from "@deepseek-ai/dsh-agent";
 import type { ToolExecution } from "@deepseek-ai/dsh-tools";
 import type { SubagentStartRequest } from "@deepseek-ai/dsh-subagent";
 import type { ExpertTeam, ReviewReport, SynthesisReport } from "../src/expert-types.js";
-import type { DigitalLifeRecord } from "../src/types.js";
+import type { ExpertRecord } from "../src/types.js";
 import { createExpertService } from "../src/host/expert-service.js";
 import { readAnyReviewRun, readTeamRun, saveReviewRun } from "../src/host/review.js";
 import { packageBinding, packageFetcher } from "./expert-fixture.js";
@@ -15,7 +15,7 @@ const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true }))); });
 const report: ReviewReport = { summary: "Check evidence", findings: [], assumptions: ["Needs external validation"], disagreements: [], nextActions: ["Run a controlled comparison"] };
 const synthesis: SynthesisReport = { summary: "Synthesis", findings: [], assumptions: [], nextActions: [], disagreements: [], options: [], validationPlan: [], missingStages: [] };
-const records: DigitalLifeRecord[] = ["analyst", "reviewer"].map((id) => ({ id, name: id, description: id, category: "science", tags: [], persona: `Method ${id}`, enabled: true }));
+const records: ExpertRecord[] = ["analyst", "reviewer"].map((id) => ({ id, name: id, description: id, category: "science", tags: [], persona: `Method ${id}`, enabled: true }));
 const request = { question: "Evaluate the study plan", expertIds: ["analyst"], reviewerId: "reviewer" };
 type RegisteredTool = { name: string; execute: (args: unknown, exec: ToolExecution) => Promise<unknown> };
 

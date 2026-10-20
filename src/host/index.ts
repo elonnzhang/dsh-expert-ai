@@ -19,15 +19,15 @@ import {
   loadBinding,
   preserveLegacyBinding,
   saveBinding,
-  type DigitalLifeBinding,
-  type LegacyDigitalLifeBinding,
+  type ExpertBinding,
+  type LegacyExpertBinding,
 } from "./session-binding.js";
 import type { SubagentResult, SubagentRun } from "@deepseek-ai/dsh-subagent";
 import type { Agent } from "@deepseek-ai/dsh-agent";
 import {
-  DIGITAL_LIFE_CATEGORIES,
-  DIGITAL_LIFE_CATEGORY_LABELS,
-  DIGITAL_LIFE_FEATURES,
+  EXPERT_AI_CATEGORIES,
+  EXPERT_AI_CATEGORY_LABELS,
+  EXPERT_AI_FEATURES,
   EXPERT_AVATAR_MIMES,
   EXPERT_SOURCE_KINDS,
   MAX_EXPERT_SOURCE_NOTE_LENGTH,
@@ -39,11 +39,11 @@ import { createExpertService } from "./expert-service.js";
 import { packageAgentBinding, validatePackageBinding } from "./expert-packages.js";
 import type { ExpertTeam } from "../expert-types.js";
 import type {
-  DigitalLifeCategory,
-  DigitalLifeFeature,
-  DigitalLifeRecord,
-  DigitalLifeSettings,
-  ResolvedDigitalLifeSettings,
+  ExpertCategory,
+  ExpertFeature,
+  ExpertRecord,
+  ExpertSettings,
+  ResolvedExpertSettings,
 } from "../types.js";
 
 export const name = "digital-life";
@@ -53,12 +53,12 @@ const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 const CONVERSATION_ENDPOINTS: ReadonlySet<string> = new Set(["project", "greeting", "binding", "unbind", "bind"]);
 
-const RecordSchema: z<DigitalLifeRecord> = z.object({
+const RecordSchema: z<ExpertRecord> = z.object({
   id: z.string(),
   name: z.string(),
   title: z.string().required(false),
   description: z.string().default(""),
-  category: z.union([...DIGITAL_LIFE_CATEGORIES]),
+  category: z.union([...EXPERT_AI_CATEGORIES]),
   customCategory: z.string().required(false),
   tags: z.array(z.string()).default([]),
   tag: z.string().required(false),
@@ -114,16 +114,16 @@ const TEAM_PERSONA_LIMIT = 8_000;
  * `config.<field>.get()`.
  */
 export interface Config {
-  features: Volatile<DigitalLifeFeature[]>;
+  features: Volatile<ExpertFeature[]>;
   provider: Volatile<string>;
   maxBatchSize: Volatile<number>;
   stateDir: Volatile<string | undefined>;
-  records: Volatile<DigitalLifeRecord[]>;
+  records: Volatile<ExpertRecord[]>;
   teams: Volatile<ExpertTeam[]>;
 }
 
-export const Config: z<DigitalLifeSettings, Config> = z.object({
-  features: z.array(z.union([...DIGITAL_LIFE_FEATURES])).default(["identity"]).volatile(),
+export const Config: z<ExpertSettings, Config> = z.object({
+  features: z.array(z.union([...EXPERT_AI_FEATURES])).default(["identity"]).volatile(),
   provider: z.string().default("spawn").volatile(),
   maxBatchSize: z.natural().default(3).volatile(),
   stateDir: z.string().required(false).volatile(),
@@ -131,7 +131,7 @@ export const Config: z<DigitalLifeSettings, Config> = z.object({
   teams: z.array(TeamSchema).default([]).volatile(),
 });
 
-function normalizeRecord(record: DigitalLifeRecord): DigitalLifeRecord {
+function normalizeRecord(record: ExpertRecord): ExpertRecord {
   const { title: rawTitle, avatar, source: rawSource, ...rest } = record;
   const name = record.name.trim();
   const title = rawTitle?.trim();
@@ -160,12 +160,12 @@ function normalizeRecord(record: DigitalLifeRecord): DigitalLifeRecord {
   };
 }
 
-function normalizeRecords(records: readonly DigitalLifeRecord[]): DigitalLifeRecord[] {
+function normalizeRecords(records: readonly ExpertRecord[]): ExpertRecord[] {
   return records.map(normalizeRecord);
 }
 
 /** Why a record's title, source, or avatar cannot be stored, or `undefined` when they can. Never echoes the image. */
-function presentationProblem(record: DigitalLifeRecord): string | undefined {
+function presentationProblem(record: ExpertRecord): string | undefined {
   if ((record.title?.length ?? 0) > MAX_EXPERT_TITLE_LENGTH)
     return `title must contain at most ${String(MAX_EXPERT_TITLE_LENGTH)} characters`;
   if (record.source !== undefined) {
@@ -178,7 +178,7 @@ function presentationProblem(record: DigitalLifeRecord): string | undefined {
   return avatar === undefined ? undefined : `avatar: ${avatar}`;
 }
 
-export function validateSettings(settings: DigitalLifeSettings): void {
+export function validateSettings(settings: ExpertSettings): void {
   const ids = new Set<string>();
   for (const rawRecord of settings.records ?? []) {
     const record = normalizeRecord(rawRecord);
@@ -233,7 +233,7 @@ export function validateSettings(settings: DigitalLifeSettings): void {
   if ((settings.maxBatchSize ?? 3) < 1) throw new Error("digital-life: maxBatchSize must be positive");
 }
 
-function resolved(settings: DigitalLifeSettings): ResolvedDigitalLifeSettings {
+function resolved(settings: ExpertSettings): ResolvedExpertSettings {
   return {
     provider: settings.provider ?? "spawn",
     maxBatchSize: settings.maxBatchSize ?? 3,
@@ -242,7 +242,7 @@ function resolved(settings: DigitalLifeSettings): ResolvedDigitalLifeSettings {
   };
 }
 
-function findRecord(settings: ResolvedDigitalLifeSettings, id: string): DigitalLifeRecord {
+function findRecord(settings: ResolvedExpertSettings, id: string): ExpertRecord {
   const record = settings.records.find((item) => item.id === id);
   if (record === undefined) throw new Error(`digital-life: unknown digital life "${id}"`);
   if (!record.enabled) throw new Error(`digital-life: digital life "${id}" is disabled`);
@@ -258,7 +258,7 @@ function enforceReadOnlySandbox(session: Session): void {
 const TEAM_ROUTING_RULE =
   "- 当用户使用 @<团队ID> 点名已保存的专家团时，必须调用 start_team_run（传入 teamId），再按推荐顺序调用 run_team_stage；若简报产生补问，先交给用户，回答后调用 amend_team_brief 再继续；如实转述汇总，自己的补充单独标明。";
 
-const DIGITAL_LIFE_MODE_PROMPT = [
+const EXPERT_AI_MODE_PROMPT = [
   "你当前处于数字生命模式：本会话已绑定一位数字生命，身份、人格和协作规则以下方的数字生命设定为准。",
   "本会话的文件沙箱是只读的：可以读取文件，但不能修改；需要改动时给出方案，由用户自行执行。",
   TEAM_ROUTING_RULE,
@@ -306,8 +306,8 @@ export function appendOpeningAssistantMessage(session: Session, text: string): v
 }
 
 /** Who the digital life is: name, summary, domain, and tags; shared by both prompt kinds. */
-function profileFor(record: DigitalLifeRecord): string {
-  const domain = record.category === "custom" ? record.customCategory?.trim() ?? "" : DIGITAL_LIFE_CATEGORY_LABELS[record.category];
+function profileFor(record: ExpertRecord): string {
+  const domain = record.category === "custom" ? record.customCategory?.trim() ?? "" : EXPERT_AI_CATEGORY_LABELS[record.category];
   return [
     record.description.trim() === "" ? "" : `简介：${record.description.trim()}`,
     domain === "" ? "" : `主领域：${domain}`,
@@ -315,7 +315,7 @@ function profileFor(record: DigitalLifeRecord): string {
   ].filter(Boolean).join("\n");
 }
 
-function referenceInstructionsFor(record: DigitalLifeRecord): string {
+function referenceInstructionsFor(record: ExpertRecord): string {
   return record.expertPackage === undefined ? "" : [
     "## 方法包",
     `- 你是基于公开资料整理的方法助手，不代表人物本人，也未获其授权。方法包版本：${record.expertPackage.ref}。`,
@@ -336,7 +336,7 @@ export interface IndependentSystemPrompt {
 
 /** Build the durable system prompt sections for a selected standalone digital life. */
 export function independentSystemPromptPartsFor(
-  record: DigitalLifeRecord,
+  record: ExpertRecord,
   identity: string = record.persona,
 ): IndependentSystemPrompt {
   const pre = [
@@ -365,7 +365,7 @@ export function independentSystemPromptPartsFor(
 }
 
 /** The standalone system prompt as one text, in section order. */
-export function independentSystemPromptFor(record: DigitalLifeRecord, identity: string = record.persona): string {
+export function independentSystemPromptFor(record: ExpertRecord, identity: string = record.persona): string {
   const { pre, persona, suf } = independentSystemPromptPartsFor(record, identity);
   return [pre, persona, suf].filter(Boolean).join("\n\n");
 }
@@ -374,7 +374,7 @@ export function independentSystemPromptFor(record: DigitalLifeRecord, identity: 
 export type HostedTeam = Omit<ExpertTeam, "id" | "purpose"> & { id?: string; purpose?: string };
 
 /** Build the durable system prompt sections for a session hosted by an expert team. */
-export function teamSystemPromptPartsFor(team: HostedTeam, records: readonly DigitalLifeRecord[]): IndependentSystemPrompt {
+export function teamSystemPromptPartsFor(team: HostedTeam, records: readonly ExpertRecord[]): IndependentSystemPrompt {
   const label = (id: string): string => {
     const record = records.find((item) => item.id === id);
     return record === undefined ? `@${id}` : `${record.name}（@${id}）`;
@@ -420,7 +420,7 @@ export function teamSystemPromptPartsFor(team: HostedTeam, records: readonly Dig
  * Build the one-shot consultation prompt for a digital life.
  * The identity itself is installed as the subagent persona, so it is not repeated here.
  */
-export function promptFor(record: DigitalLifeRecord, question: string): ContentBlock[] {
+export function promptFor(record: ExpertRecord, question: string): ContentBlock[] {
   return [
     {
       type: "text",
@@ -452,7 +452,7 @@ function outputText(run: SubagentRun, result: SubagentResult): string {
 
 async function consult(
   ctx: Context,
-  record: DigitalLifeRecord,
+  record: ExpertRecord,
   question: string,
   exec: ToolExecution,
   provider: string,
@@ -489,7 +489,7 @@ async function consult(
 // register tools for consulting digital life and categories
 function registerTools(
   ctx: Context,
-  current: () => ResolvedDigitalLifeSettings,
+  current: () => ResolvedExpertSettings,
   stateDir: () => string | undefined,
   registerExpertTools: (agent: Pick<Agent, "ctx">) => () => void,
 ): () => void {
@@ -554,7 +554,7 @@ function registerTools(
             category: {
               type: "string",
               required: true,
-              enum: [...DIGITAL_LIFE_CATEGORIES],
+              enum: [...EXPERT_AI_CATEGORIES],
               description: "要咨询的数字生命类别",
             },
             question: {
@@ -583,7 +583,7 @@ function registerTools(
               })),
             );
             return {
-              category: args.category as DigitalLifeCategory,
+              category: args.category as ExpertCategory,
               question: args.question,
               answers: results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []),
               errors: results.flatMap((result, index) => result.status === "rejected" ? [{
@@ -608,13 +608,13 @@ export function apply(ctx: Context, config: Config): void {
   const conversationOn = (): boolean => enabledFeatures(config.features.get()).has("conversation");
   const modeDisposers = new WeakMap<Agent, () => void>();
   const personaDisposers = new WeakMap<Agent, () => void>();
-  const bindAgent = (agent: Agent, binding: DigitalLifeBinding): void => {
+  const bindAgent = (agent: Agent, binding: ExpertBinding): void => {
     // A session can switch between a digital life and a team, so the mode text is replaced too.
     modeDisposers.get(agent)?.();
     modeDisposers.set(agent, agent.ctx.systemPrompt.section({
       name: "digital-life:source",
       order: 1,
-      text: binding.team === undefined ? DIGITAL_LIFE_MODE_PROMPT : TEAM_MODE_PROMPT,
+      text: binding.team === undefined ? EXPERT_AI_MODE_PROMPT : TEAM_MODE_PROMPT,
     }));
     personaDisposers.get(agent)?.();
     // Three adjacent sections so the identity file stays a section of its own.
@@ -638,12 +638,12 @@ export function apply(ctx: Context, config: Config): void {
     modeDisposers.delete(agent);
     setSandboxMode(agent.session, ctx.sandboxPolicy.defaultMode);
   };
-  const bindingFor = async (record: DigitalLifeRecord): Promise<DigitalLifeBinding> => ({
+  const bindingFor = async (record: ExpertRecord): Promise<ExpertBinding> => ({
     recordId: record.id,
     ...independentSystemPromptPartsFor(record, await identityFor(record, stateDir())),
   });
   /** Resolve a saved team by id, or an ad-hoc lineup, and require every member to be enabled. */
-  const teamBindingFor = (input: { teamId?: unknown; lineup?: unknown }): DigitalLifeBinding => {
+  const teamBindingFor = (input: { teamId?: unknown; lineup?: unknown }): ExpertBinding => {
     const settings = resolved(source());
     let team: HostedTeam;
     if (typeof input.teamId === "string") {
@@ -670,8 +670,8 @@ export function apply(ctx: Context, config: Config): void {
   // expert record has changed since the session was created.
   const upgradeBinding = async (
     sessionId: string,
-    binding: DigitalLifeBinding | LegacyDigitalLifeBinding,
-  ): Promise<DigitalLifeBinding> => {
+    binding: ExpertBinding | LegacyExpertBinding,
+  ): Promise<ExpertBinding> => {
     if (!("prompt" in binding)) return binding;
     const upgraded = preserveLegacyBinding(binding);
     try {
@@ -691,13 +691,13 @@ export function apply(ctx: Context, config: Config): void {
     return undefined;
   });
   // Reactive live read of the current settings from the fiber's volatile refs.
-  const source = (): DigitalLifeSettings => {
+  const source = (): ExpertSettings => {
     const stateDirValue = config.stateDir.get();
     return {
       provider: config.provider.get(),
       maxBatchSize: config.maxBatchSize.get(),
       ...(stateDirValue === undefined ? {} : { stateDir: stateDirValue }),
-      records: config.records.get() as DigitalLifeRecord[],
+      records: config.records.get() as ExpertRecord[],
       teams: config.teams.get() as ExpertTeam[],
     };
   };
@@ -846,7 +846,7 @@ export function apply(ctx: Context, config: Config): void {
     function (this: import("@deepseek-ai/cordis").Fiber, _raw, next) {
       const raw: unknown = next();
       if (this !== ctx.fiber) return raw;
-      validateSettings(raw as DigitalLifeSettings);
+      validateSettings(raw as ExpertSettings);
       return raw;
     },
   );

@@ -16,20 +16,20 @@ import {
   Tag,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ConfigForm } from "@deepseek-ai/dsh-client-ui-settings/client";
-import type { DigitalLifeRecord, DigitalLifeSettings } from "../types.js";
+import type { ExpertRecord, ExpertSettings } from "../types.js";
 import type { ExpertTeam } from "../expert-types.js";
-import { DIGITAL_LIFE_CATEGORIES } from "../constants.js";
+import { EXPERT_AI_CATEGORIES } from "../constants.js";
 import { applyAgentMarkdown } from "./agent-file.js";
 import { errorText } from "./controls.js";
 import { ExpertEditor } from "./ExpertEditor.js";
 import { ExpertLibraryDialog } from "./ExpertLibraryDialog.js";
 import type { ExpertWorkbenchApi } from "./ExpertWorkbench.js";
 import { categoryLabel } from "./locales.js";
-import { EMPTY_RECORD, normalizeDigitalLifeRecord } from "./records.js";
+import { EMPTY_RECORD, normalizeExpertRecord } from "./records.js";
 import { teamsUsing } from "./teams.js";
 import css from "./settings.module.css";
 
-type Editing = { record: DigitalLifeRecord; existing: boolean; importedFile?: string };
+type Editing = { record: ExpertRecord; existing: boolean; importedFile?: string };
 
 /**
  * List, search, add, import, edit, enable, and delete digital-life records.
@@ -45,10 +45,10 @@ export function ExpertsTab({
   t,
   notify,
 }: {
-  records: readonly DigitalLifeRecord[];
+  records: readonly ExpertRecord[];
   teams: readonly ExpertTeam[];
   writable: boolean;
-  form: ConfigForm<DigitalLifeSettings>;
+  form: ConfigForm<ExpertSettings>;
   loadIdentity: (id: string) => Promise<string>;
   expertApi: ExpertWorkbenchApi;
   t: TranslateNS<"digital-life">;
@@ -60,7 +60,7 @@ export function ExpertsTab({
   const [importOpen, setImportOpen] = useState(false);
   const [library, setLibrary] = useState(false);
   const [editing, setEditing] = useState<Editing | undefined>(undefined);
-  const [deleting, setDeleting] = useState<DigitalLifeRecord | undefined>(undefined);
+  const [deleting, setDeleting] = useState<ExpertRecord | undefined>(undefined);
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -74,10 +74,10 @@ export function ExpertsTab({
       (needle === "" ||
         `${record.name} ${record.id} ${record.tags.join(" ")}`.toLowerCase().includes(needle)),
   );
-  const usedCategories = DIGITAL_LIFE_CATEGORIES.filter((value) => records.some((record) => record.category === value));
+  const usedCategories = EXPERT_AI_CATEGORIES.filter((value) => records.some((record) => record.category === value));
 
-  const writeRecords = async (next: DigitalLifeRecord[]): Promise<boolean> => form.set("records", next);
-  const beginEdit = (record: DigitalLifeRecord): void => {
+  const writeRecords = async (next: ExpertRecord[]): Promise<boolean> => form.set("records", next);
+  const beginEdit = (record: ExpertRecord): void => {
     setError(undefined);
     setBusy(true);
     void loadIdentity(record.id)
@@ -107,9 +107,9 @@ export function ExpertsTab({
       setError(errorText(reason));
     }
   };
-  const save = async (draft: DigitalLifeRecord): Promise<string | undefined> => {
+  const save = async (draft: ExpertRecord): Promise<string | undefined> => {
     if (editing === undefined) return undefined;
-    const next = normalizeDigitalLifeRecord(draft);
+    const next = normalizeExpertRecord(draft);
     const editingId = editing.existing ? editing.record.id : undefined;
     const nextRecords =
       editingId === undefined
@@ -127,7 +127,7 @@ export function ExpertsTab({
     notify(t("saved"));
     return undefined;
   };
-  const toggle = (record: DigitalLifeRecord, enabled: boolean): void => {
+  const toggle = (record: ExpertRecord, enabled: boolean): void => {
     void writeRecords(records.map((item) => (item.id === record.id ? { ...item, enabled } : item)))
       .then((saved) => {
         if (!saved) setError(t("writeFailed"));

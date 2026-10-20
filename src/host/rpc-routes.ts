@@ -1,5 +1,5 @@
 import type { ConnectionFetchRoute, ConnectionRpcResult, HostConnectionHandle } from "@deepseek-ai/dsh-client-connection";
-import { digitalLifeEndpoint } from "../constants.js";
+import { expertAiEndpoint } from "../constants.js";
 
 /** Every endpoint the Host serves; each is one exact route below `/api/digital-life/`. */
 export const HOST_ENDPOINTS = [
@@ -22,7 +22,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 function routeFor(endpoint: string, handle: HostRpcHandler): ConnectionFetchRoute {
-  const method = digitalLifeEndpoint(endpoint);
+  const method = expertAiEndpoint(endpoint);
   return {
     path: `/api/${method}`,
     methods: ["POST"],

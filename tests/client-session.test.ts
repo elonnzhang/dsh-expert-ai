@@ -3,19 +3,19 @@ import type { Context } from "@deepseek-ai/cordis";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
 import type { ChatPanelInjected } from "../src/client/ChatPanel.js";
 import type { AgentPresetSelectorInjected } from "../src/client/AgentPresetSelector.js";
-import type { DigitalLifeFeature, DigitalLifeRecord } from "../src/types.js";
+import type { ExpertFeature, ExpertRecord } from "../src/types.js";
 import type { ExpertTeam } from "../src/expert-types.js";
 import type { ExpertWorkbenchApi } from "../src/client/ExpertWorkbench.js";
 import { MIMEOGRAPHS_REVISION } from "../src/expert-types.js";
 
 vi.mock("../src/client/ChatPanel.js", () => ({ ChatPanel: () => null }));
 vi.mock("../src/client/AgentPresetSelector.js", () => ({ AgentPresetSelector: () => null }));
-vi.mock("../src/client/DigitalLifeSettingSection.js", () => ({ DigitalLifeSettingSection: () => null }));
+vi.mock("../src/client/ExpertSettingSection.js", () => ({ ExpertSettingSection: () => null }));
 vi.mock("@deepseek-ai/dsh-client-ui-primitives", () => ({ IconUserOutlineRegular: () => null, IconUsersOutlineMedium: () => null }));
 
 const { apply, inject } = await import("../src/client/index.js");
 
-const record: DigitalLifeRecord = {
+const record: ExpertRecord = {
   id: "research-guide",
   name: "Research Guide",
   description: "Research help",
@@ -30,17 +30,17 @@ function setup(
   options: {
     rosterUnavailable?: boolean;
     selectFails?: boolean;
-    records?: DigitalLifeRecord[];
+    records?: ExpertRecord[];
     teams?: ExpertTeam[];
     onSource?: (source: unknown) => void;
-    features?: DigitalLifeFeature[];
+    features?: ExpertFeature[];
     status?: "loading" | "ready" | "unavailable";
   } = {},
 ) {
   const calls: string[] = [];
   let configuredRecords = options.records ?? [record];
   let formStatus = options.status ?? "ready";
-  let formFeatures: DigitalLifeFeature[] = options.features ?? ["identity", "conversation"];
+  let formFeatures: ExpertFeature[] = options.features ?? ["identity", "conversation"];
   const formListeners = new Set<() => void>();
   const developerToolsListeners = new Set<() => void>();
   const activeSlots = new Map<symbol, string>();
@@ -168,7 +168,7 @@ function setup(
             ? { features: formFeatures, records: configuredRecords, teams: options.teams ?? [] }
             : undefined,
         }),
-        set: async (_key: string, value: DigitalLifeRecord[]) => { configuredRecords = value; calls.push("save-records"); return true; },
+        set: async (_key: string, value: ExpertRecord[]) => { configuredRecords = value; calls.push("save-records"); return true; },
         subscribe: (listener: () => void) => {
           formListeners.add(listener);
           return () => { formListeners.delete(listener); };
@@ -212,7 +212,7 @@ function setup(
       developerTools: developerToolsListeners.size,
       sessions: sessionListeners.size,
     }),
-    setFeatures(next: DigitalLifeFeature[]) {
+    setFeatures(next: ExpertFeature[]) {
       formFeatures = next;
       publishForm();
     },
@@ -257,7 +257,7 @@ describe("digital-life standalone sessions", () => {
   });
 
   it("preserves edits and disabled state on repeated import", async () => {
-    const existing: DigitalLifeRecord = { ...record, name: "User customized", enabled: false,
+    const existing: ExpertRecord = { ...record, name: "User customized", enabled: false,
       expertPackage: { source: "mimeographs", slug: "test-expert", revision: MIMEOGRAPHS_REVISION, ref: "main" } };
     const fixture = setup([], { records: [existing] });
     expect(await fixture.expertApi.importExpert("test-expert", "main")).toBe(existing.id);

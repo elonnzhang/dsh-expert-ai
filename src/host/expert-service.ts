@@ -3,9 +3,9 @@ import { mkdir, open, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Agent } from "@deepseek-ai/dsh-agent";
 import { defineTool, type ToolExecution } from "@deepseek-ai/dsh-tools";
-import type { DigitalLifeRecord, ResolvedDigitalLifeSettings } from "../types.js";
+import type { ExpertRecord, ResolvedExpertSettings } from "../types.js";
 import type { AnyReviewRun, ReviewRequest, TeamRun, TeamStageKind } from "../expert-types.js";
-import { digitalLifeHome } from "./identity.js";
+import { expertAiHome } from "./identity.js";
 import { importMimeograph, loadExpertCatalog, loadExpertPackage, readExpertReference, recordForPackage, resolveRevision } from "./expert-packages.js";
 import { listReviewRuns, readAnyReviewRun, readTeamRun, renderReviewMarkdown, saveReviewRun, validateReviewRequest } from "./review.js";
 import { amendBrief, createTeamRun, expireIfIdle, isTerminal, nextStages, recoverInterrupted, TeamRunError, type NextStage } from "./team-run.js";
@@ -19,7 +19,7 @@ const DEFAULT_REF = "main";
 const STRUCTURED_OUTPUT_TOOL = "structured_output";
 
 interface Options {
-  current: () => ResolvedDigitalLifeSettings;
+  current: () => ResolvedExpertSettings;
   stateDir: () => string | undefined;
 }
 
@@ -42,7 +42,7 @@ function describeNext(next: readonly NextStage[]): string {
 
 /** Serialize run admission across Host instances sharing one state directory. */
 async function withCapacityLock<T>(stateDir: string | undefined, work: () => Promise<T>): Promise<T> {
-  const directory = join(digitalLifeHome(process.env, stateDir), ".expert-reviews");
+  const directory = join(expertAiHome(process.env, stateDir), ".expert-reviews");
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const path = join(directory, ".capacity.lock");
   let handle: Awaited<ReturnType<typeof open>> | undefined;
@@ -96,7 +96,7 @@ function lineupOf(args: { teamId?: string; analystIds?: string[]; reviewerId?: s
 }
 
 export function createExpertService(options: Options) {
-  const recordFor = (id: string): DigitalLifeRecord => {
+  const recordFor = (id: string): ExpertRecord => {
     const record = options.current().records.find((item) => item.id === id && item.enabled);
     if (record === undefined) throw new Error(`digital-life: enabled expert not found: ${id}`);
     return record;
@@ -182,7 +182,7 @@ export function createExpertService(options: Options) {
     if (active.has(runId)) throw new Error("digital-life: another stage of this run is still running");
     const controller = new AbortController();
     const stop = new AbortController();
-    active.set(runId, { controller, stop, home: digitalLifeHome(process.env, options.stateDir()) });
+    active.set(runId, { controller, stop, home: expertAiHome(process.env, options.stateDir()) });
     try { return await work(controller.signal, stop.signal); } finally { active.delete(runId); }
   };
   // Plain object literals so the `json` output schema (JsonValue) accepts them.
@@ -208,7 +208,7 @@ export function createExpertService(options: Options) {
           cancel: controller.signal,
           ...(stateDir === undefined ? {} : { stateDir }),
           persistStart: (run) => saveReviewRun(run, stateDir),
-          onStart(id) { runId = id; active.set(id, { controller, stop, home: digitalLifeHome(process.env, stateDir) }); },
+          onStart(id) { runId = id; active.set(id, { controller, stop, home: expertAiHome(process.env, stateDir) }); },
         });
       });
     } finally {
@@ -402,12 +402,12 @@ export function createExpertService(options: Options) {
         if (endpoint === "expert/catalog") {
           // Branches and tags move; the catalog is read from the commit the ref points to right now.
           const ref = input.ref === undefined ? DEFAULT_REF : string(input.ref, "ref").trim();
-          const home = digitalLifeHome(process.env, stateDir);
+          const home = expertAiHome(process.env, stateDir);
           const { revision, cached } = await resolveRevision(ref, fetch, home);
           value = { ref, cached, experts: await loadExpertCatalog(revision, fetch, home) };
         } else if (endpoint === "expert/import") {
           const ref = input.ref === undefined ? DEFAULT_REF : string(input.ref, "ref").trim();
-          const { revision } = await resolveRevision(ref, fetch, digitalLifeHome(process.env, stateDir));
+          const { revision } = await resolveRevision(ref, fetch, expertAiHome(process.env, stateDir));
           const manifest = await importMimeograph({ source: "mimeographs", slug: string(input.slug, "slug"), revision }, stateDir);
           value = { manifest, record: recordForPackage(manifest, ref) };
         } else if (endpoint === "review/list") {
@@ -428,7 +428,7 @@ export function createExpertService(options: Options) {
           const id = string(input.id, "id");
           const job = active.get(id);
           if (job !== undefined) {
-            if (job.home !== digitalLifeHome(process.env, stateDir)) throw new Error("digital-life: review is not running");
+            if (job.home !== expertAiHome(process.env, stateDir)) throw new Error("digital-life: review is not running");
             job.controller.abort(new Error("Review cancelled by user"));
           } else {
             const run = await refresh(await readAnyReviewRun(id, stateDir), stateDir);

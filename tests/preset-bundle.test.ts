@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderDevPatch } from "../scripts/render-dev-patch.mjs";
-import { DIGITAL_LIFE_NAMESPACE } from "../src/constants.js";
+import { EXPERT_AI_NAMESPACE } from "../src/constants.js";
 
 const root = resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
@@ -38,6 +38,6 @@ describe("digital-life preset bundle", () => {
 
   it("keys the overlay Host entry by the id the Client reads its settings form with", () => {
     for (const conversation of [false, true])
-      expect(renderDevPatch({ ...entries, conversation })).toContain(`    - id: ${DIGITAL_LIFE_NAMESPACE}\n      name: '/dev/lib/index.js'`);
+      expect(renderDevPatch({ ...entries, conversation })).toContain(`    - id: ${EXPERT_AI_NAMESPACE}\n      name: '/dev/lib/index.js'`);
   });
 });

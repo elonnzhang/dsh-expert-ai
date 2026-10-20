@@ -6,9 +6,9 @@ import {
   MAX_EXPERT_SOURCE_NOTE_LENGTH,
   MAX_EXPERT_TITLE_LENGTH,
 } from '../src/constants.js'
-import type { DigitalLifeRecord } from '../src/types.js'
+import type { ExpertRecord } from '../src/types.js'
 
-const record: DigitalLifeRecord = {
+const record: ExpertRecord = {
   id: 'zhang', name: '张剑辉', description: '储能系统', tags: ['储能'], category: 'tech',
   persona: '关注系统可靠性。', enabled: true,
 }
@@ -16,7 +16,7 @@ const png = { mime: 'image/png' as const, data: 'iVBORw0KGgo=' }
 
 function messageOf(patch: Record<string, unknown>): string {
   try {
-    validateSettings({ records: [{ ...record, ...patch } as DigitalLifeRecord] })
+    validateSettings({ records: [{ ...record, ...patch } as ExpertRecord] })
   } catch (error) {
     return (error as Error).message
   }
@@ -48,7 +48,7 @@ describe('record title, avatar and source', () => {
 
   it('rejects an unknown source kind', () => {
     expect(messageOf({ source: { kind: 'secret' } })).toMatch(/source kind must be one of public, organization, authorized for "zhang"/)
-    expect(() => Config({ records: [{ ...record, source: { kind: 'secret' } } as unknown as DigitalLifeRecord] })).toThrow()
+    expect(() => Config({ records: [{ ...record, source: { kind: 'secret' } } as unknown as ExpertRecord] })).toThrow()
   })
 
   it('limits the title to the trimmed length', () => {
@@ -74,12 +74,12 @@ describe('record title, avatar and source', () => {
 
   it('reads an empty `source:` or `avatar:` in YAML as absent', () => {
     const [parsed] = Config({ records: [{ ...record, source: null, avatar: null }] as never }).records.get()
-    expect(() => validateSettings({ records: [parsed as DigitalLifeRecord] })).not.toThrow()
+    expect(() => validateSettings({ records: [parsed as ExpertRecord] })).not.toThrow()
     expect(messageOf({ source: null, avatar: null })).toBe('')
   })
 
   it('refuses to load an avatar of another image type', () => {
-    const gif = { ...record, avatar: { mime: 'image/gif', data: png.data } } as unknown as DigitalLifeRecord
+    const gif = { ...record, avatar: { mime: 'image/gif', data: png.data } } as unknown as ExpertRecord
     expect(() => Config({ records: [gif] })).toThrow()
   })
 

@@ -17,7 +17,7 @@ import type { ObservableSnapshot } from "@deepseek-ai/dsh-client-store";
 import type { IConversation } from "@deepseek-ai/dsh-client-ui-conversation/client";
 import type { ClientRemote } from "@deepseek-ai/dsh-api-remotes/client";
 import type { ConnectionHandle } from "@deepseek-ai/dsh-client-connection/client";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import type { ClientConnectionRpc } from "@deepseek-ai/dsh-client-connection/client";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import { NS } from "./locales.js";
@@ -52,14 +52,14 @@ function presetDisplayText(
   };
 }
 
-export type PrepareDigitalLifeSession = (record: DigitalLifeRecord) => Promise<SessionId>;
+export type PrepareExpertSession = (record: ExpertRecord) => Promise<SessionId>;
 
 /** Install the composite Agent preset and digital-life selector into the Hero slot; the returned disposer removes it and its composer blocks. */
 export function installAgentPresetSelector(
   ctx: ClientContext,
-  records: () => readonly DigitalLifeRecord[],
+  records: () => readonly ExpertRecord[],
   t: TranslateNS<"digital-life">,
-  prepareSession: PrepareDigitalLifeSession,
+  prepareSession: PrepareExpertSession,
 ): () => void {
   // The Host `dsh-session` and Client Session Controller both merge a `sessions`
   // service onto Context; read the Client contract explicitly.

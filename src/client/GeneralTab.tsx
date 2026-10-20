@@ -11,7 +11,7 @@ import {
   type SettingsFormShell,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ConfigForm } from "@deepseek-ai/dsh-client-ui-settings/client";
-import type { DigitalLifeSettings } from "../types.js";
+import type { ExpertSettings } from "../types.js";
 import css from "./settings.module.css";
 
 type GeneralField = "stateDir" | "provider" | "maxBatchSize";
@@ -22,7 +22,7 @@ interface GeneralState {
 }
 
 interface Staged {
-  model: SettingsFormModel<DigitalLifeSettings>;
+  model: SettingsFormModel<ExpertSettings>;
   store: { getSnapshot: () => GeneralState; subscribe: (listener: () => void) => () => void };
 }
 
@@ -34,14 +34,14 @@ export function GeneralTab({
   form,
   t,
 }: {
-  form: ConfigForm<DigitalLifeSettings>;
+  form: ConfigForm<ExpertSettings>;
   t: TranslateNS<"digital-life">;
 }): ReactNode {
   const [staged, setStaged] = useState<Staged | undefined>(undefined);
   // The model subscribes to the form, so it is created and disposed with the
   // effect rather than during render.
   useEffect(() => {
-    const model = new SettingsFormModel<DigitalLifeSettings>(form as SettingsFormScope<DigitalLifeSettings>, [
+    const model = new SettingsFormModel<ExpertSettings>(form as SettingsFormScope<ExpertSettings>, [
       settingsTextField("stateDir"),
       settingsTextField("provider"),
       settingsNumberField("maxBatchSize"),

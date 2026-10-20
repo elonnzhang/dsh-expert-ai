@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { agentPath, initializeIdentities, reconcileIdentities } from '../src/host/identity.js'
-import type { DigitalLifeRecord } from '../src/types.js'
+import type { ExpertRecord } from '../src/types.js'
 
 const disk = vi.hoisted(() => ({ full: false, stuck: false }))
 
@@ -21,7 +21,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   return { ...actual, writeFile, rm }
 })
 
-const record: DigitalLifeRecord = {
+const record: ExpertRecord = {
   id: 'mentor', name: '导师', description: '创业与管理', tags: ['创业'], category: 'business',
   persona: '关注现金流。', enabled: true,
 }

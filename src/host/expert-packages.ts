@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
-import { digitalLifeHome } from "./identity.js";
-import type { DigitalLifeCategory, DigitalLifeRecord } from "../types.js";
+import { expertAiHome } from "./identity.js";
+import type { ExpertCategory, ExpertRecord } from "../types.js";
 import {
   MIMEOGRAPHS_REVISION,
   type ExpertCatalogEntry,
@@ -19,7 +19,7 @@ const REF = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/;
 const SLUG = /^[a-z0-9][a-z0-9-]{0,99}$/;
 const REFERENCE = /^references\/[a-z0-9][a-z0-9-]*\.md$/;
 const MAX_FILE_BYTES = 256 * 1024;
-const CATEGORIES: Record<string, DigitalLifeCategory> = {
+const CATEGORIES: Record<string, ExpertCategory> = {
   "Founders & operators": "business",
   Philosophers: "culture",
   "AI & ML researchers": "tech",
@@ -51,7 +51,7 @@ export function packageAgentBinding(binding: ExpertPackageLocation): string {
 }
 
 function packageRoot(binding: ExpertPackageLocation, stateDir?: string): string {
-  return dirname(join(digitalLifeHome(process.env, stateDir), packageAgentBinding(binding)));
+  return dirname(join(expertAiHome(process.env, stateDir), packageAgentBinding(binding)));
 }
 
 function fileAllowed(path: string): boolean {
@@ -273,7 +273,7 @@ export async function importMimeograph(
       if ((missing as NodeJS.ErrnoException).code !== "ENOENT") throw missing;
     }
   }
-  const expert = (await loadExpertCatalog(binding.revision, fetcher, digitalLifeHome(process.env, stateDir))).find((entry) => entry.slug === binding.slug);
+  const expert = (await loadExpertCatalog(binding.revision, fetcher, expertAiHome(process.env, stateDir))).find((entry) => entry.slug === binding.slug);
   if (expert === undefined) throw new Error(`digital-life: unknown upstream expert ${binding.slug}`);
   const paths = ["AGENTS.md", "SKILL.md", "LICENSE", ...expert.references];
   const contents = await Promise.all(paths.map(async (path) => ({
@@ -321,7 +321,7 @@ export async function importMimeograph(
  * Build the settings record for an imported package.
  * @param ref Branch or tag the package was imported from; defaults to the pinned commit for older callers.
  */
-export function recordForPackage(manifest: ExpertPackageManifest, ref = manifest.revision): DigitalLifeRecord {
+export function recordForPackage(manifest: ExpertPackageManifest, ref = manifest.revision): ExpertRecord {
   const expertPackage: ExpertPackageBinding = { source: manifest.source, slug: manifest.slug, revision: manifest.revision, ref };
   validatePackageBinding(expertPackage);
   return {
@@ -339,7 +339,7 @@ export function recordForPackage(manifest: ExpertPackageManifest, ref = manifest
 }
 
 export async function readExpertReference(
-  record: DigitalLifeRecord,
+  record: ExpertRecord,
   path: string,
   stateDir?: string,
   maxCharacters = 12_000,

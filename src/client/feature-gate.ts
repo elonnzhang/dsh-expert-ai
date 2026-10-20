@@ -1,14 +1,14 @@
 import type { ConfigFormSnapshot } from "@deepseek-ai/dsh-client-ui-settings/client";
 import { enabledFeatures } from "../features.js";
-import type { DigitalLifeFeature, DigitalLifeSettings } from "../types.js";
+import type { ExpertFeature, ExpertSettings } from "../types.js";
 
 interface FeatureForm {
-  getSnapshot(): ConfigFormSnapshot<DigitalLifeSettings>;
+  getSnapshot(): ConfigFormSnapshot<ExpertSettings>;
   subscribe(listener: () => void): () => void;
 }
 
 /** Run `mount` while the form says `feature` is on; nothing is mounted until the setting is known. */
-export function mountWhile(form: FeatureForm, feature: DigitalLifeFeature, mount: () => () => void): () => void {
+export function mountWhile(form: FeatureForm, feature: ExpertFeature, mount: () => () => void): () => void {
   let unmount: (() => void) | undefined;
   const sync = (): void => {
     const snapshot = form.getSnapshot();

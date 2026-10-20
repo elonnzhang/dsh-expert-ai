@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ObjectJsonSchema } from "@deepseek-ai/dsh-tools";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import type { ExpertReference, ExpertTeam, ReviewRequest, TeamMember, TeamMemberRole, TeamRun, TeamStageKind } from "../expert-types.js";
 import { identityFor } from "./identity.js";
 import { loadExpertPackage, readExpertReference, sha256 } from "./expert-packages.js";
@@ -18,7 +18,7 @@ const PACKAGE_REFERENCES = ["references/frameworks.md", "references/principles.m
 
 /** Snapshot member identities, roles and package evidence at run start. */
 export async function resolveTeamMembers(
-  lineup: TeamLineup, brief: string, records: readonly DigitalLifeRecord[], teams: readonly ExpertTeam[], stateDir?: string,
+  lineup: TeamLineup, brief: string, records: readonly ExpertRecord[], teams: readonly ExpertTeam[], stateDir?: string,
 ): Promise<{ members: TeamMember[]; evidence: ExpertReference[]; teamId?: string }> {
   let team: Omit<ExpertTeam, "id" | "name" | "purpose">;
   let teamId: string | undefined;
@@ -166,7 +166,7 @@ export async function executeTeamStage(options: ExecuteStageOptions): Promise<Te
 
 export interface RunReviewOptions {
   request: ReviewRequest;
-  records: readonly DigitalLifeRecord[];
+  records: readonly ExpertRecord[];
   teams: readonly ExpertTeam[];
   sessionId: string;
   signal: AbortSignal;

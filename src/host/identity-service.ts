@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { Service, type Context } from "@deepseek-ai/cordis";
 import { avatarProblem } from "../avatar.js";
-import { DEFAULT_EXPERT_TITLE, DIGITAL_LIFE_CATEGORY_LABELS, EXPERT_SOURCE_KINDS } from "../constants.js";
+import { DEFAULT_EXPERT_TITLE, EXPERT_AI_CATEGORY_LABELS, EXPERT_SOURCE_KINDS } from "../constants.js";
 import type {
-  DigitalLifeRecord,
+  ExpertRecord,
   ExpertIdentityAvatar,
   ExpertIdentitySource,
   ExpertIdentitySourceKind,
@@ -64,9 +64,9 @@ export interface ExpertIdentityChange {
 
 export interface ExpertIdentityOptions {
   /** Records as saved; the managed identity files are kept in step with them. */
-  saved: () => readonly DigitalLifeRecord[];
+  saved: () => readonly ExpertRecord[];
   /** Records after normalization; these are what the service publishes. */
-  records: () => readonly DigitalLifeRecord[];
+  records: () => readonly ExpertRecord[];
   stateDir: () => string | undefined;
 }
 
@@ -106,13 +106,13 @@ interface Loaded {
   persona: string;
 }
 
-function sourceOf(record: DigitalLifeRecord): ExpertIdentitySource {
+function sourceOf(record: ExpertRecord): ExpertIdentitySource {
   const kind = EXPERT_SOURCE_KINDS.find((candidate) => candidate === record.source?.kind) ?? "public";
   const note = record.source?.note?.trim();
   return note ? { kind, note } : { kind };
 }
 
-function avatarOf(state: State, record: DigitalLifeRecord): ExpertIdentityAvatar | undefined {
+function avatarOf(state: State, record: ExpertRecord): ExpertIdentityAvatar | undefined {
   if (record.avatar === undefined) return undefined;
   const problem = avatarProblem(record.avatar);
   if (problem === undefined) return { mime: record.avatar.mime, data: record.avatar.data };
@@ -120,7 +120,7 @@ function avatarOf(state: State, record: DigitalLifeRecord): ExpertIdentityAvatar
   return undefined;
 }
 
-function summaryOf(state: State, record: DigitalLifeRecord, persona: string): ExpertIdentitySummary {
+function summaryOf(state: State, record: ExpertRecord, persona: string): ExpertIdentitySummary {
   const avatar = avatarOf(state, record);
   return {
     id: record.id,
@@ -130,7 +130,7 @@ function summaryOf(state: State, record: DigitalLifeRecord, persona: string): Ex
     category:
       record.category === "custom"
         ? record.customCategory?.trim() || record.name
-        : DIGITAL_LIFE_CATEGORY_LABELS[record.category],
+        : EXPERT_AI_CATEGORY_LABELS[record.category],
     tags: [...new Set(record.tags.map((tag) => tag.trim()))],
     ...(avatar === undefined ? {} : { avatar }),
     source: sourceOf(record),
@@ -140,7 +140,7 @@ function summaryOf(state: State, record: DigitalLifeRecord, persona: string): Ex
 }
 
 /** Read one persona; an identity whose persona cannot be read is not published. */
-async function load(state: State, record: DigitalLifeRecord): Promise<Loaded | undefined> {
+async function load(state: State, record: ExpertRecord): Promise<Loaded | undefined> {
   let persona: string;
   try {
     persona = (await identityFor(record, state.options.stateDir())).trim();
@@ -155,7 +155,7 @@ async function load(state: State, record: DigitalLifeRecord): Promise<Loaded | u
   return { summary: summaryOf(state, record, persona), persona };
 }
 
-async function loadEnabled(state: State, records: readonly DigitalLifeRecord[]): Promise<Loaded[]> {
+async function loadEnabled(state: State, records: readonly ExpertRecord[]): Promise<Loaded[]> {
   const loaded = await Promise.all(records.filter((record) => record.enabled).map((record) => load(state, record)));
   return loaded.filter((entry): entry is Loaded => entry !== undefined);
 }
@@ -235,7 +235,7 @@ export class ExpertIdentityProvider extends Service implements ExpertIdentitySer
     const initialDir = options.stateDir();
     const onDisk = new Map(initial.map((record) => [record.id, record]));
     let seeded: { dir: string | undefined } | undefined;
-    const seed = async (records: readonly DigitalLifeRecord[], dir: string | undefined): Promise<void> => {
+    const seed = async (records: readonly ExpertRecord[], dir: string | undefined): Promise<void> => {
       await initializeIdentities(records, dir);
       seeded = { dir };
     };

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import { Button, IconPlayOutlineRegular, SegmentedControl } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import type { ExpertTeam } from "../expert-types.js";
 import type { ExpertWorkbenchApi } from "./ExpertWorkbench.js";
 import { MenuSelect, errorText } from "./controls.js";
@@ -31,7 +31,7 @@ export function ReviewLauncher({
   notify,
 }: {
   api: Pick<ExpertWorkbenchApi, "startReview">;
-  records: readonly DigitalLifeRecord[];
+  records: readonly ExpertRecord[];
   teams: readonly ExpertTeam[];
   mode: LaunchMode;
   /** Saved team chosen in team mode. */

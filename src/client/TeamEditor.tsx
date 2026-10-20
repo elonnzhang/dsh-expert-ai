@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import { Button, Checkbox, Input, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import type { ExpertTeam } from "../expert-types.js";
 import { MenuSelect } from "./controls.js";
 import { MAX_ANALYSTS, RESPONSIBILITY_LIMIT, TEAM_PERSONA_LIMIT, normalizeTeam, suggestTeamId, teamError, type TeamField } from "./teams.js";
@@ -35,7 +35,7 @@ export function TeamEditor({
   initial: ExpertTeam;
   /** Whether the team is already saved; its id is then fixed. */
   existing: boolean;
-  records: readonly DigitalLifeRecord[];
+  records: readonly ExpertRecord[];
   teams: readonly ExpertTeam[];
   t: TranslateNS<"digital-life">;
   /** Persist the team; resolves to an error message, or undefined once saved. */
@@ -242,7 +242,7 @@ export function AnalystChecks({
   disabled = false,
   onToggle,
 }: {
-  records: readonly DigitalLifeRecord[];
+  records: readonly ExpertRecord[];
   selected: readonly string[];
   /** Record already chosen as reviewer. */
   excluded: string;

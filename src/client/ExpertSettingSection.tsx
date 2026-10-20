@@ -10,7 +10,7 @@ import {
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ConfigForm, ConfigFormSnapshot } from "@deepseek-ai/dsh-client-ui-settings/client";
 import { enabledFeatures } from "../features.js";
-import type { DigitalLifeSettings } from "../types.js";
+import type { ExpertSettings } from "../types.js";
 import type { ExpertWorkbenchApi } from "./ExpertWorkbench.js";
 import { ExpertsTab } from "./ExpertsTab.js";
 import { GeneralTab } from "./GeneralTab.js";
@@ -18,25 +18,25 @@ import { activeTab, visibleTabs, type Tab } from "./tabs.js";
 import { TeamsTab } from "./TeamsTab.js";
 import css from "./settings.module.css";
 
-export { normalizeDigitalLifeRecord } from "./records.js";
+export { normalizeExpertRecord } from "./records.js";
 
 /** Config form and reactive source injected into the settings section. */
-export interface DigitalLifeSettingSectionInjected {
+export interface ExpertSettingSectionInjected {
   hooks: {
     settings: {
-      getSnapshot(): ConfigFormSnapshot<DigitalLifeSettings>;
+      getSnapshot(): ConfigFormSnapshot<ExpertSettings>;
       subscribe(listener: () => void): () => void;
     };
   };
-  form: ConfigForm<DigitalLifeSettings>;
+  form: ConfigForm<ExpertSettings>;
   loadIdentity: (id: string) => Promise<string>;
   expertApi: ExpertWorkbenchApi;
   t: TranslateNS<"digital-life">;
 }
 
 type Props = PropsRuntime<"settings.section"> & {
-  useSettings: <T>(selector: (snapshot: ConfigFormSnapshot<DigitalLifeSettings>) => T) => T;
-} & Omit<DigitalLifeSettingSectionInjected, "hooks">;
+  useSettings: <T>(selector: (snapshot: ConfigFormSnapshot<ExpertSettings>) => T) => T;
+} & Omit<ExpertSettingSectionInjected, "hooks">;
 
 const tabIds = (value: Tab): Pick<SegmentedTab<Tab>, "id" | "panelId"> => ({
   id: `digital-life-tab-${value}`,
@@ -51,7 +51,7 @@ const tabLabel = (icon: ReactNode, text: string): ReactNode => (
 );
 
 /** Render the digital-life settings as 专家 / 专家团 / 通用设置 tabs. */
-export function DigitalLifeSettingSection(props: Props): ReactNode {
+export function ExpertSettingSection(props: Props): ReactNode {
   const t = props.t;
   const snapshot = props.useSettings((value) => value);
   const [tab, setTab] = useState<Tab>("experts");

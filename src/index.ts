@@ -11,9 +11,9 @@ export {
   validateSettings,
 } from "./host/index.js";
 export {
-  DIGITAL_LIFE_CATEGORIES,
-  DIGITAL_LIFE_FEATURES,
-  DIGITAL_LIFE_NAMESPACE,
+  EXPERT_AI_CATEGORIES,
+  EXPERT_AI_FEATURES,
+  EXPERT_AI_NAMESPACE,
 } from "./constants.js";
 export { enabledFeatures } from "./features.js";
 export type * from "./types.js";

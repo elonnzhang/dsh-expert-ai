@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { importMimeograph, loadExpertCatalog, packageAgentBinding, readExpertReference, recordForPackage, resolveRevision } from "../src/host/expert-packages.js";
-import { digitalLifeHome, identityFor, reconcileIdentities } from "../src/host/identity.js";
+import { expertAiHome, identityFor, reconcileIdentities } from "../src/host/identity.js";
 import { validateSettings } from "../src/host/index.js";
 import { packageBinding, packageFetcher } from "./expert-fixture.js";
 
@@ -99,7 +99,7 @@ describe("versioned expert packages", () => {
   it("does not leave a package behind after a failed download", async () => {
     const stateDir = await root();
     await expect(importMimeograph(packageBinding, stateDir, packageFetcher({ fail: "mimeographs/test-expert/SKILL.md" }))).rejects.toThrow(/download failed/);
-    await expect(readFile(join(digitalLifeHome(process.env, stateDir), packageAgentBinding(packageBinding)))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(expertAiHome(process.env, stateDir), packageAgentBinding(packageBinding)))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("rejects modified identity and undeclared or escaping reference files", async () => {
@@ -107,7 +107,7 @@ describe("versioned expert packages", () => {
     const record = recordForPackage(await importMimeograph(packageBinding, stateDir, packageFetcher()), "main");
     await expect(readExpertReference(record, "../settings.yaml", stateDir)).rejects.toThrow(/references/);
     await expect(readExpertReference(record, "references/unknown.md", stateDir)).rejects.toThrow(/manifest/);
-    const identity = join(digitalLifeHome(process.env, stateDir), record.agent!);
+    const identity = join(expertAiHome(process.env, stateDir), record.agent!);
     await writeFile(identity, "tampered identity");
     await expect(identityFor(record, stateDir)).rejects.toThrow(/size changed|integrity/);
     await expect(importMimeograph(packageBinding, stateDir, packageFetcher())).rejects.toThrow(/size changed|integrity/);
@@ -123,7 +123,7 @@ describe("versioned expert packages", () => {
     const stateDir = await root();
     const manifests = await Promise.all([importMimeograph(packageBinding, stateDir, packageFetcher()), importMimeograph(packageBinding, stateDir, packageFetcher())]);
     expect(manifests[0]).toEqual(manifests[1]);
-    const parent = dirname(dirname(join(digitalLifeHome(process.env, stateDir), packageAgentBinding(packageBinding))));
+    const parent = dirname(dirname(join(expertAiHome(process.env, stateDir), packageAgentBinding(packageBinding))));
     expect(await readdir(parent)).toEqual([packageBinding.slug]);
   });
 

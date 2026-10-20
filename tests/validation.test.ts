@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { Config, DEFAULT_TEAM_PERSONA, independentSystemPromptFor, independentSystemPromptPartsFor, promptFor, teamSystemPromptPartsFor, validateSettings } from '../src/index.js'
-import type { DigitalLifeRecord } from '../src/types.js'
+import type { ExpertRecord } from '../src/types.js'
 
-const record: DigitalLifeRecord = {
+const record: ExpertRecord = {
   id: 'startup-mentor', name: '创业导师', description: '创业战略与现金流', tags: ['创业', '现金流'], category: 'business',
   persona: '关注用户价值和现金流。', enabled: true,
 }

@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { DigitalLifeRecord } from "../src/types.js";
+import type { ExpertRecord } from "../src/types.js";
 import type { ExpertTeam, ReviewReport, TeamRun } from "../src/expert-types.js";
 import { readAnyReviewRun } from "../src/host/review.js";
 import { createTeamRun } from "../src/host/team-run.js";
@@ -11,7 +11,7 @@ import { executeTeamStage, resolveTeamMembers, type TeamInvocation } from "../sr
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true }))); });
 
-const records: DigitalLifeRecord[] = ["alpha", "beta", "critic", "lead"].map((id) => ({
+const records: ExpertRecord[] = ["alpha", "beta", "critic", "lead"].map((id) => ({
   id, name: id, description: "Check evidence", category: "science", tags: [], persona: `Methods of ${id}`, enabled: true,
 }));
 const team: ExpertTeam = { id: "plan-review", name: "Plan review", purpose: "Review plans", analystIds: ["alpha", "beta"], reviewerId: "critic", coordinatorId: "lead", responsibilities: { alpha: "统计方法" } };

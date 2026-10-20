@@ -10,7 +10,7 @@ import {
   Tag,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ConfigForm } from "@deepseek-ai/dsh-client-ui-settings/client";
-import type { DigitalLifeRecord, DigitalLifeSettings } from "../types.js";
+import type { ExpertRecord, ExpertSettings } from "../types.js";
 import type { ExpertTeam } from "../expert-types.js";
 import { errorText } from "./controls.js";
 import type { ExpertWorkbenchApi } from "./ExpertWorkbench.js";
@@ -38,10 +38,10 @@ export function TeamsTab({
   t,
   notify,
 }: {
-  records: readonly DigitalLifeRecord[];
+  records: readonly ExpertRecord[];
   teams: readonly ExpertTeam[];
   writable: boolean;
-  form: ConfigForm<DigitalLifeSettings>;
+  form: ConfigForm<ExpertSettings>;
   expertApi: ExpertWorkbenchApi;
   /** Review history is scoped to the state directory; remount it when it changes. */
   stateDir: string;

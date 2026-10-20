@@ -2,10 +2,10 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { agentDocument, agentIdentity, agentPath, createProject, digitalLifeHome, identityFor, initializeIdentities, managedAgentBinding, packageRootFrom, readAgentIdentity, reconcileIdentities } from '../src/host/identity.js'
-import type { DigitalLifeRecord } from '../src/types.js'
+import { agentDocument, agentIdentity, agentPath, createProject, expertAiHome, identityFor, initializeIdentities, managedAgentBinding, packageRootFrom, readAgentIdentity, reconcileIdentities } from '../src/host/identity.js'
+import type { ExpertRecord } from '../src/types.js'
 
-const record: DigitalLifeRecord = {
+const record: ExpertRecord = {
   id: 'mentor', name: '导师', description: '创业与管理', tags: ['创业', '现金流'], category: 'business',
   persona: '关注现金流。', enabled: true,
 }
@@ -25,7 +25,7 @@ async function home(): Promise<string> {
 describe('digital-life expert agent identity', () => {
   it('does not append digital-life twice when stateDir already names the data directory', async () => {
     const root = await home()
-    expect(digitalLifeHome(process.env, join(root, 'digital-life'))).toBe(join(root, 'digital-life'))
+    expect(expertAiHome(process.env, join(root, 'digital-life'))).toBe(join(root, 'digital-life'))
   })
 
   it('creates isolated project directories under the digital-life home', async () => {

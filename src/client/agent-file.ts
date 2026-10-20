@@ -1,4 +1,4 @@
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import { ID_PATTERN } from "./teams.js";
 
 function parseAgentMetadata(frontmatter: string): { id?: string; name?: string } {
@@ -26,8 +26,8 @@ function parseAgentMetadata(frontmatter: string): { id?: string; name?: string }
 export function applyAgentMarkdown(
   markdown: string,
   fileName: string,
-  draft: DigitalLifeRecord,
-): DigitalLifeRecord | undefined {
+  draft: ExpertRecord,
+): ExpertRecord | undefined {
   const text = markdown.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   const end = text.startsWith("---\n") ? text.indexOf("\n---\n", 4) : -1;
   const frontmatter = end === -1 ? "" : text.slice(4, end);

@@ -12,7 +12,7 @@ import {
 import { IconThinkOutlineRegular } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ReviewSummary } from "../expert-types.js";
 import type { ExpertTeam } from "../expert-types.js";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import { categoryLabel } from "./locales.js";
 import { ReviewHistory } from "./ReviewHistory.js";
 import { ReviewLauncher, type LaunchMode } from "./ReviewLauncher.js";
@@ -47,7 +47,7 @@ export function ExpertAIPanelIcon({ size }: PropsRuntime<"sidebar.panellist">): 
 
 export interface ExpertAIPanelInjected {
   /** Enabled expert records shown in the launcher. */
-  records: () => readonly DigitalLifeRecord[];
+  records: () => readonly ExpertRecord[];
   /** Saved lineups shown in the launcher. */
   teams: () => readonly ExpertTeam[];
   /** Host-backed expert workbench operations. */

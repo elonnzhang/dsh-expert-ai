@@ -1,5 +1,5 @@
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 
 /** UI copy for the digital-life settings and session controls. */
 export const zh = {
@@ -231,7 +231,7 @@ export const zh = {
   maxBatchSizeHint: "按领域一次最多咨询的数字生命数量，默认 3。",
 } as const;
 
-export type DigitalLifeKey = keyof typeof zh;
+export type ExpertKey = keyof typeof zh;
 
 export const en = {
   nav: "Digital lives",
@@ -460,13 +460,13 @@ export const en = {
   stateDirHint: "Stores managed identity files, expert packages, and review history.",
   providerHint: "Subagent provider that runs digital lives; defaults to spawn.",
   maxBatchSizeHint: "Most digital lives consulted per category request; defaults to 3.",
-} satisfies Record<DigitalLifeKey, string>;
+} satisfies Record<ExpertKey, string>;
 
 export const NS = "digital-life";
 
 /** Localize built-in domains while preserving user-defined domain text. */
 export function categoryLabel(
-  record: Pick<DigitalLifeRecord, "category" | "customCategory">,
+  record: Pick<ExpertRecord, "category" | "customCategory">,
   t: TranslateNS<"digital-life">,
 ): string {
   if (record.category === "custom") return record.customCategory ?? t("categoryCustom");

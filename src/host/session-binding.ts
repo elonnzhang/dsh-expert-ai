@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { digitalLifeHome } from "./identity.js";
+import { expertAiHome } from "./identity.js";
 
-export interface DigitalLifeBinding {
+export interface ExpertBinding {
   /** Bound digital life; absent when an expert team hosts the session. */
   recordId?: string;
   /** Hosting expert team; `id` is absent for an ad-hoc lineup. */
@@ -17,44 +17,44 @@ export interface DigitalLifeBinding {
 }
 
 /** Bindings saved before the prompt was split kept it as one text. */
-export interface LegacyDigitalLifeBinding {
+export interface LegacyExpertBinding {
   recordId: string;
   prompt: string;
 }
 
 /** Keep an old session's saved prompt intact when moving it to the split format. */
-export function preserveLegacyBinding(binding: LegacyDigitalLifeBinding): DigitalLifeBinding {
+export function preserveLegacyBinding(binding: LegacyExpertBinding): ExpertBinding {
   return { recordId: binding.recordId, pre: binding.prompt, persona: "", suf: "" };
 }
 
 function bindingPath(sessionId: string, stateDir?: string): string {
   if (!/^[a-z0-9][a-z0-9-]{0,127}$/.test(sessionId))
     throw new Error(`digital-life: invalid session id "${sessionId}"`);
-  return join(digitalLifeHome(process.env, stateDir), "sessions", `${sessionId}.json`);
+  return join(expertAiHome(process.env, stateDir), "sessions", `${sessionId}.json`);
 }
 
-function isTeam(value: unknown): value is NonNullable<DigitalLifeBinding["team"]> {
+function isTeam(value: unknown): value is NonNullable<ExpertBinding["team"]> {
   if (typeof value !== "object" || value === null) return false;
-  const team = value as NonNullable<DigitalLifeBinding["team"]>;
+  const team = value as NonNullable<ExpertBinding["team"]>;
   return typeof team.name === "string" && (team.id === undefined || typeof team.id === "string");
 }
 
-function isBinding(value: object): value is DigitalLifeBinding {
-  const binding = value as DigitalLifeBinding;
+function isBinding(value: object): value is ExpertBinding {
+  const binding = value as ExpertBinding;
   // Exactly one of a digital life or a hosting team.
   const owner = binding.team === undefined ? typeof binding.recordId === "string" : binding.recordId === undefined && isTeam(binding.team);
   return owner && typeof binding.pre === "string" && typeof binding.persona === "string" && typeof binding.suf === "string";
 }
 
-function isLegacyBinding(value: object): value is LegacyDigitalLifeBinding {
-  const binding = value as LegacyDigitalLifeBinding;
+function isLegacyBinding(value: object): value is LegacyExpertBinding {
+  const binding = value as LegacyExpertBinding;
   return typeof binding.recordId === "string" && typeof binding.prompt === "string";
 }
 
 export async function loadBinding(
   sessionId: string,
   stateDir?: string,
-): Promise<DigitalLifeBinding | LegacyDigitalLifeBinding | undefined> {
+): Promise<ExpertBinding | LegacyExpertBinding | undefined> {
   let content: string;
   try {
     content = await readFile(bindingPath(sessionId, stateDir), "utf8");
@@ -68,9 +68,9 @@ export async function loadBinding(
   return value;
 }
 
-export async function saveBinding(sessionId: string, binding: DigitalLifeBinding, stateDir?: string): Promise<void> {
+export async function saveBinding(sessionId: string, binding: ExpertBinding, stateDir?: string): Promise<void> {
   const path = bindingPath(sessionId, stateDir);
-  await mkdir(join(digitalLifeHome(process.env, stateDir), "sessions"), { recursive: true });
+  await mkdir(join(expertAiHome(process.env, stateDir), "sessions"), { recursive: true });
   const temporary = `${path}.${randomUUID()}.tmp`;
   await writeFile(temporary, JSON.stringify(binding), { flag: "wx", mode: 0o600 });
   try {

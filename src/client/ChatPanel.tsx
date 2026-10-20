@@ -7,14 +7,14 @@ import {
   IconUsersOutlineMedium,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import css from "./ChatPanel.module.css";
 import { categoryLabel } from "./locales.js";
 
 /** Data and actions supplied by the Host-backed Client installer. */
 export interface ChatPanelInjected {
-  records: () => readonly DigitalLifeRecord[];
-  createSession: (record?: DigitalLifeRecord) => Promise<SessionId>;
+  records: () => readonly ExpertRecord[];
+  createSession: (record?: ExpertRecord) => Promise<SessionId>;
   t: TranslateNS<"digital-life">;
 }
 
@@ -34,7 +34,7 @@ export function ChatPanel({ wide, records, createSession, t }: ChatPanelProps) {
       document.removeEventListener("pointerdown", closeOutside);
     };
   }, [open]);
-  const start = (record?: DigitalLifeRecord): void => {
+  const start = (record?: ExpertRecord): void => {
     setOpen(false);
     setError(undefined);
     void createSession(record).catch((error) => {

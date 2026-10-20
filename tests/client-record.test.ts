@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { normalizeDigitalLifeRecord } from "../src/client/records.js";
+import { normalizeExpertRecord } from "../src/client/records.js";
 import { validateSettings } from "../src/index.js";
-import type { DigitalLifeRecord } from "../src/types.js";
+import type { ExpertRecord } from "../src/types.js";
 
-const draft: DigitalLifeRecord = {
+const draft: ExpertRecord = {
   id: " test-agent ",
   name: " 测试代理 ",
   description: " 测试描述 ",
@@ -15,7 +15,7 @@ const draft: DigitalLifeRecord = {
 
 describe("digital-life record normalization", () => {
   it("preserves inline persona when the agent path is omitted", () => {
-    const normalized = normalizeDigitalLifeRecord(draft);
+    const normalized = normalizeExpertRecord(draft);
 
     expect(normalized).toMatchObject({
       id: "test-agent",
@@ -29,7 +29,7 @@ describe("digital-life record normalization", () => {
   });
 
   it("uses an explicit agent path instead of inline persona", () => {
-    const normalized = normalizeDigitalLifeRecord({
+    const normalized = normalizeExpertRecord({
       ...draft,
       agent: " ~/.agent/agents/test-agent.md ",
     });
@@ -40,7 +40,7 @@ describe("digital-life record normalization", () => {
   });
 
   it("preserves persona edits for the managed agent binding", () => {
-    const normalized = normalizeDigitalLifeRecord({
+    const normalized = normalizeExpertRecord({
       ...draft,
       agent: "test-agent/agents/test-agent.md",
       persona: " 更新后的人格 ",
@@ -55,36 +55,36 @@ describe("digital-life presentation fields", () => {
   const avatar = { mime: "image/png" as const, data: "iVBORw0KGgo=" };
 
   it("trims the title and the source note and drops blank ones", () => {
-    const normalized = normalizeDigitalLifeRecord({
+    const normalized = normalizeExpertRecord({
       ...draft,
       title: "  创业思考助手  ",
       source: { kind: "organization", note: " 内部访谈 " },
     });
     expect(normalized).toMatchObject({ title: "创业思考助手", source: { kind: "organization", note: "内部访谈" } });
 
-    const blank = normalizeDigitalLifeRecord({ ...draft, title: "   ", source: { kind: "public", note: "  " } });
+    const blank = normalizeExpertRecord({ ...draft, title: "   ", source: { kind: "public", note: "  " } });
     expect(blank).not.toHaveProperty("title");
     expect(blank.source).toEqual({ kind: "public" });
   });
 
   it("keeps an avatar and drops a cleared one", () => {
-    expect(normalizeDigitalLifeRecord({ ...draft, avatar }).avatar).toEqual(avatar);
-    expect(normalizeDigitalLifeRecord({ ...draft, avatar: undefined })).not.toHaveProperty("avatar");
+    expect(normalizeExpertRecord({ ...draft, avatar }).avatar).toEqual(avatar);
+    expect(normalizeExpertRecord({ ...draft, avatar: undefined })).not.toHaveProperty("avatar");
   });
 
   it("adds nothing to a record that has none of them", () => {
-    const normalized = normalizeDigitalLifeRecord(draft);
+    const normalized = normalizeExpertRecord(draft);
     for (const key of ["title", "avatar", "source"]) expect(normalized, key).not.toHaveProperty(key);
   });
 
   it("reads a null avatar or source, as YAML gives for an empty value, as absent", () => {
-    const normalized = normalizeDigitalLifeRecord({ ...draft, avatar: null, source: null } as unknown as DigitalLifeRecord);
+    const normalized = normalizeExpertRecord({ ...draft, avatar: null, source: null } as unknown as ExpertRecord);
     expect(normalized).not.toHaveProperty("avatar");
     expect(normalized).not.toHaveProperty("source");
   });
 
   it("produces settings the Host accepts", () => {
-    const normalized = normalizeDigitalLifeRecord({
+    const normalized = normalizeExpertRecord({
       ...draft,
       title: " 助手 ",
       avatar,

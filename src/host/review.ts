@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { validateJsonSchemaValue, type ObjectJsonSchema } from "@deepseek-ai/dsh-tools";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import type { AnyReviewRun, ExpertReference, ReviewReport, ReviewRequest, ReviewRole, ReviewRun, ReviewStep, ReviewSummary, TeamRun } from "../expert-types.js";
-import { digitalLifeHome, identityFor } from "./identity.js";
+import { expertAiHome, identityFor } from "./identity.js";
 import { loadExpertPackage, readExpertReference, sha256 } from "./expert-packages.js";
 
 export const REVIEW_TIMEOUT_MS = 5 * 60_000;
@@ -35,7 +35,7 @@ export const REVIEW_OUTPUT_SCHEMA: ObjectJsonSchema = {
   additionalProperties: false,
 };
 
-export function validateReviewRequest(request: ReviewRequest, records: readonly DigitalLifeRecord[]): DigitalLifeRecord[] {
+export function validateReviewRequest(request: ReviewRequest, records: readonly ExpertRecord[]): ExpertRecord[] {
   if (typeof request?.question !== "string" || request.question.trim() === "" || request.question.length > 20_000)
     throw new Error("digital-life: review question must contain 1-20000 characters");
   if (!Array.isArray(request.expertIds) || request.expertIds.length < 1 || request.expertIds.length > 3 ||
@@ -72,12 +72,12 @@ export function parseReviewReport(value: unknown, evidenceIds: ReadonlySet<strin
 
 function runPath(id: string, stateDir?: string): string {
   if (!RUN_ID.test(id)) throw new Error("digital-life: invalid review id");
-  return join(digitalLifeHome(process.env, stateDir), ".expert-reviews", `${id}.json`);
+  return join(expertAiHome(process.env, stateDir), ".expert-reviews", `${id}.json`);
 }
 
 export async function saveReviewRun(run: AnyReviewRun, stateDir?: string): Promise<void> {
   const path = runPath(run.id, stateDir);
-  await mkdir(join(digitalLifeHome(process.env, stateDir), ".expert-reviews"), { recursive: true, mode: 0o700 });
+  await mkdir(join(expertAiHome(process.env, stateDir), ".expert-reviews"), { recursive: true, mode: 0o700 });
   const temporary = `${path}.${randomUUID()}.tmp`;
   try {
     await writeFile(temporary, JSON.stringify(run, null, 2), { mode: 0o600, flag: "wx" });
@@ -122,7 +122,7 @@ export async function readTeamRun(id: string, stateDir?: string): Promise<TeamRu
 export async function listReviewRuns(stateDir?: string): Promise<ReviewSummary[]> {
   let paths: string[];
   try {
-    paths = await readdir(join(digitalLifeHome(process.env, stateDir), ".expert-reviews"));
+    paths = await readdir(join(expertAiHome(process.env, stateDir), ".expert-reviews"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
@@ -153,7 +153,7 @@ export function aborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T>
 }
 
 export interface ReviewInvocation {
-  record: DigitalLifeRecord;
+  record: ExpertRecord;
   identity: string;
   role: ReviewRole;
   prompt: string;
@@ -162,7 +162,7 @@ export interface ReviewInvocation {
 
 export interface RunReviewOptions {
   request: ReviewRequest;
-  records: readonly DigitalLifeRecord[];
+  records: readonly ExpertRecord[];
   sessionId: string;
   signal: AbortSignal;
   invoke: (invocation: ReviewInvocation) => Promise<unknown>;

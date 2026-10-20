@@ -1,9 +1,9 @@
 import { MAX_EXPERT_SOURCE_NOTE_LENGTH, MAX_EXPERT_TITLE_LENGTH } from "../constants.js";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import { ID_PATTERN } from "./teams.js";
 
 /** Draft a new record starts from. */
-export const EMPTY_RECORD: DigitalLifeRecord = {
+export const EMPTY_RECORD: ExpertRecord = {
   id: "",
   name: "",
   description: "",
@@ -19,7 +19,7 @@ export const EMPTY_RECORD: DigitalLifeRecord = {
  * @param draft Record entered in the settings editor.
  * @returns A record bound to either its managed Markdown file or an external Agent file.
  */
-export function normalizeDigitalLifeRecord(draft: DigitalLifeRecord): DigitalLifeRecord {
+export function normalizeExpertRecord(draft: ExpertRecord): ExpertRecord {
   const { title: rawTitle, avatar, source: rawSource, ...rest } = draft;
   const agent = draft.agent?.trim() ?? "";
   const id = draft.id.trim();
@@ -57,7 +57,7 @@ export interface RecordProblem {
  * @returns The problem blocking the save, or undefined when valid.
  */
 export function recordProblem(
-  draft: DigitalLifeRecord,
+  draft: ExpertRecord,
   ids: ReadonlySet<string>,
   editingId: string | undefined,
 ): RecordProblem | undefined {

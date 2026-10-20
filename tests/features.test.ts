@@ -8,7 +8,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as plugin from '../src/index.js'
 import { loadBinding, saveBinding } from '../src/host/session-binding.js'
-import type { DigitalLifeFeature } from '../src/index.js'
+import type { ExpertFeature } from '../src/index.js'
 import { fakeHostConnection } from './host-connection.js'
 
 const GATED_TOOLS = [
@@ -16,8 +16,8 @@ const GATED_TOOLS = [
   'read_expert_review', 'start_team_run', 'amend_team_brief', 'run_team_stage', 'read_team_run', 'cancel_team_run',
 ]
 const CONVERSATION_ENDPOINTS = ['project', 'greeting', 'binding', 'unbind', 'bind', 'review/list', 'review/read', 'review/cancel']
-const IDENTITY_ONLY: DigitalLifeFeature[] = ['identity']
-const WITH_CONVERSATION: DigitalLifeFeature[] = ['identity', 'conversation']
+const IDENTITY_ONLY: ExpertFeature[] = ['identity']
+const WITH_CONVERSATION: ExpertFeature[] = ['identity', 'conversation']
 const RECORDS = [
   { id: 'mentor', name: '创业导师', description: '创业', category: 'business', tags: [], persona: '关注现金流。', enabled: true },
 ]
@@ -29,7 +29,7 @@ afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()))
 })
 
-async function start(initial: DigitalLifeFeature[], options: { records?: typeof RECORDS; subagents?: unknown } = {}) {
+async function start(initial: ExpertFeature[], options: { records?: typeof RECORDS; subagents?: unknown } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'digital-life-features-'))
   const ctx = new Context()
   cleanups.push(async () => {
@@ -61,7 +61,7 @@ async function start(initial: DigitalLifeFeature[], options: { records?: typeof 
     tools: () => GATED_TOOLS.filter((name) => ctx.tools.get(name) !== undefined),
     rpc: host.call,
     routes: host.paths,
-    setFeatures(next: DigitalLifeFeature[]) {
+    setFeatures(next: ExpertFeature[]) {
       state.features = next
       ctx.emit('loader/volatile-update', [['features']])
     },

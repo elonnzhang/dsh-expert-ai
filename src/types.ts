@@ -1,14 +1,14 @@
 import {
-  DIGITAL_LIFE_CATEGORIES,
-  DIGITAL_LIFE_FEATURES,
+  EXPERT_AI_CATEGORIES,
+  EXPERT_AI_FEATURES,
   EXPERT_AVATAR_MIMES,
   EXPERT_SOURCE_KINDS,
 } from "./constants.js";
 import type { ExpertPackageBinding, ExpertTeam } from "./expert-types.js";
 
-export type DigitalLifeCategory = (typeof DIGITAL_LIFE_CATEGORIES)[number];
+export type ExpertCategory = (typeof EXPERT_AI_CATEGORIES)[number];
 
-export type DigitalLifeFeature = (typeof DIGITAL_LIFE_FEATURES)[number];
+export type ExpertFeature = (typeof EXPERT_AI_FEATURES)[number];
 
 export type ExpertIdentitySourceKind = (typeof EXPERT_SOURCE_KINDS)[number];
 
@@ -27,14 +27,14 @@ export interface ExpertIdentityAvatar {
   data: string;
 }
 
-export interface DigitalLifeRecord {
+export interface ExpertRecord {
   id: string;
   name: string;
   /** Text shown after the name, for example "储能系统思考助手". Defaults to "思考助手". */
   title?: string;
   description: string;
   /** Stable primary domain used for coarse grouping and routing. */
-  category: DigitalLifeCategory;
+  category: ExpertCategory;
   /** User-defined domain label when category is custom. */
   customCategory?: string;
   /** Composable characteristics used for search and future team routing. */
@@ -56,21 +56,21 @@ export interface DigitalLifeRecord {
   enabled: boolean;
 }
 
-export interface DigitalLifeSettings {
+export interface ExpertSettings {
   /** Parts of the plugin that are on. Defaults to `["identity"]`; `identity` is on even when omitted. */
-  features?: DigitalLifeFeature[];
+  features?: ExpertFeature[];
   provider?: string;
   maxBatchSize?: number;
   /** Optional plugin state directory. Defaults to ~/.dsh/digital-life. */
   stateDir?: string;
-  records?: DigitalLifeRecord[];
+  records?: ExpertRecord[];
   /** Saved review lineups referencing record ids. */
   teams?: ExpertTeam[];
 }
 
-export interface ResolvedDigitalLifeSettings {
+export interface ResolvedExpertSettings {
   provider: string;
   maxBatchSize: number;
-  records: DigitalLifeRecord[];
+  records: ExpertRecord[];
   teams: ExpertTeam[];
 }

@@ -8,7 +8,7 @@ import {
   IconUserOutlineMedium,
   Menu,
 } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import css from "./AgentPresetSelector.module.css";
 import { categoryLabel } from "./locales.js";
 
@@ -24,7 +24,7 @@ export interface AgentPresetSelectorInjected {
   /** `team` names the expert team hosting the session when no digital life is bound. */
   load: () => Promise<{ options: AgentPresetOption[]; current: string; life?: string; team?: string }>;
   select: (id: string) => Promise<void>;
-  records: () => readonly DigitalLifeRecord[];
+  records: () => readonly ExpertRecord[];
   selectLife: (id: string) => Promise<void>;
   developerTools: ObservableSnapshot<boolean>;
   t: TranslateNS<"digital-life">;

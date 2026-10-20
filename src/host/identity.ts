@@ -4,7 +4,7 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DigitalLifeRecord } from "../types.js";
+import type { ExpertRecord } from "../types.js";
 import { readPackageIdentity } from "./expert-packages.js";
 
 const MAX_IDENTITY_BYTES = 1024 * 1024;
@@ -20,7 +20,7 @@ export function packageRootFrom(directory: string): string | undefined {
 const PACKAGE_ROOT = packageRootFrom(dirname(fileURLToPath(import.meta.url)));
 
 /** Resolve the per-digital-life storage root. */
-export function digitalLifeHome(
+export function expertAiHome(
   env: Record<string, string | undefined> = process.env,
   stateDir?: string,
 ): string {
@@ -41,7 +41,7 @@ export function digitalLifeHome(
 
 /** Create an empty working directory for a standalone Chat session. */
 export async function createProject(stateDir?: string): Promise<string> {
-  const projects = join(digitalLifeHome(process.env, stateDir), "projects");
+  const projects = join(expertAiHome(process.env, stateDir), "projects");
   await mkdir(projects, { recursive: true, mode: 0o700 });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   for (let suffix = 0; suffix < 100; suffix += 1) {
@@ -59,7 +59,7 @@ export async function createProject(stateDir?: string): Promise<string> {
 
 /** WorkBuddy-compatible canonical agent location. */
 export function agentPath(id: string, stateDir?: string): string {
-  return join(digitalLifeHome(process.env, stateDir), id, "agents", `${id}.md`);
+  return join(expertAiHome(process.env, stateDir), id, "agents", `${id}.md`);
 }
 
 /**
@@ -72,7 +72,7 @@ export function managedAgentBinding(id: string): string {
 }
 
 function legacyAgentsPath(id: string, stateDir?: string): string {
-  return join(digitalLifeHome(process.env, stateDir), id, "AGENTS.md");
+  return join(expertAiHome(process.env, stateDir), id, "AGENTS.md");
 }
 
 /** Files an Agent path may name, in the order they are read: a relative path is also looked up in the plugin package. */
@@ -80,7 +80,7 @@ function agentFileCandidates(value: string, stateDir?: string): string[] {
   if (value === "~") return [homedir()];
   if (value.startsWith("~/") || value.startsWith("~\\")) return [join(homedir(), value.slice(2))];
   if (value.startsWith("/")) return [resolve(value)];
-  const inState = resolve(digitalLifeHome(process.env, stateDir), value);
+  const inState = resolve(expertAiHome(process.env, stateDir), value);
   return PACKAGE_ROOT === undefined ? [inState] : [inState, resolve(PACKAGE_ROOT, value)];
 }
 
@@ -97,7 +97,7 @@ function yamlString(value: string): string {
 }
 
 /** Render a Claude/WorkBuddy-compatible agent file. */
-export function agentDocument(record: DigitalLifeRecord, identity: string): string {
+export function agentDocument(record: ExpertRecord, identity: string): string {
   const lines = [
     "---",
     `name: ${yamlString(record.id)}`,
@@ -141,7 +141,7 @@ export async function readAgentIdentity(path: string, stateDir?: string): Promis
 }
 
 /** Read the canonical persisted expert identity. */
-export async function identityFor(record: DigitalLifeRecord, stateDir?: string): Promise<string> {
+export async function identityFor(record: ExpertRecord, stateDir?: string): Promise<string> {
   if (record.expertPackage !== undefined) return agentIdentity(await readPackageIdentity(record.expertPackage, stateDir));
   if (record.agent !== undefined) return readAgentIdentity(record.agent, stateDir);
   try {
@@ -166,7 +166,7 @@ async function writeAtomically(path: string, text: string): Promise<void> {
 }
 
 async function persist(
-  record: DigitalLifeRecord,
+  record: ExpertRecord,
   stateDir?: string,
   mode: "create" | "update" = "create",
 ): Promise<void> {
@@ -195,7 +195,7 @@ async function allDone(tasks: readonly Promise<unknown>[]): Promise<void> {
 
 /** Ensure every managed life owns agents/<id>.md and migrate the old AGENTS.md layout. */
 export async function initializeIdentities(
-  records: readonly DigitalLifeRecord[],
+  records: readonly ExpertRecord[],
   stateDir?: string,
 ): Promise<void> {
   await allDone(records.map(async (record) => {
@@ -227,10 +227,10 @@ export async function initializeIdentities(
  * can tell exactly what is on disk when another id fails and this rejects.
  */
 export async function reconcileIdentities(
-  previous: readonly DigitalLifeRecord[],
-  next: readonly DigitalLifeRecord[],
+  previous: readonly ExpertRecord[],
+  next: readonly ExpertRecord[],
   stateDir?: string,
-  applied?: (id: string, record: DigitalLifeRecord | undefined) => void,
+  applied?: (id: string, record: ExpertRecord | undefined) => void,
 ): Promise<void> {
   const old = new Map(previous.map((record) => [record.id, record]));
   const ids = new Set(next.map((record) => record.id));
@@ -242,7 +242,7 @@ export async function reconcileIdentities(
       applied?.(record.id, record);
     }),
     ...previous.filter((record) => !ids.has(record.id)).map(async (record) => {
-      await rm(join(digitalLifeHome(process.env, stateDir), record.id), { recursive: true, force: true });
+      await rm(join(expertAiHome(process.env, stateDir), record.id), { recursive: true, force: true });
       applied?.(record.id, undefined);
     }),
   ]);

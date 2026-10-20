@@ -1,13 +1,13 @@
 import { useRef, useState, type ReactNode } from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import { Button, IconFolderOpenOutlineRegular, Input, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { DigitalLifeCategory, DigitalLifeRecord, ExpertIdentitySourceKind } from "../types.js";
+import type { ExpertCategory, ExpertRecord, ExpertIdentitySourceKind } from "../types.js";
 import { avatarDataUrl } from "../avatar.js";
-import { DIGITAL_LIFE_CATEGORIES, EXPERT_SOURCE_KINDS } from "../constants.js";
+import { EXPERT_AI_CATEGORIES, EXPERT_SOURCE_KINDS } from "../constants.js";
 import { applyAgentMarkdown } from "./agent-file.js";
 import { avatarFromFile } from "./avatar-file.js";
 import { MenuSelect, errorText } from "./controls.js";
-import { categoryLabel, type DigitalLifeKey } from "./locales.js";
+import { categoryLabel, type ExpertKey } from "./locales.js";
 import { recordProblem } from "./records.js";
 import css from "./settings.module.css";
 
@@ -15,7 +15,7 @@ const SOURCE_COPY = {
   public: { label: "sourcePublic", hint: "sourcePublicHint" },
   organization: { label: "sourceOrganization", hint: "sourceOrganizationHint" },
   authorized: { label: "sourceAuthorized", hint: "sourceAuthorizedHint" },
-} as const satisfies Record<ExpertIdentitySourceKind, { label: DigitalLifeKey; hint: DigitalLifeKey }>;
+} as const satisfies Record<ExpertIdentitySourceKind, { label: ExpertKey; hint: ExpertKey }>;
 
 /**
  * Add or edit one digital-life record in a dialog.
@@ -30,7 +30,7 @@ export function ExpertEditor({
   onSave,
   onCancel,
 }: {
-  initial: DigitalLifeRecord;
+  initial: ExpertRecord;
   /** Whether the record is already saved; its id and identity source are then fixed. */
   existing: boolean;
   /** Name of the Agent file `initial` was imported from, if any. */
@@ -38,7 +38,7 @@ export function ExpertEditor({
   ids: ReadonlySet<string>;
   t: TranslateNS<"digital-life">;
   /** Persist the draft; resolves to an error message, or undefined once saved. */
-  onSave: (draft: DigitalLifeRecord) => Promise<string | undefined>;
+  onSave: (draft: ExpertRecord) => Promise<string | undefined>;
   onCancel: () => void;
 }): ReactNode {
   const [draft, setDraft] = useState(initial);
@@ -53,7 +53,7 @@ export function ExpertEditor({
   const fileInput = useRef<HTMLInputElement>(null);
   const avatarInput = useRef<HTMLInputElement>(null);
 
-  const update = <K extends keyof DigitalLifeRecord>(key: K, value: DigitalLifeRecord[K]): void => {
+  const update = <K extends keyof ExpertRecord>(key: K, value: ExpertRecord[K]): void => {
     setDraft((current) => ({ ...current, [key]: value }));
     if (invalid.has(String(key))) {
       setInvalid((current) => {
@@ -200,12 +200,12 @@ export function ExpertEditor({
           <MenuSelect
             value={draft.category}
             placeholder={t("category")}
-            options={DIGITAL_LIFE_CATEGORIES.map((category) => ({
+            options={EXPERT_AI_CATEGORIES.map((category) => ({
               value: category,
               label: categoryLabel({ category }, t),
             }))}
             onChange={(value) => {
-              update("category", value as DigitalLifeCategory);
+              update("category", value as ExpertCategory);
             }}
           />
         </div>

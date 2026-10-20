@@ -1,4 +1,4 @@
-import type { DigitalLifeCategory } from "./types.js";
+import type { ExpertCategory } from "./types.js";
 
 export const MIMEOGRAPHS_REVISION = "a38f5fcad0853be3e98a6cd95d8e6bf8c66f7c7b";
 
@@ -36,7 +36,7 @@ export interface ExpertCatalogEntry {
   slug: string;
   name: string;
   description: string;
-  category: DigitalLifeCategory;
+  category: ExpertCategory;
   references: string[];
 }
 
@@ -44,7 +44,7 @@ export interface ExpertPackageManifest extends ExpertPackageLocation {
   schemaVersion: 1;
   name: string;
   description: string;
-  category: DigitalLifeCategory;
+  category: ExpertCategory;
   importedAt: string;
   sourceType: "public-method";
   reviewStatus: "unreviewed";

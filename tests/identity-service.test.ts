@@ -5,17 +5,17 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DIGITAL_LIFE_CATEGORY_LABELS, EXPERT_SOURCE_KINDS } from '../src/constants.js'
+import { EXPERT_AI_CATEGORY_LABELS, EXPERT_SOURCE_KINDS } from '../src/constants.js'
 import { agentPath } from '../src/host/identity.js'
 import { disclosureFor, ExpertIdentityProvider } from '../src/index.js'
 import type { ExpertIdentityChange, ExpertIdentityService } from '../src/index.js'
-import type { DigitalLifeRecord } from '../src/types.js'
+import type { ExpertRecord } from '../src/types.js'
 
-const mentor: DigitalLifeRecord = {
+const mentor: ExpertRecord = {
   id: 'mentor', name: '创业导师', description: '创业与现金流', tags: ['创业', '现金流'], category: 'business',
   persona: '关注现金流。', enabled: true,
 }
-const analyst: DigitalLifeRecord = {
+const analyst: ExpertRecord = {
   id: 'analyst', name: '储能专家', description: '储能系统', tags: ['储能'], category: 'tech',
   persona: '关注系统可靠性。', enabled: true,
 }
@@ -23,7 +23,7 @@ const png = { mime: 'image/png' as const, data: 'iVBORw0KGgo=' }
 
 const sha256 = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex')
 
-function xingtuRecords(): DigitalLifeRecord[] {
+function xingtuRecords(): ExpertRecord[] {
   const patch = readFileSync(resolve(import.meta.dirname, '..', 'cordis.patch.yml'), 'utf8')
   return patch
     .split(/^ {10}- id: /m)
@@ -53,7 +53,7 @@ interface Harness {
   dir: string
   /** The service as another plugin receives it, through cordis' proxy. */
   service: ExpertIdentityService
-  records: DigitalLifeRecord[]
+  records: ExpertRecord[]
   changes: string[][]
   /** Every payload of `expert-identity/changed`, as the listener received it. */
   events: ExpertIdentityChange[]
@@ -66,7 +66,7 @@ afterEach(async () => {
 
 /** `before` runs ahead of the recorder, so a listener it adds is called first; `dirFor` picks the state directory. */
 async function start(
-  records: DigitalLifeRecord[],
+  records: ExpertRecord[],
   before?: (ctx: Context) => void,
   dirFor?: (root: string) => Promise<string>,
 ): Promise<Harness> {
@@ -92,7 +92,7 @@ async function start(
 }
 
 /** Replace the records as a settings write does, then wait until the service has caught up. */
-async function update(harness: Harness, records: DigitalLifeRecord[]): Promise<void> {
+async function update(harness: Harness, records: ExpertRecord[]): Promise<void> {
   harness.records = records
   harness.ctx.emit('loader/volatile-update', [['records']])
   await harness.service.list()
@@ -167,7 +167,7 @@ describe('expertIdentity service', () => {
   })
 
   it('does not publish an avatar the Bot runtime would reject', async () => {
-    const gif = { mime: 'image/gif', data: png.data } as unknown as DigitalLifeRecord['avatar']
+    const gif = { mime: 'image/gif', data: png.data } as unknown as ExpertRecord['avatar']
     const h = await start([{ ...mentor, avatar: gif }])
     expect(await h.service.get('mentor')).not.toHaveProperty('avatar')
   })
@@ -187,7 +187,7 @@ describe('expertIdentity service', () => {
   ] as const)('publishes the %s domain as %s', async (category, label) => {
     const h = await start([{ ...mentor, category }])
     expect((await h.service.list())[0]?.category).toBe(label)
-    expect(DIGITAL_LIFE_CATEGORY_LABELS[category]).toBe(label)
+    expect(EXPERT_AI_CATEGORY_LABELS[category]).toBe(label)
   })
 
   it('hands out copies, so a consumer cannot change the settings', async () => {
@@ -419,7 +419,7 @@ describe('expert-identity/changed', () => {
     ['tags', { tags: ['创业', '增长'] }],
   ])('reports a change to the %s', async (_field, patch) => {
     const h = await start([mentor])
-    await update(h, [{ ...mentor, ...patch } as DigitalLifeRecord])
+    await update(h, [{ ...mentor, ...patch } as ExpertRecord])
     expect(h.changes).toEqual([['mentor']])
   })
 

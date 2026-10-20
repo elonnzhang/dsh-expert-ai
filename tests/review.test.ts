@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { assertObjectJsonSchema } from "@deepseek-ai/dsh-tools";
-import type { DigitalLifeRecord } from "../src/types.js";
+import type { ExpertRecord } from "../src/types.js";
 import type { ReviewReport, ReviewRun, SynthesisReport, TeamRun } from "../src/expert-types.js";
 import { listReviewRuns, parseReviewReport, readAnyReviewRun, readReviewRun, renderReviewMarkdown, REVIEW_OUTPUT_SCHEMA, saveReviewRun } from "../src/host/review.js";
 import { runExpertReview, type RunReviewOptions, type TeamInvocation } from "../src/host/team-exec.js";
@@ -15,7 +15,7 @@ import { packageBinding, packageFetcher } from "./expert-fixture.js";
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true }))); });
 
-const records: DigitalLifeRecord[] = ["alpha", "beta", "critic"].map((id) => ({
+const records: ExpertRecord[] = ["alpha", "beta", "critic"].map((id) => ({
   id, name: id, description: "Check evidence", category: "science", tags: [], persona: `Methods of ${id}`, enabled: true,
 }));
 function report(summary = "Check the baseline", evidenceIds = ["input:brief@1"]): ReviewReport {

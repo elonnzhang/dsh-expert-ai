@@ -1,23 +1,23 @@
-export const DIGITAL_LIFE_NAMESPACE = "digital-life";
+export const EXPERT_AI_NAMESPACE = "digital-life";
 
 /** The Host serves each endpoint on this shared channel as `digital-life/<endpoint>`. */
-export const DIGITAL_LIFE_RPC_CHANNEL = "/api";
+export const EXPERT_AI_RPC_CHANNEL = "/api";
 
-export const digitalLifeEndpoint = (endpoint: string): string => `${DIGITAL_LIFE_NAMESPACE}/${endpoint}`;
+export const expertAiEndpoint = (endpoint: string): string => `${EXPERT_AI_NAMESPACE}/${endpoint}`;
 
 /** Switchable parts; `identity` is always on, `conversation` adds the consult, review and team tools, persona binding, Chat Panel and `@` source. */
-export const DIGITAL_LIFE_FEATURES = ["identity", "conversation"] as const;
+export const EXPERT_AI_FEATURES = ["identity", "conversation"] as const;
 
-export const DIGITAL_LIFE_CATEGORIES = ["business", "science", "culture", "tech", "entertainment", "custom"] as const;
+export const EXPERT_AI_CATEGORIES = ["business", "science", "culture", "tech", "entertainment", "custom"] as const;
 
 /** Display name of each primary domain; a `custom` record carries its own label. */
-export const DIGITAL_LIFE_CATEGORY_LABELS = {
+export const EXPERT_AI_CATEGORY_LABELS = {
   business: "企业",
   science: "科学",
   tech: "技术",
   culture: "文化",
   entertainment: "娱乐",
-} as const satisfies Record<Exclude<(typeof DIGITAL_LIFE_CATEGORIES)[number], "custom">, string>;
+} as const satisfies Record<Exclude<(typeof EXPERT_AI_CATEGORIES)[number], "custom">, string>;
 
 /** What an identity's persona was built from; it decides the disclosure the Bot must give. */
 export const EXPERT_SOURCE_KINDS = ["public", "organization", "authorized"] as const;
