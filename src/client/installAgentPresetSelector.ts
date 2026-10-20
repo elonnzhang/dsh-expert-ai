@@ -53,13 +53,13 @@ function presetDisplayText(
 
 export type PrepareDigitalLifeSession = (record: DigitalLifeRecord) => Promise<SessionId>;
 
-/** Install the composite Agent preset and digital-life selector into the Hero slot. */
+/** Install the composite Agent preset and digital-life selector into the Hero slot; the returned disposer removes it and its composer blocks. */
 export function installAgentPresetSelector(
   ctx: ClientContext,
   records: () => readonly DigitalLifeRecord[],
   t: TranslateNS<"digital-life">,
   prepareSession: PrepareDigitalLifeSession,
-): void {
+): () => void {
   // The Host `dsh-session` and Client Session Controller both merge a `sessions`
   // service onto Context; read the Client contract explicitly.
   const sessions = ctx.get("sessions") as unknown as ISessions;
@@ -92,14 +92,17 @@ export function installAgentPresetSelector(
     selectedLifeBySession.set(sessionId, selected);
     return selected || undefined;
   };
+  const blockedSessions = new Set<SessionId>();
   const setLifeBlock = (sessionId: SessionId, selected: string | undefined): void => {
     // A team-hosted session already has its own identity.
+    blockedSessions.add(sessionId);
     conversation.blocks.set(
       sessionId,
       selected === undefined && !teamBySession.has(sessionId) ? { reason: t("chooseLifeRequired") } : undefined,
     );
   };
   const clearLifeBlock = (sessionId: SessionId): void => {
+    blockedSessions.delete(sessionId);
     conversation.blocks.set(sessionId, undefined);
   };
   const applyStagedPreset = async (): Promise<void> => {
@@ -112,7 +115,7 @@ export function installAgentPresetSelector(
     if (!result.ok) throw new Error(result.error.message);
     stagedPreset.id = undefined;
   };
-  ctx.effect(
+  const stopStagedPreset = ctx.effect(
     () => {
       const stop = sessions.list.subscribe(() => {
         void applyStagedPreset().catch((error) => {
@@ -123,7 +126,7 @@ export function installAgentPresetSelector(
     },
     "digital-life: staged preset",
   );
-  ctx.effect(
+  const stopDeveloperToolsGate = ctx.effect(
     () => developerTools.subscribe(() => {
       if (!developerTools.getSnapshot()) stagedPreset.id = undefined;
     }),
@@ -237,7 +240,7 @@ export function installAgentPresetSelector(
     injectedBySession.set(rawSessionId, value);
     return value;
   };
-  ctx.slots.inject("conversation.hero.agentPreset", () =>
+  const removeSlot = ctx.slots.inject("conversation.hero.agentPreset", () =>
     ctx.slots.register(
       {
         name: "conversation.hero.agentPreset",
@@ -248,4 +251,11 @@ export function installAgentPresetSelector(
       AgentPresetSelector,
     ),
   );
+  return () => {
+    removeSlot();
+    void stopDeveloperToolsGate();
+    void stopStagedPreset();
+    for (const sessionId of blockedSessions) conversation.blocks.set(sessionId, undefined);
+    blockedSessions.clear();
+  };
 }

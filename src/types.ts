@@ -1,7 +1,14 @@
-import { DIGITAL_LIFE_CATEGORIES, EXPERT_AVATAR_MIMES, EXPERT_SOURCE_KINDS } from "./constants.js";
+import {
+  DIGITAL_LIFE_CATEGORIES,
+  DIGITAL_LIFE_FEATURES,
+  EXPERT_AVATAR_MIMES,
+  EXPERT_SOURCE_KINDS,
+} from "./constants.js";
 import type { ExpertPackageBinding, ExpertTeam } from "./expert-types.js";
 
 export type DigitalLifeCategory = (typeof DIGITAL_LIFE_CATEGORIES)[number];
+
+export type DigitalLifeFeature = (typeof DIGITAL_LIFE_FEATURES)[number];
 
 export type ExpertIdentitySourceKind = (typeof EXPERT_SOURCE_KINDS)[number];
 
@@ -50,6 +57,8 @@ export interface DigitalLifeRecord {
 }
 
 export interface DigitalLifeSettings {
+  /** Parts of the plugin that are on. Defaults to `["identity"]`; `identity` is on even when omitted. */
+  features?: DigitalLifeFeature[];
   provider?: string;
   maxBatchSize?: number;
   /** Optional plugin state directory. Defaults to ~/.dsh/digital-life. */

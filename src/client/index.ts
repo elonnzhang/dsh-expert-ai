@@ -39,6 +39,7 @@ import { en, NS, zh, type DigitalLifeKey } from "./locales.js";
 import { reviewSubmission, type ExpertWorkbenchApi } from "./ExpertWorkbench.js";
 import { mentionCandidates } from "./teams.js";
 import { ExpertAIPanel, ExpertAIPanelIcon } from "./ExpertAIPanel.js";
+import { mountWhile } from "./feature-gate.js";
 import type { AnyReviewRun, ExpertCatalogEntry, ReviewSummary } from "../expert-types.js";
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
@@ -222,45 +223,8 @@ export function apply(ctx: ClientContext): void {
   };
 
   const chatInjected = (): ChatPanelInjected => ({ records, createSession, t });
-  ctx.slots.inject("sidebar.footer.action", () =>
-    ctx.slots.register(
-      {
-        name: "sidebar.footer.action",
-        id: "digital-life-chat-panel",
-        order: -10,
-        locale: NS,
-        inject: chatInjected,
-      },
-      ChatPanel,
-    ),
-  );
-  installAgentPresetSelector(ctx, records, t, openDigitalLifeSession);
 
-  // Expert AI is the full-width workbench surface behind the sidebar entry.
-  ctx.slots.inject("main", () =>
-    ctx.slots.register(
-      {
-        name: "main",
-        key: EXPERT_AI_PANEL_ID,
-        locale: NS,
-        inject: () => ({ records, teams, expertApi, t }),
-      },
-      ExpertAIPanel,
-    ),
-  );
-  ctx.slots.inject("sidebar.panellist", () =>
-    ctx.slots.register(
-      {
-        name: "sidebar.panellist",
-        id: EXPERT_AI_PANEL_ID,
-        order: 20,
-        label: () => t("expertAiPanel"),
-        locale: NS,
-      },
-      ExpertAIPanelIcon,
-    ),
-  );
-
+  // The settings section stays in every mode: it edits the identity library.
   // The nav-row icon option arrives with the harness after 0.2.0-rc.2; older
   // hosts drop it and draw their default glyph.
   const navIcon = { icon: IconUsersOutlineMedium };
@@ -311,8 +275,50 @@ export function apply(ctx: ClientContext): void {
     },
   };
   const inputTriggers = ctx.get("inputTriggers") as InputTriggerServiceContract;
-  ctx.effect(
-    () => inputTriggers.registerSource(source),
-    "digital-life: @ source",
-  );
+  const mountConversation = (): (() => void) => {
+    const disposers = [
+      ctx.slots.inject("sidebar.footer.action", () =>
+        ctx.slots.register(
+          {
+            name: "sidebar.footer.action",
+            id: "digital-life-chat-panel",
+            order: -10,
+            locale: NS,
+            inject: chatInjected,
+          },
+          ChatPanel,
+        ),
+      ),
+      installAgentPresetSelector(ctx, records, t, openDigitalLifeSession),
+      // Expert AI is the full-width workbench surface behind the sidebar entry.
+      ctx.slots.inject("main", () =>
+        ctx.slots.register(
+          {
+            name: "main",
+            key: EXPERT_AI_PANEL_ID,
+            locale: NS,
+            inject: () => ({ records, teams, expertApi, t }),
+          },
+          ExpertAIPanel,
+        ),
+      ),
+      ctx.slots.inject("sidebar.panellist", () =>
+        ctx.slots.register(
+          {
+            name: "sidebar.panellist",
+            id: EXPERT_AI_PANEL_ID,
+            order: 20,
+            label: () => t("expertAiPanel"),
+            locale: NS,
+          },
+          ExpertAIPanelIcon,
+        ),
+      ),
+      inputTriggers.registerSource(source),
+    ];
+    return () => {
+      for (const dispose of disposers.reverse()) void dispose();
+    };
+  };
+  ctx.effect(() => mountWhile(form, "conversation", mountConversation), "digital-life: conversation");
 }

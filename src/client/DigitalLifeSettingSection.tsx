@@ -9,10 +9,12 @@ import {
   type SegmentedTab,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ConfigForm, ConfigFormSnapshot } from "@deepseek-ai/dsh-client-ui-settings/client";
+import { enabledFeatures } from "../features.js";
 import type { DigitalLifeSettings } from "../types.js";
 import type { ExpertWorkbenchApi } from "./ExpertWorkbench.js";
 import { ExpertsTab } from "./ExpertsTab.js";
 import { GeneralTab } from "./GeneralTab.js";
+import { activeTab, visibleTabs, type Tab } from "./tabs.js";
 import { TeamsTab } from "./TeamsTab.js";
 import css from "./settings.module.css";
 
@@ -35,8 +37,6 @@ export interface DigitalLifeSettingSectionInjected {
 type Props = PropsRuntime<"settings.section"> & {
   useSettings: <T>(selector: (snapshot: ConfigFormSnapshot<DigitalLifeSettings>) => T) => T;
 } & Omit<DigitalLifeSettingSectionInjected, "hooks">;
-
-type Tab = "experts" | "teams" | "general";
 
 const tabIds = (value: Tab): Pick<SegmentedTab<Tab>, "id" | "panelId"> => ({
   id: `digital-life-tab-${value}`,
@@ -84,11 +84,16 @@ export function DigitalLifeSettingSection(props: Props): ReactNode {
   const notify = (text: string): void => {
     setToast({ text, key: Date.now() });
   };
-  const items: readonly [SegmentedTab<Tab>, ...SegmentedTab<Tab>[]] = [
-    { value: "experts", label: tabLabel(<IconUserOutlineRegular size={16} />, t("tabExperts")), ...tabIds("experts") },
-    { value: "teams", label: tabLabel(<IconUsersOutlineRegular size={16} />, t("tabTeams")), ...tabIds("teams") },
-    { value: "general", label: tabLabel(<IconSlidersTwoOutlineRegular size={16} />, t("tabGeneral")), ...tabIds("general") },
-  ];
+  const conversation = enabledFeatures(settings.features).has("conversation");
+  const active = activeTab(tab, conversation);
+  const labels: Record<Tab, ReactNode> = {
+    experts: tabLabel(<IconUserOutlineRegular size={16} />, t("tabExperts")),
+    teams: tabLabel(<IconUsersOutlineRegular size={16} />, t("tabTeams")),
+    general: tabLabel(<IconSlidersTwoOutlineRegular size={16} />, t("tabGeneral")),
+  };
+  const describeTab = (value: Tab): SegmentedTab<Tab> => ({ value, label: labels[value], ...tabIds(value) });
+  const [firstTab, ...otherTabs] = visibleTabs(conversation);
+  const items: readonly [SegmentedTab<Tab>, ...SegmentedTab<Tab>[]] = [describeTab(firstTab), ...otherTabs.map(describeTab)];
 
   return (
     <section className={css.section}>
@@ -96,15 +101,15 @@ export function DigitalLifeSettingSection(props: Props): ReactNode {
         <h2>{t("title")}</h2>
         <p>{t("intro")}</p>
       </header>
-      <SegmentedTabs items={items} value={tab} onChange={setTab} label={t("tabsLabel")} />
+      <SegmentedTabs items={items} value={active} onChange={setTab} label={t("tabsLabel")} />
       <div
         className={css.panel}
         role="tabpanel"
-        id={tabIds(tab).panelId}
-        aria-labelledby={tabIds(tab).id}
+        id={tabIds(active).panelId}
+        aria-labelledby={tabIds(active).id}
         tabIndex={0}
       >
-        {tab === "experts" ? (
+        {active === "experts" ? (
           <ExpertsTab
             records={records}
             teams={teams}
@@ -115,7 +120,7 @@ export function DigitalLifeSettingSection(props: Props): ReactNode {
             t={t}
             notify={notify}
           />
-        ) : tab === "teams" ? (
+        ) : active === "teams" ? (
           <TeamsTab
             records={records}
             teams={teams}

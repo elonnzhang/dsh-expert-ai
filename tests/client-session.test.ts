@@ -3,7 +3,7 @@ import type { Context } from "@deepseek-ai/cordis";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
 import type { ChatPanelInjected } from "../src/client/ChatPanel.js";
 import type { AgentPresetSelectorInjected } from "../src/client/AgentPresetSelector.js";
-import type { DigitalLifeRecord } from "../src/types.js";
+import type { DigitalLifeFeature, DigitalLifeRecord } from "../src/types.js";
 import type { ExpertTeam } from "../src/expert-types.js";
 import type { ExpertWorkbenchApi } from "../src/client/ExpertWorkbench.js";
 import { MIMEOGRAPHS_REVISION } from "../src/expert-types.js";
@@ -27,10 +27,24 @@ const record: DigitalLifeRecord = {
 
 function setup(
   presets: readonly { id: string; broken?: string }[],
-  options: { rosterUnavailable?: boolean; selectFails?: boolean; records?: DigitalLifeRecord[]; teams?: ExpertTeam[]; onSource?: (source: unknown) => void } = {},
+  options: {
+    rosterUnavailable?: boolean;
+    selectFails?: boolean;
+    records?: DigitalLifeRecord[];
+    teams?: ExpertTeam[];
+    onSource?: (source: unknown) => void;
+    features?: DigitalLifeFeature[];
+    status?: "loading" | "ready" | "unavailable";
+  } = {},
 ) {
   const calls: string[] = [];
   let configuredRecords = options.records ?? [record];
+  let formStatus = options.status ?? "ready";
+  let formFeatures: DigitalLifeFeature[] = options.features ?? ["identity", "conversation"];
+  const formListeners = new Set<() => void>();
+  const developerToolsListeners = new Set<() => void>();
+  const activeSlots = new Map<symbol, string>();
+  let activeSources = 0;
   let expertApi: ExpertWorkbenchApi | undefined;
   let promptContent: unknown;
   const sessionId = "session-1" as SessionId;
@@ -123,7 +137,14 @@ function setup(
           },
         },
       },
-      inputTriggers: { registerSource: (s: unknown) => { options.onSource?.(s); return () => {}; } },
+      inputTriggers: {
+        registerSource: (s: unknown) => {
+          options.onSource?.(s);
+          activeSources += 1;
+          let live = true;
+          return () => { if (live) { live = false; activeSources -= 1; } };
+        },
+      },
     })[service as "sessions" | "remote" | "connection" | "inputTriggers"],
     effect: (install: () => unknown) => install(),
     locale: { register: () => () => {}, bind: () => (key: string) => key },
@@ -131,13 +152,25 @@ function setup(
       developerTools: {
         enabled: {
           getSnapshot: () => true,
-          subscribe: () => () => {},
+          subscribe: (listener: () => void) => {
+            developerToolsListeners.add(listener);
+            return () => { developerToolsListeners.delete(listener); };
+          },
         },
       },
       get: () => ({
-        getSnapshot: () => ({ writable: true, value: { records: configuredRecords, teams: options.teams ?? [] } }),
+        getSnapshot: () => ({
+          status: formStatus,
+          writable: true,
+          value: formStatus === "ready"
+            ? { features: formFeatures, records: configuredRecords, teams: options.teams ?? [] }
+            : undefined,
+        }),
         set: async (_key: string, value: DigitalLifeRecord[]) => { configuredRecords = value; calls.push("save-records"); return true; },
-        subscribe: () => () => {},
+        subscribe: (listener: () => void) => {
+          formListeners.add(listener);
+          return () => { formListeners.delete(listener); };
+        },
       }),
     },
     uiWorkspace: { openSession: () => { calls.push("open"); } },
@@ -156,19 +189,39 @@ function setup(
           heroInjected = (options.inject?.("session-1") as AgentPresetSelectorInjected);
           stagedHeroInjected = (options.inject?.(undefined) as AgentPresetSelectorInjected);
         }
-        return () => {};
+        const token = Symbol(options.name);
+        activeSlots.set(token, options.name);
+        return () => { activeSlots.delete(token); };
       },
     },
   } as unknown as Context;
   apply(ctx);
-  if (createSession === undefined) throw new Error("Chat Panel was not registered");
+  const publishForm = (): void => { for (const listener of [...formListeners]) listener(); };
   return {
     calls,
-    createSession,
+    get createSession() {
+      if (createSession === undefined) throw new Error("Chat Panel was not registered");
+      return createSession;
+    },
+    slots: () => [...activeSlots.values()].sort(),
+    sources: () => activeSources,
+    subscriptions: () => ({
+      settings: formListeners.size,
+      developerTools: developerToolsListeners.size,
+      sessions: sessionListeners.size,
+    }),
+    setFeatures(next: DigitalLifeFeature[]) {
+      formFeatures = next;
+      publishForm();
+    },
+    setStatus(next: "loading" | "ready" | "unavailable") {
+      formStatus = next;
+      publishForm();
+    },
     get expertApi() { return expertApi!; },
     get records() { return configuredRecords; },
     get promptContent() { return promptContent; },
-    heroPriority,
+    get heroPriority() { return heroPriority; },
     get heroInjected() {
       return heroInjected;
     },
@@ -349,5 +402,92 @@ describe("digital-life standalone sessions", () => {
     let source: { candidates: (session: unknown, input: { query: string }) => Promise<Array<{ name: string }>> } | undefined;
     setup([], { teams: [{ id: "study", name: "Study", purpose: "Plans", analystIds: [record.id], reviewerId: record.id }], onSource: (s) => { source = s as typeof source; } });
     expect((await source!.candidates(undefined, { query: "" })).map((item) => item.name)).toEqual([record.id, "study"]);
+  });
+});
+
+const ALL_SLOTS = [
+  "conversation.hero.agentPreset",
+  "main",
+  "settings.section",
+  "sidebar.footer.action",
+  "sidebar.panellist",
+];
+
+describe("digital-life conversation switch", () => {
+  it("registers only the settings section while conversation is off", () => {
+    const fixture = setup([], { features: ["identity"] });
+    expect(fixture.slots()).toEqual(["settings.section"]);
+    expect(fixture.sources()).toBe(0);
+    expect(fixture.calls).toEqual([]);
+    expect(() => fixture.createSession).toThrow("Chat Panel was not registered");
+  });
+
+  it("registers every conversation surface when conversation is on", () => {
+    const fixture = setup([]);
+    expect(fixture.slots()).toEqual(ALL_SLOTS);
+    expect(fixture.sources()).toBe(1);
+  });
+
+  it("keeps the identity library editable while conversation is off", async () => {
+    const fixture = setup([], { features: ["identity"] });
+    await fixture.expertApi.importExpert("test-expert", "main");
+    expect(fixture.records).toHaveLength(2);
+  });
+
+  it("registers the conversation surfaces only once the setting is known", () => {
+    const fixture = setup([], { status: "loading" });
+    expect(fixture.slots()).toEqual(["settings.section"]);
+    expect(fixture.sources()).toBe(0);
+    fixture.setStatus("ready");
+    expect(fixture.slots()).toEqual(ALL_SLOTS);
+    expect(fixture.sources()).toBe(1);
+  });
+
+  it("keeps conversation off when the settings are unavailable", () => {
+    const fixture = setup([], { status: "unavailable" });
+    expect(fixture.slots()).toEqual(["settings.section"]);
+    expect(fixture.sources()).toBe(0);
+  });
+
+  it("removes every conversation surface when conversation is switched off", () => {
+    const fixture = setup([]);
+    fixture.setFeatures(["identity"]);
+    expect(fixture.slots()).toEqual(["settings.section"]);
+    expect(fixture.sources()).toBe(0);
+  });
+  it("mounts again when conversation is switched back on", async () => {
+    const fixture = setup([]);
+    fixture.setFeatures(["identity"]);
+    fixture.setFeatures(["identity", "conversation"]);
+    expect(fixture.slots()).toEqual(ALL_SLOTS);
+    expect(fixture.sources()).toBe(1);
+    await fixture.createSession(record);
+    expect(fixture.calls).toContain("bind");
+  });
+
+  it("holds no subscription of its own while conversation is off", () => {
+    const fixture = setup([]);
+    expect(fixture.subscriptions()).toEqual({ settings: 1, developerTools: 1, sessions: 1 });
+    fixture.setFeatures(["identity"]);
+    expect(fixture.subscriptions()).toEqual({ settings: 1, developerTools: 0, sessions: 0 });
+    fixture.setFeatures(["identity", "conversation"]);
+    expect(fixture.subscriptions()).toEqual({ settings: 1, developerTools: 1, sessions: 1 });
+  });
+
+  it("releases the composer block when conversation is switched off", async () => {
+    const fixture = setup([{ id: "digital-life-mode" }]);
+    await fixture.heroInjected?.load();
+    expect(fixture.blocks).toEqual([{ sessionId: "session-1", reason: "chooseLifeRequired" }]);
+    fixture.setFeatures(["identity"]);
+    expect(fixture.blocks).toEqual([]);
+  });
+
+  it("stops applying staged presets once conversation is switched off", async () => {
+    const fixture = setup([{ id: "standard" }]);
+    await fixture.stagedHeroInjected?.select("standard");
+    fixture.setFeatures(["identity"]);
+    fixture.publishBlankSession("minimal");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fixture.calls).not.toContain("select:standard");
   });
 });

@@ -1,5 +1,8 @@
 export const DIGITAL_LIFE_NAMESPACE = "digital-life";
 
+/** Switchable parts; `identity` is always on, `conversation` adds the consult, review and team tools, persona binding, Chat Panel and `@` source. */
+export const DIGITAL_LIFE_FEATURES = ["identity", "conversation"] as const;
+
 export const DIGITAL_LIFE_CATEGORIES = ["business", "science", "culture", "tech", "entertainment", "custom"] as const;
 
 /** Display name of each primary domain; a `custom` record carries its own label. */

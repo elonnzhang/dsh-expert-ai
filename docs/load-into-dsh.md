@@ -15,6 +15,23 @@ pnpm dsh web --port 3080
 pnpm dsh --profile web --dump-config
 ```
 
+## 运行模式（`features`）
+
+插件入口 `config.features` 决定启用哪些部分：`identity` 始终开启，`conversation` 缺省关闭。两者各自提供的内容见 README 的“运行模式”一节。
+
+开启对话功能，要在组合包插入的入口里写：
+
+```yaml
+- id: digital-life
+  name: dsh-digital-life
+  config:
+    features: [identity, conversation]
+```
+
+`digital-life-mode` 预设不再随组合包安装，需要时另外应用 `digital-life-mode.patch.yml`。旧版本装过的 Profile 如果在 `--dump-config` 里仍有 `preset-digital-life-mode` 一行，那是旧组合包留下的，可以移除。
+
+`features` 是 volatile 配置，修改后由 loader 原地应用；拿不准时重启 Profile。
+
 ## 本地 link
 
 先在插件仓库构建一次，再从 Harness checkout 执行 `add`：
@@ -50,6 +67,15 @@ pnpm run dev:web
 `scripts/dev-patch.mjs` 生成的 `dev/cordis.dev.local.yml` 已被 gitignore 忽略。overlay 中的
 Host / Client 路径必须是绝对路径；相对路径会相对 Profile 目录解析。
 
+默认生成的 overlay 只有 Host / Client 两行，即只开身份层。需要对话功能时加 `--conversation`：
+
+```sh
+pnpm run dev:patch -- --conversation
+pnpm dsh web --patch /path/to/dsh-digital-life/dev/cordis.dev.local.yml
+```
+
+它在 Host 行写入 `features: [identity, conversation]`，并追加 `digital-life-mode` 预设。
+
 配合 `pnpm run dev` 可以持续重建 Client：
 
 ```sh
@@ -69,6 +95,6 @@ pnpm dsh web --patch /path/to/dsh-digital-life/dev/cordis.dev.local.yml
 pnpm run dev:dump
 ```
 
-先确认 patch 层里同时出现 Host、Client 和 `preset-digital-life-mode` 三行，再检查 `lib/client.js` 是否包含
+先确认 patch 层里同时出现 Host 和 Client 两行（用 `--conversation` 生成时还有 `preset-digital-life-mode`），再检查 `lib/client.js` 是否包含
 `window.__ModuleLoader__.load`。如果插件没有任何反应，检查 Profile 是否提供了
 `inject` 声明中的服务；缺少必需服务时 Cordis fiber 会保持 `PENDING`。

@@ -26,17 +26,20 @@ import type { Agent } from "@deepseek-ai/dsh-agent";
 import {
   DIGITAL_LIFE_CATEGORIES,
   DIGITAL_LIFE_CATEGORY_LABELS,
+  DIGITAL_LIFE_FEATURES,
   EXPERT_AVATAR_MIMES,
   EXPERT_SOURCE_KINDS,
   MAX_EXPERT_SOURCE_NOTE_LENGTH,
   MAX_EXPERT_TITLE_LENGTH,
 } from "../constants.js";
 import { avatarProblem } from "../avatar.js";
+import { enabledFeatures } from "../features.js";
 import { createExpertService } from "./expert-service.js";
 import { packageAgentBinding, validatePackageBinding } from "./expert-packages.js";
 import type { ExpertTeam } from "../expert-types.js";
 import type {
   DigitalLifeCategory,
+  DigitalLifeFeature,
   DigitalLifeRecord,
   DigitalLifeSettings,
   ResolvedDigitalLifeSettings,
@@ -46,6 +49,8 @@ export const name = "digital-life";
 export const inject = ["tools", "subagents", "agents", "connection", "sandboxPolicy"];
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+
+const CONVERSATION_ENDPOINTS: ReadonlySet<string> = new Set(["project", "greeting", "binding", "unbind", "bind"]);
 
 const RecordSchema: z<DigitalLifeRecord> = z.object({
   id: z.string(),
@@ -108,6 +113,7 @@ const TEAM_PERSONA_LIMIT = 8_000;
  * `config.<field>.get()`.
  */
 export interface Config {
+  features: Volatile<DigitalLifeFeature[]>;
   provider: Volatile<string>;
   maxBatchSize: Volatile<number>;
   stateDir: Volatile<string | undefined>;
@@ -116,6 +122,7 @@ export interface Config {
 }
 
 export const Config: z<DigitalLifeSettings, Config> = z.object({
+  features: z.array(z.union([...DIGITAL_LIFE_FEATURES])).default(["identity"]).volatile(),
   provider: z.string().default("spawn").volatile(),
   maxBatchSize: z.natural().default(3).volatile(),
   stateDir: z.string().required(false).volatile(),
@@ -597,6 +604,7 @@ function registerTools(
 
 // inject digital life features into the host
 export function apply(ctx: Context, config: Config): void {
+  const conversationOn = (): boolean => enabledFeatures(config.features.get()).has("conversation");
   const modeDisposers = new WeakMap<Agent, () => void>();
   const personaDisposers = new WeakMap<Agent, () => void>();
   const bindAgent = (agent: Agent, binding: DigitalLifeBinding): void => {
@@ -673,6 +681,7 @@ export function apply(ctx: Context, config: Config): void {
     return upgraded;
   };
   ctx.on("agent/created", async ({ agent }) => {
+    if (!conversationOn()) return undefined;
     const binding = await loadBinding(agent.id, stateDir());
     if (binding !== undefined) {
       try { bindAgent(agent, await upgradeBinding(agent.id, binding)); }
@@ -705,6 +714,15 @@ export function apply(ctx: Context, config: Config): void {
       connection.rpc.handle(
         "/digital-life",
         async (endpoint, payload) => {
+          if (!conversationOn() && (endpoint.startsWith("review/") || CONVERSATION_ENDPOINTS.has(endpoint)))
+            return {
+              ok: false,
+              error: {
+                code: "internal",
+                message: `digital-life: "${endpoint}" needs the conversation feature`,
+                details: {},
+              },
+            };
           if (endpoint.startsWith("expert/") || endpoint.startsWith("review/"))
             return expertService.rpc(endpoint, payload);
           if (endpoint === "project") {
@@ -835,5 +853,16 @@ export function apply(ctx: Context, config: Config): void {
     records: () => resolved(source()).records,
     stateDir,
   });
-  ctx.effect(() => registerTools(ctx, () => resolved(source()), stateDir, expertService.registerTools));
+  let disposeTools: (() => void) | undefined;
+  const syncTools = (): void => {
+    const on = conversationOn();
+    if (on && disposeTools === undefined)
+      disposeTools = registerTools(ctx, () => resolved(source()), stateDir, expertService.registerTools);
+    else if (!on && disposeTools !== undefined) {
+      disposeTools();
+      disposeTools = undefined;
+    }
+  };
+  ctx.on("loader/volatile-update", syncTools);
+  syncTools();
 }
