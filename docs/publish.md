@@ -7,7 +7,7 @@
 ```sh
 pnpm run check
 pnpm pack
-pnpm dsh plugin --profile web add ./dsh-digital-life-0.1.1.tgz
+pnpm dsh plugin --profile web add ./dsh-expert-ai-0.1.1.tgz
 ```
 
 发布到 npm 时，先确认 `files` 中包含 `lib` 与 `cordis.patch.yml`。`cordis.patch.yml` 的
@@ -20,14 +20,14 @@ patch 行 `name` 必须等于 `package.json` 的 `name`。
 
 ```yaml
 allowBuilds:
-  dsh-digital-life: true
+  dsh-expert-ai: true
 ```
 
 这项授权意味着安装时会在用户机器上执行该包的构建代码。生产环境应锁定 Git commit，或改用
 预构建 tarball：
 
 ```sh
-pnpm dsh plugin --profile web add github:elonnzhang/dsh-digital-life#<commit-sha>
+pnpm dsh plugin --profile web add github:elonnzhang/dsh-expert-ai#<commit-sha>
 ```
 
 ## 发布前清单

@@ -5,7 +5,7 @@
 在 Harness checkout 中把插件加入 Web Profile：
 
 ```sh
-pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-digital-life.git
+pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.git
 pnpm dsh web --port 3080
 ```
 
@@ -28,12 +28,12 @@ pnpm dsh --profile web --dump-config
 先在插件仓库构建一次，再从 Harness checkout 执行 `add`：
 
 ```sh
-cd /path/to/dsh-digital-life
+cd /path/to/dsh-expert-ai
 pnpm install
 pnpm run check
 
 cd /path/to/deepseek-harness
-pnpm dsh plugin --profile web add /path/to/dsh-digital-life
+pnpm dsh plugin --profile web add /path/to/dsh-expert-ai
 pnpm dsh web --port 3080
 ```
 
@@ -44,12 +44,12 @@ Client 产物。Host 半边与 `cordis.patch.yml` 变化仍需重启 `dsh web`�
 
 不安装到 Profile 时，可生成绝对路径 overlay：
 
-请先在目标 Profile 中移除已安装的 `dsh-digital-life`，或使用一个未安装插件的开发
+请先在目标 Profile 中移除已安装的 `dsh-expert-ai`，或使用一个未安装插件的开发
 Profile。overlay 的 Host 条目与组合包共用 id `digital-life`（Client 按这个 id 读取设置
 表单），两者并存会得到两个同 id 的条目。
 
 ```sh
-cd /path/to/dsh-digital-life
+cd /path/to/dsh-expert-ai
 pnpm run build
 pnpm run dev:patch
 pnpm run dev:dump
@@ -64,7 +64,7 @@ Host / Client 路径必须是绝对路径；相对路径会相对 Profile 目录
 
 ```sh
 pnpm run dev:patch -- --conversation
-pnpm dsh web --patch /path/to/dsh-digital-life/dev/cordis.dev.local.yml
+pnpm dsh web --patch /path/to/dsh-expert-ai/dev/cordis.dev.local.yml
 ```
 
 它在 Host 行写入 `features: [identity, conversation]`，并追加 `digital-life-mode` 预设。
@@ -78,7 +78,7 @@ pnpm dsh web --patch /path/to/dsh-digital-life/dev/cordis.dev.local.yml
 pnpm run dev
 
 # 终端 2：Harness checkout
-pnpm dsh web --patch /path/to/dsh-digital-life/dev/cordis.dev.local.yml
+pnpm dsh web --patch /path/to/dsh-expert-ai/dev/cordis.dev.local.yml
 ```
 
 保存 Client 源码后，Web shell 会替换 Client fiber；组件局部状态会重置。Host 代码、patch
@@ -99,7 +99,7 @@ Harness checkout 里直接 dump：
 
 ```sh
 pnpm run dev:patch -- --conversation
-pnpm dsh web --patch /path/to/dsh-digital-life/dev/cordis.dev.local.yml --dump-config
+pnpm dsh web --patch /path/to/dsh-expert-ai/dev/cordis.dev.local.yml --dump-config
 ```
 
 这时 Host 行应带有 `features: [identity, conversation]`，并多出 `preset-digital-life-mode` 一行。

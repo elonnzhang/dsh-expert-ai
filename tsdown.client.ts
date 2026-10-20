@@ -4,7 +4,7 @@ import { transform } from "lightningcss";
 import type { UserConfig } from "tsdown";
 
 /** The id used by the web shell's client module loader. */
-const PLUGIN_ID = "dsh-digital-life";
+const PLUGIN_ID = "dsh-expert-ai";
 
 /**
  * Modules seeded by the Web Profile and resolved by the injected `require`.
@@ -22,10 +22,10 @@ const MODULE_TABLE = [
   "@deepseek-ai/dsh-client-ui-dockkit",
 ] as const;
 
-const CSS_VIRTUAL_PREFIX = "\0dsh-digital-life-css:";
+const CSS_VIRTUAL_PREFIX = "\0dsh-expert-ai-css:";
 const CSS_VIRTUAL_SUFFIX = ".mjs";
-const INLINE_CSS_VIRTUAL_PREFIX = "\0dsh-digital-life-inline-css:";
-const GLOBAL_CSS_VIRTUAL_PREFIX = "\0dsh-digital-life-global-css:";
+const INLINE_CSS_VIRTUAL_PREFIX = "\0dsh-expert-ai-inline-css:";
+const GLOBAL_CSS_VIRTUAL_PREFIX = "\0dsh-expert-ai-global-css:";
 const INLINE_CSS_QUERY = "?inline";
 
 function isModuleTableSpecifier(source: string): boolean {
@@ -55,7 +55,7 @@ function styleInjectionModule(fileId: string, css: string, classMap?: Record<str
 
 function cssModulesPlugin() {
   return {
-    name: "dsh-digital-life-css-modules",
+    name: "dsh-expert-ai-css-modules",
     resolveId(source: string, importer: string | undefined) {
       if (source.endsWith(".module.css")) {
         const file = sourceAssetPath(source, importer);
@@ -109,7 +109,7 @@ function cssModulesPlugin() {
 
 function clientPurityPlugin() {
   return {
-    name: "dsh-digital-life-client-purity",
+    name: "dsh-expert-ai-client-purity",
     resolveId(source: string) {
       if (source.startsWith("@deepseek-ai/") && !isModuleTableSpecifier(source)) {
         throw new Error(

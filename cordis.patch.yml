@@ -1,6 +1,6 @@
 - insert:
     - id: digital-life
-      name: dsh-digital-life
+      name: dsh-expert-ai
       config:
         provider: spawn
         maxBatchSize: 3

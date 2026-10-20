@@ -38,7 +38,7 @@ if (existsSync(clientEntry)) {
   if (!client.includes("window.__ModuleLoader__.load")) {
     problems.push("Client artifact does not register with __ModuleLoader__");
   }
-  if (!client.includes("dsh-digital-life")) {
+  if (!client.includes("dsh-expert-ai")) {
     problems.push("Client artifact has the wrong loader id");
   }
   let handoff;
@@ -55,7 +55,7 @@ if (existsSync(clientEntry)) {
   } catch (error) {
     problems.push(`Client artifact is not executable: ${String(error)}`);
   }
-  if (handoff?.id !== "dsh-digital-life" || typeof handoff?.factory !== "function") {
+  if (handoff?.id !== "dsh-expert-ai" || typeof handoff?.factory !== "function") {
     problems.push("Client artifact did not hand off a loader factory");
   }
 }
@@ -65,4 +65,4 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log("ok dsh-digital-life Host / Client artifacts");
+console.log("ok dsh-expert-ai Host / Client artifacts");

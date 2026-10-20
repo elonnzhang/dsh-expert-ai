@@ -8,7 +8,7 @@ import { clientBundle } from "./tsdown.client.ts";
  */
 export default defineConfig([
   {
-    name: "dsh-digital-life",
+    name: "dsh-expert-ai",
     entry: {
       index: "src/index.ts",
       invariant: "src/invariant.ts",

@@ -1,8 +1,8 @@
-# dsh-digital-life
+# dsh-expert-ai
 
 [English](README.md) | 中文
 
-`dsh-digital-life` 为 DeepSeek Harness 维护一个数字身份库（人设、头像、来源声明），并通过 `expertIdentity` Cordis 服务提供给其他插件。它是与 `dsh-bot` 运行时配合使用的身份层（见[与 dsh-bot 配合](#与-dsh-bot-配合)）。插件自带的咨询、评审和专家团功能仍然保留，但只有开启 `conversation` 功能后才会运行（见[运行模式](#运行模式)）。
+`dsh-expert-ai` 为 DeepSeek Harness 维护一个数字身份库（人设、头像、来源声明），并通过 `expertIdentity` Cordis 服务提供给其他插件。它是与 `dsh-bot` 运行时配合使用的身份层（见[与 dsh-bot 配合](#与-dsh-bot-配合)）。插件自带的咨询、评审和专家团功能仍然保留，但只有开启 `conversation` 功能后才会运行（见[运行模式](#运行模式)）。
 
 ## 功能
 
@@ -79,7 +79,7 @@
 
 ## 从 GitHub 安装
 
-`dsh-digital-life` 安装到 DeepSeek Harness 的 **Web Profile** 中。下面的命令都在 Harness checkout 中执行，而不是在插件仓库中执行。
+`dsh-expert-ai` 安装到 DeepSeek Harness 的 **Web Profile** 中。下面的命令都在 Harness checkout 中执行，而不是在插件仓库中执行。
 
 ### 前置条件
 
@@ -91,7 +91,7 @@
 
 ```sh
 cd /path/to/deepseek-harness
-pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-digital-life.git
+pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.git
 ```
 
 该命令会把插件安装到 `$DSH_HOME/profiles/web`，将插件 bundle 加入 Web Profile，并在下一次启动时加载 Host 和 Client 两部分。
@@ -107,7 +107,7 @@ pnpm dsh web --port 3080
 > GitHub 安装会运行包里的 `prepare`，从源码构建 `lib/`。为了让发布内容可复现，推送前先在本地完成检查：
 >
 > ```sh
-> cd /path/to/dsh-digital-life
+> cd /path/to/dsh-expert-ai
 > pnpm install
 > pnpm run check
 > git add .gitignore .npmrc src scripts docs package.json pnpm-lock.yaml tsconfig.json tsconfig.types.json tsdown.config.ts tsdown.client.ts cordis.patch.yml README.md README.zh.md
@@ -124,10 +124,10 @@ pnpm dsh web --port 3080
 
 ```sh
 # 更新已安装的 GitHub 依赖
-pnpm dsh plugin --profile web update dsh-digital-life
+pnpm dsh plugin --profile web update dsh-expert-ai
 
 # 从 Web Profile 卸载插件
-pnpm dsh plugin --profile web remove dsh-digital-life
+pnpm dsh plugin --profile web remove dsh-expert-ai
 ```
 
 安装、更新或卸载后，重新启动 `pnpm dsh web`。
@@ -137,12 +137,12 @@ pnpm dsh plugin --profile web remove dsh-digital-life
 把插件 checkout link 到 Profile 一次，之后对着运行中的服务迭代：
 
 ```sh
-cd /path/to/dsh-digital-life
+cd /path/to/dsh-expert-ai
 pnpm install
 pnpm run check
 
 cd /path/to/deepseek-harness
-pnpm dsh plugin --profile web add /path/to/dsh-digital-life
+pnpm dsh plugin --profile web add /path/to/dsh-expert-ai
 pnpm dsh web --port 3080
 ```
 
@@ -155,7 +155,7 @@ pnpm dsh web --port 3080
 | `lib/index.js` | `src/index.ts` | Host，由 cordis apply |
 | `lib/index.d.ts` | Host 类型声明 | TypeScript 消费方 |
 | `lib/invariant.js` | `src/invariant.ts` | `exports["./invariant"]` |
-| `lib/client.js` | `src/client/index.ts` | 浏览器，服务在 `/plugins/dsh-digital-life/client.js` |
+| `lib/client.js` | `src/client/index.ts` | 浏览器，服务在 `/plugins/dsh-expert-ai/client.js` |
 | `lib/types/client/index.d.ts` | Client 类型声明 | `./client` 的 TypeScript 消费方 |
 
 `lib/index.d.ts` 和 `lib/invariant.d.ts` 由 tsdown 生成；`build:types` 额外生成双面 Client
@@ -164,7 +164,7 @@ pnpm dsh web --port 3080
 
 Client 产物不是普通的浏览器 bundle。web shell 的模块 loader 要求它调用
 `window.__ModuleLoader__.load({ id, factory })` 自我注册；加载了却没注册的 bundle 会让插件启动失败，
-报 `bundle … loaded without registering "dsh-digital-life"`。`tsdown.client.ts` 负责产出这层包装
+报 `bundle … loaded without registering "dsh-expert-ai"`。`tsdown.client.ts` 负责产出这层包装
 （CJS 输出套在 factory 的 banner 与 footer 里），把 shell 模块表里的 specifier 保持为 external，
 使其留成 loader 能应答的 `require()` 调用，并把每个样式表编译成带哈希类名的样式注入模块。
 把它换成普通的浏览器打包配置，坏的不只是样式，而是插件启动。
@@ -174,11 +174,11 @@ Client 产物不是普通的浏览器 bundle。web shell 的模块 loader 要求
 运行中的 `dsh web` 会 stat 轮询它服务的每个 client bundle，所以重写 `lib/client.js` 就是全部触发条件——不用重启服务，也不用刷新页面：
 
 ```sh
-cd /path/to/dsh-digital-life
+cd /path/to/dsh-expert-ai
 pnpm run dev
 ```
 
-内容变化后 Host 会在 `GET /plugins/events` 通道上广播一帧 `rebuilt`，浏览器半边随即原地替换 cordis fiber：丢掉旧 factory、重新拉取 bundle、等旧 fiber 的 disposer 排空、移除 `<style data-plugin="dsh-digital-life">` 标签，然后重新 apply。被替换子树里的组件状态会丢失，页面其余部分照常运行。
+内容变化后 Host 会在 `GET /plugins/events` 通道上广播一帧 `rebuilt`，浏览器半边随即原地替换 cordis fiber：丢掉旧 factory、重新拉取 bundle、等旧 fiber 的 disposer 排空、移除 `<style data-plugin="dsh-expert-ai">` 标签，然后重新 apply。被替换子树里的组件状态会丢失，页面其余部分照常运行。
 
 有两类改动落在这条链之外，需要重启 `dsh web`：Host 半边，因为 Web Profile 没有挂载 node 侧的插件重载；以及 `cordis.patch.yml`，因为组合关系只在启动时读取。
 
@@ -246,15 +246,15 @@ $DSH_HOME/settings.yaml
 发布新的 GitHub 版本前，先在插件仓库构建并推送；然后在 Harness checkout 中更新：
 
 ```sh
-pnpm dsh plugin --profile web update dsh-digital-life
+pnpm dsh plugin --profile web update dsh-expert-ai
 pnpm dsh web --port 3080
 ```
 
 如果 Profile 仍然使用旧的 link 或安装内容，可以重新卸载并安装：
 
 ```sh
-pnpm dsh plugin --profile web remove dsh-digital-life
-pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-digital-life.git
+pnpm dsh plugin --profile web remove dsh-expert-ai
+pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.git
 ```
 
 ## 设置项

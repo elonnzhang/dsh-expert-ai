@@ -1,7 +1,7 @@
 - id: digital-life-host
-  name: dsh-digital-life
+  name: dsh-expert-ai
   config:
     provider: spawn
     maxBatchSize: 8
 - id: digital-life-client
-  name: dsh-digital-life/client
+  name: dsh-expert-ai/client

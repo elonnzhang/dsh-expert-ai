@@ -3,7 +3,7 @@
 - 日期：2026-10-19
 - 范围：只做「与数字分身单聊」和「多个分身群聊」。评审、咨询、专家团、记忆扩展都不在本阶段。
 - 两个仓库：
-  - 身份层 `dsh-expert-ai`（本仓库 `dsh-digital-life` 改名而来）：<https://github.com/elonnzhang/dsh-digital-life>，本地 `/Users/elon/code-space/GitHub/dsh-digital-life`
+  - 身份层 `dsh-expert-ai`（本仓库 `dsh-digital-life` 改名而来）：<https://github.com/elonnzhang/dsh-expert-ai>，本地 `/Users/elon/code-space/GitHub/dsh-digital-life`
   - 运行时 `dsh-bot`（fork 自 Fei2411/DeepSeek-Bot）：<https://github.com/elonnzhang/DeepSeek-Bot>，本地 `/Users/elon/code-space/GitHub/DeepSeek-Bot`
 
 ## 1. 分层
