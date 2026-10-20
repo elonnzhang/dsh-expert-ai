@@ -66,7 +66,8 @@ pnpm run dev:web
 ```
 
 `scripts/dev-patch.mjs` 生成的 `dev/cordis.dev.local.yml` 已被 gitignore 忽略。overlay 中的
-Host / Client 路径必须是绝对路径；相对路径会相对 Profile 目录解析。
+Host / Client 路径必须是绝对路径；相对路径会相对 Profile 目录解析。`dev:web` 与 `dev:dump`
+每次都会先重新生成 overlay，生成的总是只开身份层的版本。
 
 默认生成的 overlay 只有 Host / Client 两行，即只开身份层。需要对话功能时加 `--conversation`：
 
@@ -76,6 +77,8 @@ pnpm dsh web --patch /path/to/dsh-digital-life/dev/cordis.dev.local.yml
 ```
 
 它在 Host 行写入 `features: [identity, conversation]`，并追加 `digital-life-mode` 预设。
+之后直接用上面的 `pnpm dsh web --patch` 启动；`dev:web` 和 `dev:dump` 会把这个 overlay 覆盖回
+只开身份层的版本。
 
 配合 `pnpm run dev` 可以持续重建 Client：
 
@@ -96,6 +99,16 @@ pnpm dsh web --patch /path/to/dsh-digital-life/dev/cordis.dev.local.yml
 pnpm run dev:dump
 ```
 
-先确认 patch 层里同时出现 Host 和 Client 两行（用 `--conversation` 生成时还有 `preset-digital-life-mode`），再检查 `lib/client.js` 是否包含
+先确认 patch 层里同时出现 Host 和 Client 两行，再检查 `lib/client.js` 是否包含
 `window.__ModuleLoader__.load`。如果插件没有任何反应，检查 Profile 是否提供了
 `inject` 声明中的服务；缺少必需服务时 Cordis fiber 会保持 `PENDING`。
+
+`dev:dump` 看到的总是只开身份层的 overlay。检查对话功能的 overlay 时，先生成它，再在
+Harness checkout 里直接 dump：
+
+```sh
+pnpm run dev:patch -- --conversation
+pnpm dsh web --patch /path/to/dsh-digital-life/dev/cordis.dev.local.yml --dump-config
+```
+
+这时 Host 行应带有 `features: [identity, conversation]`，并多出 `preset-digital-life-mode` 一行。

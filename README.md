@@ -55,7 +55,7 @@ Turn conversation on in the entry that the bundle inserts:
 - The `digital-life-mode` Agent preset is no longer part of the installed bundle. To use it, also apply `digital-life-mode.patch.yml`; without it, standalone sessions run on the deployment's default preset. `pnpm run dev:patch -- --conversation` writes both into the development overlay.
 - `features` has no settings UI. In identity mode **子代理 Provider** and **分类最大咨询数** stay visible but unused.
 - The Client mounts the conversation surfaces only once the setting is known; while it is loading, unavailable or missing, nothing is mounted.
-- A change to `features` is applied in place through the loader's volatile update (restart the Profile if it does not take effect). Switching `conversation` off withdraws the tools and the Client surfaces, but a Session that was already bound keeps its identity sections until it is recreated.
+- A change to `features` is applied in place through the loader's volatile update (restart the Profile if it does not take effect). Switching `conversation` off withdraws the tools and the Client surfaces, but a Session that was already bound keeps its identity sections until it is recreated. A team stage that is already running finishes on its own, its subagent still limited to structured output; further stages and cancelling the run need `conversation` back on.
 
 ## Demo
 
