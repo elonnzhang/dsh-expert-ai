@@ -43,7 +43,10 @@ The split of responsibilities and the service contract are in [`docs/expert-bot-
 | `identity` (always) | the settings section with the 专家 and 通用设置 tabs, the managed identity files, the `expertIdentity` service and its changed event, the `expert/*` and `identity` endpoints |
 | `conversation` | the `consult_*`, review and team-run tools; persona and team binding of new Sessions, with the `project`, `greeting`, `binding`, `bind`, `unbind` and `review/*` endpoints; the Chat Panel; the `@<id>` input source; the Expert AI panel and sidebar entry; the digital-life selector in the conversation hero; the 专家团 settings tab |
 
-To enable conversation for an installed bundle, update the existing `digital-life` entry and preserve its full `config`: Cordis patch rows replace the entire `config` object. Keep `provider`, `maxBatchSize`, and every existing `records` entry, then add `features: [identity, conversation]`. The development overlay can be generated with `pnpm run dev:patch -- --conversation`.
+To enable conversation for an installed bundle, update the existing `digital-life` entry and preserve its full `config`: Cordis patch rows replace the entire `config` object. Keep `provider`, `maxBatchSize`, and every existing `records` entry, then add `features: [identity, conversation]`.
+
+The `digital-life-mode` Agent preset is no longer part of the installed bundle. Apply `digital-life-mode.patch.yml` to use it; without that patch, standalone sessions use the deployment's default preset. `pnpm run dev:patch -- --conversation` writes both the conversation setting and preset to the development overlay.
+
 - `features` has no settings UI. In identity mode **子代理 Provider** and **分类最大咨询数** stay visible but unused.
 - The Client mounts the conversation surfaces only once the setting is known; while it is loading, unavailable or missing, nothing is mounted.
 - A change to `features` is applied in place through the loader's volatile update (restart the Profile if it does not take effect). Switching `conversation` off withdraws the tools and the Client surfaces, but a Session that was already bound keeps its identity sections until it is recreated. A team stage that is already running finishes on its own, its subagent still limited to structured output; further stages and cancelling the run need `conversation` back on.

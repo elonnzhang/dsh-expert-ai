@@ -42,7 +42,10 @@
 | `identity`（始终） | 带「专家」「通用设置」标签的设置区、托管的身份文件、`expertIdentity` 服务及其变更事件、`expert/*` 与 `identity` 端点 |
 | `conversation` | `consult_*`、评审与专家团运行工具；新会话的人设与专家团绑定（含 `project`、`greeting`、`binding`、`bind`、`unbind` 和 `review/*` 端点）；Chat Panel；`@<id>` 输入源；Expert AI 面板与侧边栏入口；会话首页的数字生命选择器；设置页的专家团标签 |
 
-在组合包插入的 `digital-life` 入口中开启对话功能时，要保留完整的 `config`：Cordis patch 会整体替换该对象。保留 `provider`、`maxBatchSize` 和所有现有 `records`，再加入 `features: [identity, conversation]`。开发 overlay 可用 `pnpm run dev:patch -- --conversation` 生成。`digital-life-mode` Agent preset 不再随安装的组合包提供；需要时另外应用 `digital-life-mode.patch.yml`，没有它时独立会话使用部署的默认 preset。
+在组合包插入的 `digital-life` 入口中开启对话功能时，要保留完整的 `config`：Cordis patch 会整体替换该对象。保留 `provider`、`maxBatchSize` 和所有现有 `records`，再加入 `features: [identity, conversation]`。
+
+`digital-life-mode` Agent preset 不再随安装的组合包提供；需要时另外应用 `digital-life-mode.patch.yml`，没有它时独立会话使用部署的默认 preset。开发 overlay 可用 `pnpm run dev:patch -- --conversation` 生成。
+
 - `features` 没有设置页入口。identity 模式下，**子代理 Provider** 与 **分类最大咨询数** 仍然显示，但不起作用。
 - Client 在拿到设置值之后才挂载对话相关界面；设置还在加载、不可用或缺失时，什么都不挂载。
 - 修改 `features` 通过 loader 的 volatile 更新原地生效（若没有生效，请重启 Profile）。把 `conversation` 关掉会撤销工具和 Client 界面，但已经绑定过的会话在重建前仍带着原来的身份段。已经在运行的专家团阶段会自行结束，其子代理仍只能输出结构化结果；后续阶段和取消运行需要重新开启 `conversation`。

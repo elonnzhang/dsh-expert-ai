@@ -11,12 +11,15 @@ die() { echo "real-web: $*" >&2; exit 1; }
 usage() {
   echo "usage: scripts/real-web.sh start|stop|status|url" >&2
   echo "  env: REAL_WEB_HARNESS REAL_WEB_HOME REAL_WEB_PORT REAL_WEB_PATCHES (space-separated overlay files)" >&2
+  echo "       REAL_WEB_PROBE=1 also loads scripts/real-web-probe (development observer, GET /api/real-web-probe/snapshot)" >&2
+  echo "       ?agent=<sessionId> assembles prompts and may write snapshots; inspect disposable test Sessions only" >&2
   exit 2
 }
 
 [[ -f "$HARNESS/apps/cli/src/bin.ts" ]] || die "no Harness checkout at $HARNESS (set REAL_WEB_HARNESS)"
 HARNESS="$(cd "$HARNESS" && pwd -P)"
 [[ "$DSH_HOME/" != "$HOME/.dsh/"* ]] || die "refusing to use $HOME/.dsh; pick another REAL_WEB_HOME"
+umask 077
 mkdir -p "$DSH_HOME"
 DSH_HOME="$(cd "$DSH_HOME" && pwd -P)"
 USER_HOME="$(cd "$HOME" && pwd -P)"
@@ -70,8 +73,12 @@ cmd_start() {
     [[ -f "$file" ]] || die "overlay not found: $file"
     overlays+=(--patch "$file")
   done
+  if [[ "${REAL_WEB_PROBE:-}" == 1 ]]; then
+    mkdir -p "$STATE"
+    printf '%s\n' '- insert:' '    - id: real-web-probe' "      name: '${REPO//\'/\'\'}/scripts/real-web-probe/index.mjs'" >"$STATE/probe.patch.yml"
+    overlays+=(--patch "$STATE/probe.patch.yml")
+  fi
   link_plugin
-  umask 077
   mkdir -p "$STATE"
   : >"$LOGFILE"
   echo "$PORT" >"$PORTFILE"
