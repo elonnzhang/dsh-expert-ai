@@ -41,7 +41,7 @@ Another plugin reads identities with `ctx.inject(['expertIdentity'], ctx => …)
 - `list()` returns the enabled identities whose persona can be read. `get(id)` returns one with its `persona` and `disclosure`, or `undefined` for an unknown, disabled or unreadable id.
 - `revision` is the sha256 of the persona. A change of title, avatar or source does not alter it; it arrives through the changed event and a fresh `get`.
 - `disclosure` is a Chinese paragraph chosen by `source.kind`, for the consumer to put into its prompt as is.
-- `expert-identity/changed` carries `{ ids }`, the sorted ids that appeared, disappeared or changed. Listeners are not awaited, and nothing is emitted at startup.
+- `expert-identity/changed` carries `{ ids, withdrawn? }`. `ids` are the sorted ids that appeared, disappeared or changed. `withdrawn` (sorted, absent when empty) lists those whose record the user disabled or deleted, and `ids` still contains them; an identity whose persona merely cannot be read is not withdrawn. Listeners are not awaited, and nothing is emitted at startup.
 - The types `ExpertIdentity`, `ExpertIdentitySummary`, `ExpertIdentityService` and `ExpertIdentityChange` are exported.
 
 ## Install from GitHub

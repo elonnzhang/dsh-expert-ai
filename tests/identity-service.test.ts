@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DIGITAL_LIFE_CATEGORY_LABELS, EXPERT_SOURCE_KINDS } from '../src/constants.js'
 import { agentPath } from '../src/host/identity.js'
 import { disclosureFor, ExpertIdentityProvider } from '../src/index.js'
-import type { ExpertIdentityService } from '../src/index.js'
+import type { ExpertIdentityChange, ExpertIdentityService } from '../src/index.js'
 import type { DigitalLifeRecord } from '../src/types.js'
 
 const mentor: DigitalLifeRecord = {
@@ -31,6 +31,8 @@ interface Harness {
   service: ExpertIdentityService
   records: DigitalLifeRecord[]
   changes: string[][]
+  /** Every payload of `expert-identity/changed`, as the listener received it. */
+  events: ExpertIdentityChange[]
 }
 
 const cleanups: Array<() => Promise<void>> = []
@@ -51,9 +53,12 @@ async function start(
     await rm(root, { recursive: true, force: true })
   })
   const dir = dirFor === undefined ? root : await dirFor(root)
-  const harness = { ctx, root, dir, records, changes: [] } as unknown as Harness
+  const harness = { ctx, root, dir, records, changes: [], events: [] } as unknown as Harness
   before?.(ctx)
-  ctx.on('expert-identity/changed', ({ ids }) => { harness.changes.push(ids) })
+  ctx.on('expert-identity/changed', (change) => {
+    harness.changes.push(change.ids)
+    harness.events.push(change)
+  })
   await ctx.plugin((inner: Context) => {
     new ExpertIdentityProvider(inner, { saved: () => harness.records, records: () => harness.records, stateDir: () => harness.dir })
   })
@@ -259,7 +264,7 @@ describe('expertIdentity service', () => {
     await update(h, [mentor])
     expect((await h.service.get('mentor'))?.persona).toBe('关注现金流。')
     expect(await readFile(agentPath('mentor', h.root), 'utf8')).toContain('关注现金流。')
-    expect(h.changes).toEqual([['mentor'], ['mentor']])
+    expect(h.events).toStrictEqual([{ ids: ['mentor'] }, { ids: ['analyst', 'mentor'], withdrawn: ['analyst'] }])
   })
 
   it('stores a record again when a partly failed write had removed it', async () => {
@@ -462,3 +467,68 @@ describe('expert-identity/changed', () => {
     expect((await h.service.get('analyst'))?.persona).toBe('后来才写好的人设。')
   })
 })
+
+describe('withdrawn identities', () => {
+  it('lists a disabled identity as withdrawn, and not again when it is enabled', async () => {
+    const h = await start([mentor, analyst])
+    await update(h, [mentor, { ...analyst, enabled: false }])
+    await update(h, [mentor, analyst])
+    expect(h.events).toStrictEqual([{ ids: ['analyst'], withdrawn: ['analyst'] }, { ids: ['analyst'] }])
+  })
+
+  it('lists a deleted identity as withdrawn', async () => {
+    const h = await start([mentor, analyst])
+    await update(h, [mentor])
+    expect(h.events).toStrictEqual([{ ids: ['analyst'], withdrawn: ['analyst'] }])
+  })
+
+  it('leaves withdrawn out when nothing was disabled or deleted', async () => {
+    const h = await start([mentor])
+    await update(h, [{ ...mentor, persona: '关注团队。' }, analyst])
+    expect(h.events).toStrictEqual([{ ids: ['analyst', 'mentor'] }])
+  })
+
+  it('lists withdrawn ids sorted, next to ids that only changed', async () => {
+    const zed = { ...analyst, id: 'zed', name: '末位' }
+    const h = await start([mentor, zed, analyst])
+    await update(h, [{ ...mentor, persona: '关注团队。' }, { ...zed, enabled: false }])
+    expect(h.events).toStrictEqual([{ ids: ['analyst', 'mentor', 'zed'], withdrawn: ['analyst', 'zed'] }])
+  })
+
+  it('does not call an identity withdrawn when its persona stops being readable', async () => {
+    const h = await start([mentor])
+    const file = join(h.root, 'late.md')
+    const late = { ...analyst, agent: file }
+    await writeFile(file, '---\nname: analyst\n---\n\n外部人设。\n')
+    await update(h, [mentor, late])
+    await rm(file)
+    await update(h, [mentor, late])
+    expect(h.events).toStrictEqual([{ ids: ['analyst'] }, { ids: ['analyst'] }])
+  })
+
+  it('lists a record deleted while its persona could not be read as withdrawn', async () => {
+    const h = await start([mentor])
+    await update(h, [mentor, { ...analyst, agent: join(h.root, 'never-written.md') }])
+    await update(h, [mentor])
+    expect(h.events).toStrictEqual([{ ids: ['analyst'], withdrawn: ['analyst'] }])
+  })
+
+  it('announces a withdrawal once, not when the disabled record is deleted later', async () => {
+    const h = await start([mentor, analyst])
+    await update(h, [mentor, { ...analyst, enabled: false }])
+    await update(h, [mentor, { ...analyst, enabled: false, description: '换了简介' }])
+    await update(h, [mentor])
+    expect(h.events).toStrictEqual([{ ids: ['analyst'], withdrawn: ['analyst'] }])
+  })
+
+  it('has stopped serving a withdrawn identity by the time listeners hear of it', async () => {
+    const h = await start([mentor, analyst])
+    const seen: Array<string | undefined> = []
+    h.ctx.on('expert-identity/changed', async ({ withdrawn }) => {
+      for (const id of withdrawn ?? []) seen.push((await h.service.get(id))?.persona)
+    })
+    await update(h, [mentor, { ...analyst, enabled: false }])
+    await vi.waitFor(() => { expect(seen).toEqual([undefined]) })
+  })
+})
+

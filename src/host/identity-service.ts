@@ -51,9 +51,15 @@ export interface ExpertIdentityService {
   get(id: string): Promise<ExpertIdentity | undefined>;
 }
 
-/** Payload of `expert-identity/changed`: the sorted ids that appeared, disappeared, or changed. */
+/**
+ * Payload of `expert-identity/changed`: the sorted ids that appeared, disappeared, or changed.
+ * `withdrawn` lists, sorted, the ids whose record was disabled or deleted by this change; it is absent
+ * when there are none, and an identity whose persona merely cannot be read is never listed there.
+ * Every withdrawn id is also in `ids`.
+ */
 export interface ExpertIdentityChange {
   ids: string[];
+  withdrawn?: string[];
 }
 
 export interface ExpertIdentityOptions {
@@ -91,6 +97,8 @@ interface State {
   work: Promise<void>;
   /** Fingerprint of every identity published after the last queued task. */
   visible: Map<string, string>;
+  /** Ids of the records that were enabled after the last queued task, whether or not their persona could be read. */
+  enabled: Set<string>;
 }
 
 interface Loaded {
@@ -147,9 +155,8 @@ async function load(state: State, record: DigitalLifeRecord): Promise<Loaded | u
   return { summary: summaryOf(state, record, persona), persona };
 }
 
-async function loadEnabled(state: State): Promise<Loaded[]> {
-  const records = state.options.records().filter((record) => record.enabled);
-  const loaded = await Promise.all(records.map((record) => load(state, record)));
+async function loadEnabled(state: State, records: readonly DigitalLifeRecord[]): Promise<Loaded[]> {
+  const loaded = await Promise.all(records.filter((record) => record.enabled).map((record) => load(state, record)));
   return loaded.filter((entry): entry is Loaded => entry !== undefined);
 }
 
@@ -165,15 +172,21 @@ function errorNames(error: unknown): string {
 
 /** Remember what is published now and tell listeners which ids differ from before. */
 async function settle(state: State, announce: boolean): Promise<void> {
-  const published = await loadEnabled(state);
+  const records = state.options.records();
+  const enabled = new Set(records.filter((record) => record.enabled).map((record) => record.id));
+  const published = await loadEnabled(state, records);
   const next = new Map(published.map(({ summary }): [string, string] => [summary.id, fingerprint(summary)]));
-  const ids = new Set([...state.visible.keys(), ...next.keys()]);
-  const changed = [...ids].filter((id) => state.visible.get(id) !== next.get(id)).sort();
+  const seen = new Set([...state.visible.keys(), ...next.keys()]);
+  const changed = [...seen].filter((id) => state.visible.get(id) !== next.get(id));
+  const withdrawn = [...state.enabled].filter((id) => !enabled.has(id)).sort();
+  const ids = [...new Set([...changed, ...withdrawn])].sort();
   state.visible = next;
-  if (!announce || changed.length === 0) return;
+  state.enabled = enabled;
+  if (!announce || ids.length === 0) return;
+  const change: ExpertIdentityChange = withdrawn.length === 0 ? { ids } : { ids, withdrawn };
   // Not awaited, so a listener that calls get() cannot deadlock the queue; parallel isolates failures.
-  void state.ctx.parallel("expert-identity/changed", { ids: changed }).catch((error: unknown) => {
-    state.ctx.logger.warn(`digital-life: listeners of expert-identity/changed failed for ${changed.join(", ")}: ${errorNames(error)}`);
+  void state.ctx.parallel("expert-identity/changed", change).catch((error: unknown) => {
+    state.ctx.logger.warn(`digital-life: listeners of expert-identity/changed failed for ${ids.join(", ")}: ${errorNames(error)}`);
   });
 }
 
@@ -195,7 +208,7 @@ function enqueue(state: State, failure: string, announce: boolean, work: () => P
 
 async function listIdentities(state: State): Promise<ExpertIdentitySummary[]> {
   await state.work;
-  return (await loadEnabled(state)).map(({ summary }) => summary);
+  return (await loadEnabled(state, state.options.records())).map(({ summary }) => summary);
 }
 
 async function getIdentity(state: State, id: string): Promise<ExpertIdentity | undefined> {
@@ -216,7 +229,7 @@ export class ExpertIdentityProvider extends Service implements ExpertIdentitySer
 
   constructor(ctx: Context, options: ExpertIdentityOptions) {
     super(ctx, "expertIdentity");
-    const state: State = { ctx, options, work: Promise.resolve(), visible: new Map() };
+    const state: State = { ctx, options, work: Promise.resolve(), visible: new Map(), enabled: new Set() };
     this.state = state;
     const initial = options.saved();
     const initialDir = options.stateDir();

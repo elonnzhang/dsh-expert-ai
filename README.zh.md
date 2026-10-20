@@ -40,7 +40,7 @@
 - `list()` 返回已启用且人设可读取的身份。`get(id)` 返回单个身份（含 `persona` 与 `disclosure`）；id 不存在、未启用或人设无法读取时返回 `undefined`。
 - `revision` 是人设正文的 sha256。标题、头像或来源的变化不会改变它，而是通过变更事件并重新 `get` 获得。
 - `disclosure` 是按 `source.kind` 选择的一段中文来源声明，使用方原样放进提示词。
-- `expert-identity/changed` 携带 `{ ids }`：新增、移除或变化的 id（已排序）。监听器不会被等待，启动时不会触发。
+- `expert-identity/changed` 携带 `{ ids, withdrawn? }`：`ids` 是新增、移除或变化的 id（已排序）；`withdrawn`（已排序，为空时不带）列出其中被用户禁用或删除的 id，`ids` 仍包含它们。人设暂时读不到不算撤回。监听器不会被等待，启动时不会触发。
 - 导出的类型有 `ExpertIdentity`、`ExpertIdentitySummary`、`ExpertIdentityService` 和 `ExpertIdentityChange`。
 
 ## 从 GitHub 安装

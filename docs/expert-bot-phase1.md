@@ -68,12 +68,13 @@ interface ExpertIdentityService {
   list(): Promise<ExpertIdentitySummary[]>;          // 只列 enabled
   get(id: string): Promise<ExpertIdentity | undefined>;
 }
-// 变更事件：ctx.emit('expert-identity/changed', { ids: string[] })
+// 变更事件：ctx.emit('expert-identity/changed', { ids: string[]; withdrawn?: string[] })
 ```
 
 约定：
 
 - `get` 对未启用或不存在的 id 返回 `undefined`，不抛错。dsh-bot 对取不到身份的 Bot：使用已冻结的上一份快照；从未冻结过则在提示里写明「身份暂不可用」，不冒充。
+- `ids` 是本次新增、移除或变化的 id（已排序）。`withdrawn`（可选，已排序）列出其中被用户禁用或删除的 id，`ids` 仍包含它们；没有则不带该字段。人设暂时读不到（文件缺失、外部路径不可达）不算撤回，不进 `withdrawn`。消费方据此区分「身份已撤回」与「身份暂不可用」。
 - `disclosure` 由身份层按 `source.kind` 生成。`public` 的含义：基于公开资料整理，不代表本人，被问是否本人时如实说明。
 - 文件契约备选：若 §6 V1 验证跨插件服务不可行，身份层改为把 `ExpertIdentity` 写到 `$DSH_HOME/expert-ai/identities/<id>.json`（原子写，0600），dsh-bot 只读。接口字段不变。
 
