@@ -27,6 +27,7 @@
             enabled: true
           - id: clq
             name: 陈立泉
+            title: 固态电池与科研方法思考助手
             description: 1940年生，四川南充人。中国工程院院士，中科院物理所研究员，2025年度国家最高科学技术奖获得者。我国固态离子学奠基人、锂电池产业开拓者，提出『电动中国』战略构想。
             tags:
               - 固态电池
@@ -36,9 +37,12 @@
             category: science
             agent: experts/xingtu/clq/AGENTS.md
             persona: ""
+            source:
+              kind: public
             enabled: true
           - id: lh
             name: 李泓
+            title: 固态电池与产学研思考助手
             description: 1970年生，新疆奎屯人。中科院物理所研究员，卫蓝新能源联合创始人/首席科学家，天目湖先进储能技术研究院创始院长。中国固态锂电池技术奠基者之一，H因子84。
             tags:
               - 固态电池
@@ -48,9 +52,12 @@
             category: science
             agent: experts/xingtu/lh/AGENTS.md
             persona: ""
+            source:
+              kind: public
             enabled: true
           - id: lzg
             name: 李振国
+            title: 光伏与长期主义思考助手
             description: 1968年生，河南许昌人。隆基绿能创始人，现任中央研究院院长、首席技术官。单晶硅领域30余年专家，2025年普氏全球能源奖终身成就奖得主。
             tags:
               - 光伏
@@ -60,9 +67,12 @@
             category: business
             agent: experts/xingtu/lzg/AGENTS.md
             persona: ""
+            source:
+              kind: public
             enabled: true
           - id: zyq
             name: 曾毓群
+            title: 动力电池与储能思考助手
             description: 1968年生，福建宁德人。宁德时代（CATL）创始人、董事长兼CEO，全球动力电池市占率近四成的龙头企业掌门人。陈立泉2006届博士生，从消费电子电池（ATL）到动力电池（CATL）两度创业。
             tags:
               - 动力电池
@@ -72,9 +82,12 @@
             category: business
             agent: experts/xingtu/zyq/AGENTS.md
             persona: ""
+            source:
+              kind: public
             enabled: true
           - id: oyg
             name: 欧阳明高
+            title: 电池安全与产业路线图思考助手
             description: 1958年生。清华大学教授，中国科学院院士，中国电动汽车百人会副理事长。我国新能源汽车动力电池与安全领域的权威专家，长期主持国家新能源汽车科技专项。
             tags:
               - 动力电池
@@ -84,9 +97,12 @@
             category: science
             agent: experts/xingtu/oyg/AGENTS.md
             persona: ""
+            source:
+              kind: public
             enabled: true
           - id: wcf
             name: 王传福
+            title: 新能源汽车与电池技术思考助手
             description: 1966年生，安徽无为人。比亚迪创始人、董事长兼总裁，教授级工程师出身。从镍镉电池起家到全球新能源汽车销量冠军，2026年发布第二代刀片电池与闪充技术，蝉联全球新能源销冠。
             tags:
               - 新能源汽车
@@ -96,9 +112,12 @@
             category: business
             agent: experts/xingtu/wcf/AGENTS.md
             persona: ""
+            source:
+              kind: public
             enabled: true
           - id: zjh
             name: 张剑辉
+            title: 储能系统思考助手
             description: >-
               1978年生。清华大学电机系本硕、美国加州大学伯克利分校博士，正高级工程师。2011年回国创办海博思创，2025年1月带领公司登陆科创板，被称为『中国储能系统集成第一股』。专注电化学储能系统，主张用『数据+AI』交付储能资产的全生命周期收益。
             tags:
@@ -109,9 +128,12 @@
             category: business
             agent: experts/xingtu/zjh/AGENTS.md
             persona: ""
+            source:
+              kind: public
             enabled: true
           - id: yhg
             name: 俞会根
+            title: 固态电池工程化思考助手
             description: >-
               1968年生。教授级高级工程师，清华大学创新领军工程博士，北京卫蓝新能源创始人、董事长兼总经理，曾任北汽新能源电池总师。2016年与陈立泉院士、李泓研究员联合创办卫蓝，主攻混合固液（半固态）与全固态电池的工程化与规模量产。
             tags:
@@ -122,9 +144,12 @@
             category: business
             agent: experts/xingtu/yhg/AGENTS.md
             persona: ""
+            source:
+              kind: public
             enabled: true
           - id: crx
             name: 曹仁贤
+            title: 光伏逆变器与储能思考助手
             description: >-
               1968年生。阳光电源创始人、董事长兼总裁，研究员，第十四届全国人大代表、中国光伏行业协会理事长。1997年辞去合肥工业大学教职创办阳光电源，从光伏逆变器做到全球出货量第一，又带出全球领先的储能系统业务，提出『让人人享用清洁电力』。
             tags:
@@ -135,4 +160,6 @@
             category: business
             agent: experts/xingtu/crx/AGENTS.md
             persona: ""
+            source:
+              kind: public
             enabled: true
