@@ -112,7 +112,7 @@ describe('with the identity feature only', () => {
       expect(reply.ok, endpoint).toBe(false)
       expect(reply.error?.message, endpoint).toContain('conversation')
     }
-    const entries = await readdir(join(h.root, 'digital-life')).catch(() => [])
+    const entries = await readdir(join(h.root, 'expert-ai')).catch(() => [])
     expect(entries).not.toContain('projects')
   })
 
@@ -161,7 +161,7 @@ describe('with the conversation feature', () => {
     expect(await h.rpc('review/list')).toEqual({ ok: true, value: [] })
     expect(await h.rpc('binding', { sessionId: 'nobody' })).toEqual({ ok: true, value: undefined })
     expect((await h.rpc('project')).ok).toBe(true)
-    expect(await readdir(join(h.root, 'digital-life', 'projects'))).toHaveLength(1)
+    expect(await readdir(join(h.root, 'expert-ai', 'projects'))).toHaveLength(1)
   })
 
   it('binds the saved persona to a new session', async () => {

@@ -16,23 +16,34 @@ afterEach(async () => {
 })
 
 async function home(): Promise<string> {
-  const path = await mkdtemp(join(tmpdir(), 'digital-life-'))
+  const path = await mkdtemp(join(tmpdir(), 'expert-ai-'))
   homes.push(path)
   vi.stubEnv('DSH_HOME', path)
   return path
 }
 
-describe('digital-life expert agent identity', () => {
-  it('does not append digital-life twice when stateDir already names the data directory', async () => {
+describe('expert agent identity', () => {
+  it('stores data in $DSH_HOME/expert-ai', async () => {
     const root = await home()
-    expect(expertAiHome(process.env, join(root, 'digital-life'))).toBe(join(root, 'digital-life'))
+    expect(expertAiHome()).toBe(join(root, 'expert-ai'))
   })
 
-  it('creates isolated project directories under the digital-life home', async () => {
+  it('does not append expert-ai twice when stateDir already names the data directory', async () => {
+    const root = await home()
+    expect(expertAiHome(process.env, join(root, 'expert-ai'))).toBe(join(root, 'expert-ai'))
+  })
+
+  it('treats any other stateDir, including a former data directory name, as the parent', async () => {
+    const root = await home()
+    expect(expertAiHome(process.env, join(root, 'state'))).toBe(join(root, 'state', 'expert-ai'))
+    expect(expertAiHome(process.env, join(root, 'digital-life'))).toBe(join(root, 'digital-life', 'expert-ai'))
+  })
+
+  it('creates isolated project directories under the expert-ai home', async () => {
     const root = await home()
     const first = await createProject()
     const second = await createProject()
-    expect(first).toMatch(new RegExp(`^${root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/digital-life/projects/`))
+    expect(first).toMatch(new RegExp(`^${root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/expert-ai/projects/`))
     expect(second).not.toBe(first)
   })
 
@@ -49,8 +60,8 @@ describe('digital-life expert agent identity', () => {
   it('uses a same-named state directory file before a bundled file', async () => {
     const root = await home()
     const relative = 'experts/xingtu/clq/AGENTS.md'
-    const local = join(root, 'digital-life', relative)
-    await mkdir(join(root, 'digital-life', 'experts', 'xingtu', 'clq'), { recursive: true })
+    const local = join(root, 'expert-ai', relative)
+    await mkdir(join(root, 'expert-ai', 'experts', 'xingtu', 'clq'), { recursive: true })
     await writeFile(local, '# Local override\n')
     expect(await readAgentIdentity(relative)).toBe('# Local override')
   })
@@ -69,13 +80,13 @@ describe('digital-life expert agent identity', () => {
 
   it('does not retry a relative path when reading fails for a reason other than ENOENT', async () => {
     const root = await home()
-    const directory = join(root, 'digital-life', 'experts', 'xingtu', 'clq', 'AGENTS.md')
+    const directory = join(root, 'expert-ai', 'experts', 'xingtu', 'clq', 'AGENTS.md')
     await mkdir(directory, { recursive: true })
     await expect(readAgentIdentity('experts/xingtu/clq/AGENTS.md')).rejects.toThrow('EISDIR')
   })
 
   it('finds the nearest package root', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'digital-life-package-root-'))
+    const root = await mkdtemp(join(tmpdir(), 'expert-ai-package-root-'))
     homes.push(root)
     await mkdir(join(root, 'outer', 'inner'), { recursive: true })
     await writeFile(join(root, 'package.json'), '{}')

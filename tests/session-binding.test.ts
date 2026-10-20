@@ -42,7 +42,7 @@ describe("digital-life session binding", () => {
     expect(await loadBinding(sessionId, root)).toBeUndefined();
     await saveBinding(sessionId, binding, root);
     expect(await loadBinding(sessionId, root)).toEqual(binding);
-    expect(JSON.parse(await readFile(join(root, "digital-life", "sessions", `${sessionId}.json`), "utf8"))).toEqual(binding);
+    expect(JSON.parse(await readFile(join(root, "expert-ai", "sessions", `${sessionId}.json`), "utf8"))).toEqual(binding);
   });
 
   it("restores a team-hosted binding and rejects ambiguous owners", async () => {
@@ -51,7 +51,7 @@ describe("digital-life session binding", () => {
     const binding = { team: { id: "plan-review", name: "方案评审" }, pre: "Header", persona: "Host", suf: "Rules" };
     await saveBinding("session-team", binding, root);
     expect(await loadBinding("session-team", root)).toEqual(binding);
-    const dir = join(root, "digital-life", "sessions");
+    const dir = join(root, "expert-ai", "sessions");
     for (const [id, value] of [["session-both", { ...binding, recordId: "life" }], ["session-none", { pre: "", persona: "x", suf: "" }]] as const) {
       await writeFile(join(dir, `${id}.json`), JSON.stringify(value));
       await expect(loadBinding(id, root)).rejects.toThrow(/invalid binding/);
@@ -78,10 +78,10 @@ describe("digital-life session binding", () => {
     const root = await mkdtemp(join(tmpdir(), "digital-life-binding-"));
     roots.push(root);
     const sessionId = "session-legacy";
-    await mkdir(join(root, "digital-life", "sessions"), { recursive: true });
-    await writeFile(join(root, "digital-life", "sessions", `${sessionId}.json`), JSON.stringify({ recordId: "mentor", prompt: "Old" }));
+    await mkdir(join(root, "expert-ai", "sessions"), { recursive: true });
+    await writeFile(join(root, "expert-ai", "sessions", `${sessionId}.json`), JSON.stringify({ recordId: "mentor", prompt: "Old" }));
     expect(await loadBinding(sessionId, root)).toEqual({ recordId: "mentor", prompt: "Old" });
-    await writeFile(join(root, "digital-life", "sessions", `${sessionId}.json`), JSON.stringify({ recordId: "mentor", pre: "x" }));
+    await writeFile(join(root, "expert-ai", "sessions", `${sessionId}.json`), JSON.stringify({ recordId: "mentor", pre: "x" }));
     await expect(loadBinding(sessionId, root)).rejects.toThrow(/invalid binding/);
   });
 

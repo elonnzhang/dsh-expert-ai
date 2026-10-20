@@ -61,7 +61,7 @@ export interface ExpertSettings {
   features?: ExpertFeature[];
   provider?: string;
   maxBatchSize?: number;
-  /** Optional plugin state directory. Defaults to ~/.dsh/digital-life. */
+  /** Optional plugin state directory or its parent. Defaults to `$DSH_HOME/expert-ai` (`~/.dsh/expert-ai`). */
   stateDir?: string;
   records?: ExpertRecord[];
   /** Saved review lineups referencing record ids. */

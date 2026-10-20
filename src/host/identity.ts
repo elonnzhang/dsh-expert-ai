@@ -19,24 +19,23 @@ export function packageRootFrom(directory: string): string | undefined {
 
 const PACKAGE_ROOT = packageRootFrom(dirname(fileURLToPath(import.meta.url)));
 
-/** Resolve the per-digital-life storage root. */
+/** Resolve the plugin's storage root: `<stateDir or $DSH_HOME or ~/.dsh>/expert-ai`. */
 export function expertAiHome(
   env: Record<string, string | undefined> = process.env,
   stateDir?: string,
 ): string {
   const configured = stateDir?.trim() || env.DSH_HOME?.trim();
   if (configured === undefined || configured === "")
-    return join(homedir(), ".dsh", "digital-life");
+    return join(homedir(), ".dsh", "expert-ai");
   const expanded = configured === "~"
     ? homedir()
     : configured.startsWith("~/") || configured.startsWith("~\\")
       ? join(homedir(), configured.slice(2))
       : configured;
   const root = resolve(expanded);
-  // `stateDir` is shown to users as the digital-life data directory. Older
-  // configurations may already include the final `digital-life` segment, so
-  // do not append it a second time.
-  return root.endsWith(`${sep}digital-life`) ? root : join(root, "digital-life");
+  // `stateDir` may name the data directory itself (ending in `expert-ai`) or
+  // its parent; never append the segment twice.
+  return root.endsWith(`${sep}expert-ai`) ? root : join(root, "expert-ai");
 }
 
 /** Create an empty working directory for a standalone Chat session. */
@@ -64,8 +63,8 @@ export function agentPath(id: string, stateDir?: string): string {
 
 /**
  * Return the portable path stored for a managed identity.
- * @param id Digital-life record ID.
- * @returns A path relative to the configured digital-life state directory.
+ * @param id Expert record ID.
+ * @returns A path relative to the plugin data directory.
  */
 export function managedAgentBinding(id: string): string {
   return `${id}/agents/${id}.md`;
@@ -122,7 +121,7 @@ async function readIdentityFile(path: string): Promise<string> {
  * Read an Agent Markdown identity from an absolute, home-relative, or state-relative path.
  * A relative path missing from the state directory is read from the plugin package, so the bundled `experts/` resolve.
  * @param path Agent file path stored in settings.
- * @param stateDir Optional digital-life state directory for relative paths.
+ * @param stateDir Optional plugin state directory for relative paths.
  * @returns The Markdown body without YAML frontmatter.
  */
 export async function readAgentIdentity(path: string, stateDir?: string): Promise<string> {
