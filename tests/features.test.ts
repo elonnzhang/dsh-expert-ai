@@ -12,7 +12,7 @@ import type { ExpertFeature } from '../src/index.js'
 import { fakeHostConnection } from './host-connection.js'
 
 const GATED_TOOLS = [
-  'consult_digital_life', 'consult_digital_life_category', 'read_expert_reference', 'review_expert_plan',
+  'consult_expert', 'consult_expert_category', 'read_expert_reference', 'review_expert_plan',
   'read_expert_review', 'start_team_run', 'amend_team_brief', 'run_team_stage', 'read_team_run', 'cancel_team_run',
 ]
 const CONVERSATION_ENDPOINTS = ['project', 'greeting', 'binding', 'unbind', 'bind', 'review/list', 'review/read', 'review/cancel']

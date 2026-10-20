@@ -58,7 +58,7 @@ describe('expert-ai configuration', () => {
     expect(text).toContain('简介：创业战略与现金流')
     expect(text).toContain('<question>\n下一步做什么？\n</question>')
     expect(text).not.toContain(record.persona)
-    expect(text).toContain('不要调用 consult_digital_life')
+    expect(text).toContain('不要调用 consult_expert')
   })
 
   it('wraps the identity and localizes the domain in the session prompt', () => {
@@ -85,9 +85,9 @@ describe('expert-ai configuration', () => {
     const prompt = independentSystemPromptFor(record)
 
     expect(prompt).toContain('@<数字生命ID>')
-    expect(prompt).toContain('必须调用 consult_digital_life')
+    expect(prompt).toContain('必须调用 consult_expert')
     expect(prompt).toContain(`@${record.id}`)
-    expect(prompt).toContain('调用 consult_digital_life_category')
+    expect(prompt).toContain('调用 consult_expert_category')
     expect(prompt).toContain('@<团队ID>')
     expect(prompt).toContain('start_team_run')
     expect(prompt).toContain('amend_team_brief')

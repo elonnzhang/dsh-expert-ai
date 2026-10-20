@@ -355,9 +355,9 @@ export function independentSystemPromptPartsFor(
     ].join("\n"),
     [
       "## 协作",
-      `- 当用户使用 @<数字生命ID> 点名其他数字生命（不是 @${record.id}）时，必须调用 consult_digital_life，将被点名的 ID 和用户问题原样传入，再如实转述对方的回答；你的补充意见要单独标明，不得自行模拟或代替对方回答。`,
-      `- 当用户点名 @${record.id} 时，直接以当前身份回答，不要调用 consult_digital_life 咨询自己。`,
-      "- 当用户要求咨询某个数字生命类别时，调用 consult_digital_life_category，忠实呈现各自观点，并单独列出分歧和未成功的咨询。",
+      `- 当用户使用 @<数字生命ID> 点名其他数字生命（不是 @${record.id}）时，必须调用 consult_expert，将被点名的 ID 和用户问题原样传入，再如实转述对方的回答；你的补充意见要单独标明，不得自行模拟或代替对方回答。`,
+      `- 当用户点名 @${record.id} 时，直接以当前身份回答，不要调用 consult_expert 咨询自己。`,
+      "- 当用户要求咨询某个数字生命类别时，调用 consult_expert_category，忠实呈现各自观点，并单独列出分歧和未成功的咨询。",
       TEAM_ROUTING_RULE,
     ].join("\n"),
   ].filter(Boolean).join("\n\n");
@@ -409,7 +409,7 @@ export function teamSystemPromptPartsFor(team: HostedTeam, records: readonly Exp
     ].join("\n"),
     [
       "## 协作",
-      "- 当用户使用 @<数字生命ID> 点名某位数字生命时，调用 consult_digital_life，将被点名的 ID 和用户问题原样传入，再如实转述对方的回答。",
+      "- 当用户使用 @<数字生命ID> 点名某位数字生命时，调用 consult_expert，将被点名的 ID 和用户问题原样传入，再如实转述对方的回答。",
       TEAM_ROUTING_RULE,
     ].join("\n"),
   ].join("\n\n");
@@ -432,7 +432,7 @@ export function promptFor(record: ExpertRecord, question: string): ContentBlock[
           "## 回答要求",
           "- 这是一次性咨询：只回答本次问题，不要反问或假设还有后续对话；信息不足时说明假设后继续作答。",
           "- 问题由主代理转交，你的回答可能与其他数字生命的观点并列比较：先给结论再给依据，区分事实、判断和推测。",
-          "- 不要调用 consult_digital_life 或 consult_digital_life_category，也不要模拟其他数字生命。",
+          "- 不要调用 consult_expert 或 consult_expert_category，也不要模拟其他数字生命。",
           "- 不要声称自己是真实人物本人。使用问题所用的语言。",
         ].join("\n"),
         `<question>\n${question}\n</question>`,
@@ -499,7 +499,7 @@ function registerTools(
     localDisposers.push(
       target.ctx.tools.register(
         defineTool({
-          name: "consult_digital_life",
+          name: "consult_expert",
           description: "向一个指定的数字生命咨询问题。使用数字生命 ID；不要选择 provider 或传输方式。",
           parameters: {
             id: {
@@ -548,7 +548,7 @@ function registerTools(
     localDisposers.push(
       target.ctx.tools.register(
         defineTool({
-          name: "consult_digital_life_category",
+          name: "consult_expert_category",
           description: "分别咨询一个类别中的数字生命，并返回各自观点供主代理比较和总结",
           parameters: {
             category: {
