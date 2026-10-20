@@ -106,9 +106,10 @@ interface ExpertIdentityService {
 | E1 | `expertIdentity` 服务（§3）：从现有 records + `identityFor` 生成；`revision` = persona 的 sha256；设置变更（`loader/volatile-update`）时发 `expert-identity/changed` | 新 `src/host/identity-service.ts`；`src/host/index.ts` `apply` |
 | E2 | 记录字段：`title?`、`avatar?`、`source?: { kind, note? }`（缺省 `public`）。Schema 向后兼容，旧设置不迁移即可写入 | `src/types.ts`、`index.ts` `RecordSchema` / `normalizeRecord`、设置页编辑器 |
 | E3 | `disclosure` 生成：按 `source.kind` 的固定文案（中文） | `identity-service.ts` |
-| E4 | 运行模式开关 `features`：默认只开 `identity`。关闭时不注册 `consult_*`、TeamRun 等工具、不装 `expert-ai-mode` 预设绑定、不注册 `@<id>` 输入来源、不注入 Chat Panel。代码保留，配置可开启 | `src/host/index.ts`、`src/client/index.ts`、`expert-ai-mode.patch.yml` |
+| E4 | 运行模式开关 `features`：默认只开 `identity`。关闭时不注册 `consult_expert`、`read_expert_reference` 工具、不装 `expert-ai-mode` 预设绑定、不注册 `@<id>` 输入来源、不注入 Chat Panel。代码保留，配置可开启 | `src/host/index.ts`、`src/client/index.ts`、`expert-ai-mode.patch.yml` |
 | E5 | 改名：`package.json` 包名与 `cordis.patch.yml` 的模块 `name` 为 `dsh-expert-ai`；Host 插件入口 id、导出的 `name`、settings 命名空间均为 `expert-ai`；Client 注册 id 为 `dsh-expert-ai`，启动清单中的 `dsh-expert-ai/client.js` bundle（由 loader 通过带版本号的 combo URL 请求）；RPC `/api/expert-ai/*`；locale namespace 与 `settings.section` id；Agent preset（`expert-ai-mode.patch.yml`，行 id `preset-expert-ai-mode`）；类型 `ExpertRecord`、`ExpertSettings`、`ExpertBinding`、`ExpertTeam` 等与常量 `EXPERT_AI_*`；函数 `expertAiHome`、`expertAiEndpoint`；工具 `consult_expert`、`consult_expert_category`；README 与 docs。数据目录改为 `$DSH_HOME/expert-ai`；旧目录 `$DSH_HOME/digital-life` 与旧 Profile 设置行**不自动迁移**，升级步骤见 README 的迁移一节 | 全部出现处：`rg -l -i 'digital[-_]?life'`（含 `package.json`、`cordis.patch.yml`、`tsdown.config.ts`、`tsdown.client.ts`、`scripts/smoke.mjs`、`dev/cordis.dev.local.yml`、`.gitignore`、README 与 docs）；之后 `pnpm install` 刷新 lockfile |
 | E6 | 星途 9 位专家：补 `title` 与 `source.kind: public` | `cordis.patch.yml` |
+| E7 | 精简（2026-10-20）：删除分类咨询 `consult_expert_category`、评审、专家团的代码、工具、RPC、界面与设置字段，只保留身份数据与单专家咨询（`conversation` 开启后可用）。旧 `teams`、`maxBatchSize` 设置仍可加载但被忽略，`.expert-reviews/` 不再读取、不自动删除，专家团主持过的会话打开时不带人设；清理步骤见 README | `src/host/`、`src/client/`、`tests/`、README |
 
 完成后 `pnpm run check`（typecheck + test + build + smoke）全过，并为 E1–E4 加单测。
 
@@ -119,7 +120,7 @@ interface ExpertIdentityService {
 | # | 验证 | 通过标准 |
 |---|---|---|
 | V1 | 两插件同装，dsh-bot 通过 `ctx.inject` 拿到 `expertIdentity`，并收到变更事件 | 启动与改设置后都能读到；卸载身份层后 dsh-bot 正常运行 |
-| V2 | E4 关闭后 Bot 会话的工具列表与系统提示 | 无 `consult_*` / TeamRun 工具；只有一份身份 |
+| V2 | E4 关闭后 Bot 会话的工具列表与系统提示 | 无 `consult_*` 工具；只有一份身份 |
 | V3 | 不改 ds-bot，把人设贴进 `instructions` 的实际语气 | 用 2–3 个真实模型各问 5 个问题，记录 TEAM_RULES 对语气的影响，作为 F2 改写的基线 |
 | V4 | F1–F5 完成后：3 位分身群聊 `everyone` | 各自保持人设、不互相模仿；`[PASS]` 正常 |
 | V5 | 分身单聊跨过一次换段 | 人设不丢；身份库改动从下一段生效；记忆整理不把分身自己的话记成用户事实 |
