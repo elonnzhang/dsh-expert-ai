@@ -39,7 +39,7 @@ export function expertAiHome(
   return explicitStateDir && root.endsWith(`${sep}expert-ai`) ? root : join(root, "expert-ai");
 }
 
-/** Create an empty working directory for a standalone Chat session. */
+/** Create an empty working directory for an expert conversation. */
 export async function createProject(stateDir?: string): Promise<string> {
   const projects = join(expertAiHome(process.env, stateDir), "projects");
   await mkdir(projects, { recursive: true, mode: 0o700 });
@@ -102,10 +102,10 @@ export function agentDocument(record: ExpertRecord, identity: string): string {
     "---",
     `name: ${yamlString(record.id)}`,
     `description: ${yamlString(record.description || record.name)}`,
+    "---",
+    "",
+    identity.trim(),
   ];
-  if (record.toolFilter !== undefined)
-    lines.push(`tools: ${yamlString(record.toolFilter.join(", "))}`);
-  lines.push(`model: ${yamlString(record.model?.model ?? "inherit")}`, "---", "", identity.trim());
   return `${lines.join("\n")}\n`;
 }
 

@@ -2,7 +2,6 @@
     - id: expert-ai
       name: dsh-expert-ai
       config:
-        provider: spawn
         records:
           - id: clq
             name: 陈立泉

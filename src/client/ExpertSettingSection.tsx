@@ -9,10 +9,8 @@ import {
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ConfigForm, ConfigFormSnapshot } from "@deepseek-ai/dsh-client-ui-settings/client";
 import type { ExpertSettings } from "../types.js";
-import type { ExpertLibraryApi } from "./library-api.js";
 import { ExpertsTab } from "./ExpertsTab.js";
 import { GeneralTab } from "./GeneralTab.js";
-import { activeTab, visibleTabs, type Tab } from "./tabs.js";
 import css from "./settings.module.css";
 
 export { normalizeExpertRecord } from "./records.js";
@@ -27,13 +25,14 @@ export interface ExpertSettingSectionInjected {
   };
   form: ConfigForm<ExpertSettings>;
   loadIdentity: (id: string) => Promise<string>;
-  expertApi: ExpertLibraryApi;
   t: TranslateNS<"expert-ai">;
 }
 
 type Props = PropsRuntime<"settings.section"> & {
   useSettings: <T>(selector: (snapshot: ConfigFormSnapshot<ExpertSettings>) => T) => T;
 } & Omit<ExpertSettingSectionInjected, "hooks">;
+
+type Tab = "experts" | "general";
 
 const tabIds = (value: Tab): Pick<SegmentedTab<Tab>, "id" | "panelId"> => ({
   id: `expert-ai-tab-${value}`,
@@ -80,14 +79,10 @@ export function ExpertSettingSection(props: Props): ReactNode {
   const notify = (text: string): void => {
     setToast({ text, key: Date.now() });
   };
-  const active = activeTab(tab);
-  const labels: Record<Tab, ReactNode> = {
-    experts: tabLabel(<IconUserOutlineRegular size={16} />, t("tabExperts")),
-    general: tabLabel(<IconSlidersTwoOutlineRegular size={16} />, t("tabGeneral")),
-  };
-  const describeTab = (value: Tab): SegmentedTab<Tab> => ({ value, label: labels[value], ...tabIds(value) });
-  const [firstTab, ...otherTabs] = visibleTabs();
-  const items: readonly [SegmentedTab<Tab>, ...SegmentedTab<Tab>[]] = [describeTab(firstTab), ...otherTabs.map(describeTab)];
+  const items: readonly [SegmentedTab<Tab>, ...SegmentedTab<Tab>[]] = [
+    { value: "experts", label: tabLabel(<IconUserOutlineRegular size={16} />, t("tabExperts")), ...tabIds("experts") },
+    { value: "general", label: tabLabel(<IconSlidersTwoOutlineRegular size={16} />, t("tabGeneral")), ...tabIds("general") },
+  ];
 
   return (
     <section className={css.section}>
@@ -95,21 +90,20 @@ export function ExpertSettingSection(props: Props): ReactNode {
         <h2>{t("title")}</h2>
         <p>{t("intro")}</p>
       </header>
-      <SegmentedTabs items={items} value={active} onChange={setTab} label={t("tabsLabel")} />
+      <SegmentedTabs items={items} value={tab} onChange={setTab} label={t("tabsLabel")} />
       <div
         className={css.panel}
         role="tabpanel"
-        id={tabIds(active).panelId}
-        aria-labelledby={tabIds(active).id}
+        id={tabIds(tab).panelId}
+        aria-labelledby={tabIds(tab).id}
         tabIndex={0}
       >
-        {active === "experts" ? (
+        {tab === "experts" ? (
           <ExpertsTab
             records={records}
             writable={snapshot.writable}
             form={props.form}
             loadIdentity={props.loadIdentity}
-            expertApi={props.expertApi}
             t={t}
             notify={notify}
           />

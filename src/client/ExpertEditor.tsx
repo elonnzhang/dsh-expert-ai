@@ -361,20 +361,6 @@ export function ExpertEditor({
             }}
           />
         </label>
-        <label className={`${css.field} ${css.full}`}>
-          <span className={css.label}>{t("tools")}</span>
-          <Input
-            className={css.control ?? ""}
-            value={draft.toolFilter?.join(", ") ?? ""}
-            onChange={(event) => {
-              const values = event.target.value
-                .split(",")
-                .map((value) => value.trim())
-                .filter(Boolean);
-              update("toolFilter", values.length === 0 ? undefined : values);
-            }}
-          />
-        </label>
       </div>
     </Modal>
   );

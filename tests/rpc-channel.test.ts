@@ -62,7 +62,6 @@ async function start() {
       inner.provide('webServer', { register: () => () => undefined })
     },
   })
-  ctx.provide('subagents', {})
   ctx.provide('agents', {})
   ctx.provide('sandboxPolicy', { defaultMode: 'read-only' })
   const fiber = await ctx.plugin(plugin, { stateDir: root, records: [RECORD] })
@@ -108,8 +107,10 @@ describe('the expert-ai Host routes', () => {
     for (const route of routes.values()) expect(route).toMatchObject({ methods: ['POST'], requestBody: 'buffered' })
   })
 
-  it('serves the identity library and single-expert sessions only, with no review routes', () => {
-    expect([...HOST_ENDPOINTS]).toEqual(['project', 'greeting', 'identity', 'binding', 'unbind', 'bind', 'expert/catalog', 'expert/import'])
+  it('serves the identity library and single-expert conversations only', () => {
+    expect([...HOST_ENDPOINTS]).toEqual(['project', 'greeting', 'identity', 'binding', 'unbind', 'bind'])
+    for (const gone of ['expert/catalog', 'expert/import', 'review/list', 'review/read'])
+      expect([...HOST_ENDPOINTS]).not.toContain(gone)
   })
 
   it('answers a client-request with a server-response for the same rpcId', async () => {

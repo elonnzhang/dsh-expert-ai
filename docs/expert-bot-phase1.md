@@ -3,7 +3,7 @@
 - 日期：2026-10-19
 - 范围：只做「与数字分身单聊」和「多个分身群聊」。评审、咨询、专家团、记忆扩展都不在本阶段。
 - 两个仓库：
-  - 身份层 `dsh-expert-ai`（本仓库 `dsh-digital-life` 改名而来）：<https://github.com/elonnzhang/dsh-expert-ai>，本地 `/Users/elon/code-space/GitHub/dsh-expert-ai`
+  - 身份层 `dsh-expert-ai`（本仓库由早期版本改名而来）：<https://github.com/elonnzhang/dsh-expert-ai>，本地 `/Users/elon/code-space/GitHub/dsh-expert-ai`
   - 运行时 `dsh-bot`（fork 自 Fei2411/DeepSeek-Bot）：<https://github.com/elonnzhang/DeepSeek-Bot>，本地 `/Users/elon/code-space/GitHub/DeepSeek-Bot`
 
 ## 1. 分层
@@ -107,9 +107,10 @@ interface ExpertIdentityService {
 | E2 | 记录字段：`title?`、`avatar?`、`source?: { kind, note? }`（缺省 `public`）。Schema 向后兼容，旧设置不迁移即可写入 | `src/types.ts`、`index.ts` `RecordSchema` / `normalizeRecord`、设置页编辑器 |
 | E3 | `disclosure` 生成：按 `source.kind` 的固定文案（中文） | `identity-service.ts` |
 | E4 | 运行模式开关 `features`：默认只开 `identity`。关闭时不注册 `consult_expert`、`read_expert_reference` 工具、不装 `expert-ai-mode` 预设绑定、不注册 `@<id>` 输入来源、不注入 Chat Panel。代码保留，配置可开启 | `src/host/index.ts`、`src/client/index.ts`、`expert-ai-mode.patch.yml` |
-| E5 | 改名：`package.json` 包名与 `cordis.patch.yml` 的模块 `name` 为 `dsh-expert-ai`；Host 插件入口 id、导出的 `name`、settings 命名空间均为 `expert-ai`；Client 注册 id 为 `dsh-expert-ai`，启动清单中的 `dsh-expert-ai/client.js` bundle（由 loader 通过带版本号的 combo URL 请求）；RPC `/api/expert-ai/*`；locale namespace 与 `settings.section` id；Agent preset（`expert-ai-mode.patch.yml`，行 id `preset-expert-ai-mode`）；类型 `ExpertRecord`、`ExpertSettings`、`ExpertBinding`、`ExpertTeam` 等与常量 `EXPERT_AI_*`；函数 `expertAiHome`、`expertAiEndpoint`；工具 `consult_expert`、`consult_expert_category`；README 与 docs。数据目录改为 `$DSH_HOME/expert-ai`；旧目录 `$DSH_HOME/digital-life` 与旧 Profile 设置行**不自动迁移**，升级步骤见 README 的迁移一节 | 全部出现处：`rg -l -i 'digital[-_]?life'`（含 `package.json`、`cordis.patch.yml`、`tsdown.config.ts`、`tsdown.client.ts`、`scripts/smoke.mjs`、`dev/cordis.dev.local.yml`、`.gitignore`、README 与 docs）；之后 `pnpm install` 刷新 lockfile |
+| E5 | 改名：`package.json` 包名与 `cordis.patch.yml` 的模块 `name` 为 `dsh-expert-ai`；Host 插件入口 id、导出的 `name`、settings 命名空间均为 `expert-ai`；Client 注册 id 为 `dsh-expert-ai`，启动清单中的 `dsh-expert-ai/client.js` bundle（由 loader 通过带版本号的 combo URL 请求）；RPC `/api/expert-ai/*`；locale namespace 与 `settings.section` id；Agent preset（`expert-ai-mode.patch.yml`，行 id `preset-expert-ai-mode`）；类型 `ExpertRecord`、`ExpertSettings`、`ExpertBinding`、`ExpertTeam` 等与常量 `EXPERT_AI_*`；函数 `expertAiHome`、`expertAiEndpoint`；工具 `consult_expert`、`consult_expert_category`；README 与 docs。数据目录改为 `$DSH_HOME/expert-ai`；旧数据目录与旧 Profile 设置行**不自动迁移**，升级步骤见 README | 全部出现处（包名、插件入口 id、patch 行、RPC 路由、类型与常量、README 与 docs）；之后 `pnpm install` 刷新 lockfile |
 | E6 | 星途 9 位专家：补 `title` 与 `source.kind: public` | `cordis.patch.yml` |
 | E7 | 精简（2026-10-20）：删除分类咨询 `consult_expert_category`、评审、专家团的代码、工具、RPC、界面与设置字段，只保留身份数据与单专家咨询（`conversation` 开启后可用）。旧 `teams`、`maxBatchSize` 设置仍可加载但被忽略，`.expert-reviews/` 不再读取、不自动删除，专家团主持过的会话打开时不带人设；清理步骤见 README | `src/host/`、`src/client/`、`tests/`、README |
+| E8 | 只留身份层与单聊（2026-10-20）：删除 `consult_expert`、`read_expert_reference`、`@<id>` 输入源、`expert-ai-mode` 预设与首页选择器、专家包在线导入（`expert/catalog`、`expert/import`、`ExpertLibraryApi`）以及 `features` / `provider` 设置，Host 不再 inject `tools`、`subagents`。保留 `expertIdentity` 服务、身份库设置页、侧边栏 Chat Panel 与 `project` / `greeting` / `binding` / `bind` / `unbind` 端点。旧设置里的 `features`、`provider`、`teams`、`maxBatchSize`、记录级 `toolFilter` / `model` 仍可加载并被忽略 | `src/host/`、`src/client/`、`tests/`、`scripts/`、README、docs |
 
 完成后 `pnpm run check`（typecheck + test + build + smoke）全过，并为 E1–E4 加单测。
 

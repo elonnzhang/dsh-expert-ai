@@ -1,14 +1,11 @@
 import {
   EXPERT_AI_CATEGORIES,
-  EXPERT_AI_FEATURES,
   EXPERT_AVATAR_MIMES,
   EXPERT_SOURCE_KINDS,
 } from "./constants.js";
 import type { ExpertPackageBinding } from "./expert-types.js";
 
 export type ExpertCategory = (typeof EXPERT_AI_CATEGORIES)[number];
-
-export type ExpertFeature = (typeof EXPERT_AI_FEATURES)[number];
 
 export type ExpertIdentitySourceKind = (typeof EXPERT_SOURCE_KINDS)[number];
 
@@ -45,8 +42,6 @@ export interface ExpertRecord {
   persona: string;
   /** Optional ~/.agent/agents or ~/.claude/agents Markdown identity source. */
   agent?: string;
-  toolFilter?: string[];
-  model?: { provider?: string; model?: string };
   /** Immutable upstream package; user configuration remains separate. */
   expertPackage?: ExpertPackageBinding | undefined;
   /** Picture shown with the identity. */
@@ -57,15 +52,11 @@ export interface ExpertRecord {
 }
 
 export interface ExpertSettings {
-  /** Parts of the plugin that are on. Defaults to `["identity"]`; `identity` is on even when omitted. */
-  features?: ExpertFeature[];
-  provider?: string;
   /** Optional plugin state directory or its parent. Defaults to `$DSH_HOME/expert-ai` (`~/.dsh/expert-ai`). */
   stateDir?: string;
   records?: ExpertRecord[];
 }
 
 export interface ResolvedExpertSettings {
-  provider: string;
   records: ExpertRecord[];
 }

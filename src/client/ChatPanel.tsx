@@ -3,7 +3,6 @@ import type { PropsRuntime, TranslateNS } from "@deepseek-ai/dsh-client-ui-slots
 import type {} from "@deepseek-ai/dsh-client-ui-sidebar/client";
 import {
   IconChevronDownOutlineMedium,
-  IconNewChatOutlineRegular,
   IconUsersOutlineMedium,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { SessionId } from "@deepseek-ai/dsh-session/types";
@@ -14,7 +13,7 @@ import { categoryLabel } from "./locales.js";
 /** Data and actions supplied by the Host-backed Client installer. */
 export interface ChatPanelInjected {
   records: () => readonly ExpertRecord[];
-  createSession: (record?: ExpertRecord) => Promise<SessionId>;
+  createSession: (record: ExpertRecord) => Promise<SessionId>;
   t: TranslateNS<"expert-ai">;
 }
 
@@ -34,11 +33,11 @@ export function ChatPanel({ wide, records, createSession, t }: ChatPanelProps) {
       document.removeEventListener("pointerdown", closeOutside);
     };
   }, [open]);
-  const start = (record?: ExpertRecord): void => {
+  const start = (record: ExpertRecord): void => {
     setOpen(false);
     setError(undefined);
     void createSession(record).catch((error) => {
-      console.error("expert-ai: failed to start standalone session", error);
+      console.error("expert-ai: failed to start the expert conversation", error);
       setError(error instanceof Error ? error.message : String(error));
       setOpen(true);
     });
@@ -55,8 +54,7 @@ export function ChatPanel({ wide, records, createSession, t }: ChatPanelProps) {
         aria-label={t("chatAria")}
         aria-expanded={open}
         onClick={() => {
-          if (wide) setOpen((value) => !value);
-          else start();
+          setOpen((value) => !value);
         }}
       >
         <IconUsersOutlineMedium size={wide ? 16 : 18} />
@@ -67,18 +65,6 @@ export function ChatPanel({ wide, records, createSession, t }: ChatPanelProps) {
         <section className={css.panel} aria-label={t("startSessionAria")}>
           {error !== undefined && <div className={css.error} role="alert">{error}</div>}
           <div className={css.title}>{t("startSession")}</div>
-          <button
-            type="button"
-            className={css.action}
-            onClick={() => {
-              start();
-            }}
-          >
-            <span className={css.icon}>
-              <IconNewChatOutlineRegular size={14} />
-            </span>
-            <span>{t("newSession")}</span>
-          </button>
           {records().map((record) => (
             <button
               key={record.id}

@@ -63,8 +63,10 @@ describe('expert agent identity', () => {
   })
 
   it('renders compatible YAML frontmatter', () => {
-    expect(agentDocument(record, record.persona)).toContain('name: \"mentor\"')
-    expect(agentDocument(record, record.persona)).toContain('model: \"inherit\"\n---')
+    const document = agentDocument(record, record.persona)
+    expect(document.startsWith('---\n')).toBe(true)
+    expect(document).toContain('name: \"mentor\"')
+    expect(document.endsWith(`---\n\n${record.persona.trim()}\n`)).toBe(true)
   })
 
   it('strips agent frontmatter', () => {

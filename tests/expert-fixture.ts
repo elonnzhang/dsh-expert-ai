@@ -1,5 +1,6 @@
 import { vi } from "vitest";
-import { MIMEOGRAPHS_REVISION } from "../src/expert-types.js";
+/** The commit the fixture packages are pinned to; the plugin never fetches it. */
+const MIMEOGRAPHS_REVISION = "a38f5fcad0853be3e98a6cd95d8e6bf8c66f7c7b";
 
 export const packageBinding = { source: "mimeographs", slug: "test-expert", revision: MIMEOGRAPHS_REVISION } as const;
 

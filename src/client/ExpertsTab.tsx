@@ -2,14 +2,11 @@ import { useRef, useState, type ReactNode } from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import {
   Button,
-  IconChevronDownOutlineMedium,
   IconEditOutlineRegular,
   IconPlusOutlineMedium,
   IconSearchOutlineRegular,
   IconTrashOutlineRegular,
   Input,
-  Menu,
-  MenuItemButton,
   Pill,
   RiskConfirmation,
   Switch,
@@ -21,8 +18,6 @@ import { EXPERT_AI_CATEGORIES } from "../constants.js";
 import { applyAgentMarkdown } from "./agent-file.js";
 import { errorText } from "./controls.js";
 import { ExpertEditor } from "./ExpertEditor.js";
-import { ExpertLibraryDialog } from "./ExpertLibraryDialog.js";
-import type { ExpertLibraryApi } from "./library-api.js";
 import { categoryLabel } from "./locales.js";
 import { EMPTY_RECORD, normalizeExpertRecord } from "./records.js";
 import css from "./settings.module.css";
@@ -38,7 +33,6 @@ export function ExpertsTab({
   writable,
   form,
   loadIdentity,
-  expertApi,
   t,
   notify,
 }: {
@@ -46,15 +40,12 @@ export function ExpertsTab({
   writable: boolean;
   form: ConfigForm<ExpertSettings>;
   loadIdentity: (id: string) => Promise<string>;
-  expertApi: ExpertLibraryApi;
   t: TranslateNS<"expert-ai">;
   /** Show a transient confirmation. */
   notify: (text: string) => void;
 }): ReactNode {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
-  const [importOpen, setImportOpen] = useState(false);
-  const [library, setLibrary] = useState(false);
   const [editing, setEditing] = useState<Editing | undefined>(undefined);
   const [deleting, setDeleting] = useState<ExpertRecord | undefined>(undefined);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -78,14 +69,7 @@ export function ExpertsTab({
     setBusy(true);
     void loadIdentity(record.id)
       .then((identity) => {
-        setEditing({
-          record: {
-            ...record,
-            persona: identity,
-            ...(record.toolFilter === undefined ? {} : { toolFilter: [...record.toolFilter] }),
-          },
-          existing: true,
-        });
+        setEditing({ record: { ...record, persona: identity }, existing: true });
       })
       .catch((reason: unknown) => {
         setError(errorText(reason));
@@ -165,45 +149,15 @@ export function ExpertsTab({
             setQuery(event.target.value);
           }}
         />
-        <Menu
-          open={importOpen}
-          onClose={() => {
-            setImportOpen(false);
+        <Button
+          variant="outline"
+          disabled={!writable}
+          onClick={() => {
+            fileInput.current?.click();
           }}
-          align="end"
-          portal
-          anchor={
-            <Button
-              variant="outline"
-              aria-haspopup="menu"
-              aria-expanded={importOpen}
-              disabled={!writable}
-              onClick={() => {
-                setImportOpen((open) => !open);
-              }}
-            >
-              {t("importMenu")}
-              <IconChevronDownOutlineMedium size={14} />
-            </Button>
-          }
         >
-          <MenuItemButton
-            onSelect={() => {
-              setImportOpen(false);
-              fileInput.current?.click();
-            }}
-          >
-            {t("importFromFile")}
-          </MenuItemButton>
-          <MenuItemButton
-            onSelect={() => {
-              setImportOpen(false);
-              setLibrary(true);
-            }}
-          >
-            {t("importFromLibrary")}
-          </MenuItemButton>
-        </Menu>
+          {t("importFromFile")}
+        </Button>
         <Button
           variant="primary"
           icon={<IconPlusOutlineMedium size={16} />}
@@ -337,20 +291,6 @@ export function ExpertsTab({
           }}
         />
       )}
-      {library ? (
-        <ExpertLibraryDialog
-          api={expertApi}
-          writable={writable}
-          t={t}
-          onImported={(id) => {
-            setLibrary(false);
-            notify(t("expertImported", { id }));
-          }}
-          onClose={() => {
-            setLibrary(false);
-          }}
-        />
-      ) : null}
       <RiskConfirmation
         open={deleting !== undefined}
         title={t("deleteRecordTitle", { name: deleting?.name ?? "" })}

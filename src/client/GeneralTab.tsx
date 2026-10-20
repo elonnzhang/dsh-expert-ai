@@ -13,11 +13,9 @@ import type { ConfigForm } from "@deepseek-ai/dsh-client-ui-settings/client";
 import type { ExpertSettings } from "../types.js";
 import css from "./settings.module.css";
 
-type GeneralField = "stateDir" | "provider";
-
 interface GeneralState {
   shell: SettingsFormShell;
-  fields: Record<GeneralField, SettingsFieldState>;
+  field: SettingsFieldState;
 }
 
 interface Staged {
@@ -26,7 +24,7 @@ interface Staged {
 }
 
 /**
- * Stage and save the runtime settings shared by every expert.
+ * Stage and save the plugin data directory shared by every expert.
  * @returns The 通用设置 tab panel body.
  */
 export function GeneralTab({
@@ -42,14 +40,10 @@ export function GeneralTab({
   useEffect(() => {
     const model = new SettingsFormModel<ExpertSettings>(form as SettingsFormScope<ExpertSettings>, [
       settingsTextField("stateDir"),
-      settingsTextField("provider"),
     ]);
     const store = model.bind<GeneralState>(() => ({
       shell: model.shell(),
-      fields: {
-        stateDir: model.field("stateDir"),
-        provider: model.field("provider"),
-      },
+      field: model.field("stateDir"),
     }));
     setStaged({ model, store });
     return () => {
@@ -70,32 +64,6 @@ function GeneralFields({ model, store, t }: Staged & { t: TranslateNS<"expert-ai
   const actions = model.actions();
   const disabled = !state.shell.writable || state.shell.saving;
 
-  const field = (
-    name: GeneralField,
-    hint: "stateDirHint" | "providerHint",
-    extra: { placeholder?: string },
-  ): ReactNode => (
-    <SettingsValueField
-      id={`expert-ai-${name}`}
-      label={t(name)}
-      hint={t(hint)}
-      text={state.fields[name].text}
-      overridden={state.fields[name].overridden}
-      invalid={state.fields[name].invalid}
-      overriddenLabel={t("overridden")}
-      resetLabel={t("reset")}
-      invalidLabel={t("invalidValue")}
-      disabled={disabled}
-      onEdit={(text) => {
-        actions.edit(name, text);
-      }}
-      onReset={() => {
-        actions.resetField(name);
-      }}
-      {...extra}
-    />
-  );
-
   return (
     <SettingsForm
       labels={{
@@ -109,8 +77,25 @@ function GeneralFields({ model, store, t }: Staged & { t: TranslateNS<"expert-ai
       onSave={actions.save}
       onDiscard={actions.discard}
     >
-      {field("stateDir", "stateDirHint", { placeholder: t("stateDirPlaceholder") })}
-      {field("provider", "providerHint", { placeholder: "spawn" })}
+      <SettingsValueField
+        id="expert-ai-stateDir"
+        label={t("stateDir")}
+        hint={t("stateDirHint")}
+        text={state.field.text}
+        overridden={state.field.overridden}
+        invalid={state.field.invalid}
+        overriddenLabel={t("overridden")}
+        resetLabel={t("reset")}
+        invalidLabel={t("invalidValue")}
+        disabled={disabled}
+        onEdit={(text) => {
+          actions.edit("stateDir", text);
+        }}
+        onReset={() => {
+          actions.resetField("stateDir");
+        }}
+        placeholder={t("stateDirPlaceholder")}
+      />
     </SettingsForm>
   );
 }

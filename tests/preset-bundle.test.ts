@@ -9,35 +9,22 @@ const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
   dsh: { bundle: { patch: string[] } };
   files: string[];
 };
-const preset = readFileSync(resolve(root, "expert-ai-mode.patch.yml"), "utf8");
-const entries = { host: "/dev/lib/index.js", client: "/dev/lib/client.js", preset };
+const entries = { host: "/dev/lib/index.js", client: "/dev/lib/client.js" };
 
-describe("expert-ai preset bundle", () => {
-  it("ships the named composition as an opt-in patch, outside the installed bundle", () => {
+describe("expert-ai bundle", () => {
+  it("ships only the identity and conversation composition", () => {
     expect(manifest.dsh.bundle.patch).toEqual(["./cordis.patch.yml"]);
-    expect(manifest.files).toContain("expert-ai-mode.patch.yml");
-    expect(preset).toContain("name: '@deepseek-ai/dsh-agent-preset'");
-    expect(preset).toContain("id: expert-ai-mode");
-    expect(preset).toContain("name: 专家模式");
-    expect(preset).toContain("name: '@deepseek-ai/dsh-persona'");
-  });
-
-  it("keeps the development overlay identity-only by default", () => {
-    const overlay = renderDevPatch({ ...entries, conversation: false });
-    expect(overlay).toContain("name: '/dev/lib/index.js'");
-    expect(overlay).toContain("name: '/dev/lib/client.js'");
-    expect(overlay).not.toContain("features");
-    expect(overlay).not.toContain("preset-expert-ai-mode");
-  });
-
-  it("adds the conversation feature and the preset to the overlay on request", () => {
-    const overlay = renderDevPatch({ ...entries, conversation: true });
-    expect(overlay).toContain("      config:\n        features: [identity, conversation]\n    - id: dev-expert-ai-client");
-    expect(overlay.endsWith(preset)).toBe(true);
+    expect(manifest.files).not.toContain("expert-ai-mode.patch.yml");
   });
 
   it("keys the overlay Host entry by the id the Client reads its settings form with", () => {
-    for (const conversation of [false, true])
-      expect(renderDevPatch({ ...entries, conversation })).toContain(`    - id: ${EXPERT_AI_NAMESPACE}\n      name: '/dev/lib/index.js'`);
+    expect(renderDevPatch(entries)).toContain(`    - id: ${EXPERT_AI_NAMESPACE}\n      name: '/dev/lib/index.js'`);
+  });
+
+  it("overlays exactly the Host and Client halves", () => {
+    const overlay = renderDevPatch(entries);
+    expect(overlay).toContain("name: '/dev/lib/client.js'");
+    expect(overlay).not.toContain("config");
+    expect(overlay).not.toContain("preset-");
   });
 });
