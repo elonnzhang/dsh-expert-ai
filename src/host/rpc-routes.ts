@@ -11,9 +11,6 @@ export const HOST_ENDPOINTS = [
   "bind",
   "expert/catalog",
   "expert/import",
-  "review/list",
-  "review/read",
-  "review/cancel",
 ] as const;
 
 export type HostRpcHandler = (endpoint: string, payload: unknown) => Promise<ConnectionRpcResult<unknown>>;

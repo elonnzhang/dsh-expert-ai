@@ -45,17 +45,15 @@ describe("expert-ai session binding", () => {
     expect(JSON.parse(await readFile(join(root, "expert-ai", "sessions", `${sessionId}.json`), "utf8"))).toEqual(binding);
   });
 
-  it("restores a team-hosted binding and rejects ambiguous owners", async () => {
+  it("opens a session left by a removed expert team unbound and still rejects ownerless bindings", async () => {
     const root = await mkdtemp(join(tmpdir(), "expert-ai-binding-"));
     roots.push(root);
-    const binding = { team: { id: "plan-review", name: "方案评审" }, pre: "Header", persona: "Host", suf: "Rules" };
-    await saveBinding("session-team", binding, root);
-    expect(await loadBinding("session-team", root)).toEqual(binding);
     const dir = join(root, "expert-ai", "sessions");
-    for (const [id, value] of [["session-both", { ...binding, recordId: "life" }], ["session-none", { pre: "", persona: "x", suf: "" }]] as const) {
-      await writeFile(join(dir, `${id}.json`), JSON.stringify(value));
-      await expect(loadBinding(id, root)).rejects.toThrow(/invalid binding/);
-    }
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "session-team.json"), JSON.stringify({ team: { id: "plan-review", name: "方案评审" }, pre: "Header", persona: "Host", suf: "Rules" }));
+    expect(await loadBinding("session-team", root)).toBeUndefined();
+    await writeFile(join(dir, "session-none.json"), JSON.stringify({ pre: "", persona: "x", suf: "" }));
+    await expect(loadBinding("session-none", root)).rejects.toThrow(/invalid binding/);
   });
 
   it("rejects paths outside the managed session directory", async () => {

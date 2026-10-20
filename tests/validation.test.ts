@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Config, DEFAULT_TEAM_PERSONA, independentSystemPromptFor, independentSystemPromptPartsFor, promptFor, teamSystemPromptPartsFor, validateSettings } from '../src/index.js'
+import { Config, independentSystemPromptFor, independentSystemPromptPartsFor, promptFor, validateSettings } from '../src/index.js'
 import type { ExpertRecord } from '../src/types.js'
 
 const record: ExpertRecord = {
@@ -44,9 +44,14 @@ describe('expert-ai configuration', () => {
     expect(() => { validateSettings({ records: [{ ...record, id: 'Bad ID' }] }) }).toThrow(/must match/)
   })
 
-  it('rejects empty persona and invalid batch size', () => {
+  it('rejects an empty persona', () => {
     expect(() => { validateSettings({ records: [{ ...record, persona: ' ' }] }) }).toThrow(/persona is required/)
-    expect(() => { validateSettings({ maxBatchSize: 0, records: [] }) }).toThrow(/must be positive/)
+  })
+
+  it('still loads settings saved with the removed team and batch-size fields', () => {
+    const legacy = { maxBatchSize: 0, teams: [{ id: 'Bad', name: ' ', analystIds: [], reviewerId: '' }], records: [record] }
+    expect(Config(legacy).records.get()).toHaveLength(1)
+    expect(() => { validateSettings(legacy) }).not.toThrow()
   })
 
   it('builds a focused consultation prompt without repeating the persona', () => {
@@ -81,16 +86,15 @@ describe('expert-ai configuration', () => {
     expect(independentSystemPromptFor(record, '  # AGENTS\n身份正文  ')).toBe([parts.pre, parts.persona, parts.suf].join('\n\n'))
   })
 
-  it('routes mentions of other experts through consultation tools', () => {
+  it('routes mentions of other experts through consult_expert only', () => {
     const prompt = independentSystemPromptFor(record)
 
     expect(prompt).toContain('@<专家ID>')
     expect(prompt).toContain('必须调用 consult_expert')
     expect(prompt).toContain(`@${record.id}`)
-    expect(prompt).toContain('调用 consult_expert_category')
-    expect(prompt).toContain('@<团队ID>')
-    expect(prompt).toContain('start_team_run')
-    expect(prompt).toContain('amend_team_brief')
+    for (const removed of ['consult_expert_category', '@<团队ID>', 'start_team_run', 'amend_team_brief', 'review_expert_plan'])
+      expect(prompt).not.toContain(removed)
+    expect(promptFor(record, '?')[0]).not.toMatchObject({ text: expect.stringContaining('consult_expert_category') })
   })
 })
 
@@ -98,69 +102,4 @@ it('accepts an agent file instead of inline persona', () => {
   expect(() => {
     validateSettings({ records: [{ ...record, persona: '', agent: '~/.agent/agents/mentor.md' }] })
   }).not.toThrow()
-})
-
-describe('expert teams', () => {
-  const team = { id: 'plan-review', name: '方案评审', purpose: '', analystIds: ['a', 'b'], reviewerId: 'c' }
-
-  it('parses teams with defaults and accepts a valid lineup', () => {
-    const teams = Config({ teams: [{ id: 't', name: 'T', analystIds: ['a'], reviewerId: 'b' }] }).teams.get()
-    expect(teams[0]).toMatchObject({ purpose: '', analystIds: ['a'], reviewerId: 'b' })
-    expect(Config({}).teams.get()).toEqual([])
-    expect(() => { validateSettings({ teams: [team] }) }).not.toThrow()
-  })
-
-  it('does not require team members to exist as records', () => {
-    expect(() => { validateSettings({ records: [], teams: [team] }) }).not.toThrow()
-  })
-
-  it('rejects malformed team ids, names and duplicates', () => {
-    expect(() => { validateSettings({ teams: [{ ...team, id: 'Bad' }] }) }).toThrow(/team id/)
-    expect(() => { validateSettings({ teams: [team, team] }) }).toThrow(/duplicate team id/)
-    expect(() => { validateSettings({ teams: [{ ...team, name: ' ' }] }) }).toThrow(/team name/)
-  })
-
-  it('enforces 1-3 unique analysts and a separate reviewer', () => {
-    expect(() => { validateSettings({ teams: [{ ...team, analystIds: [] }] }) }).toThrow(/1-3 unique/)
-    expect(() => { validateSettings({ teams: [{ ...team, analystIds: ['a', 'b', 'd', 'e'] }] }) }).toThrow(/1-3 unique/)
-    expect(() => { validateSettings({ teams: [{ ...team, analystIds: ['a', 'a'] }] }) }).toThrow(/1-3 unique/)
-    expect(() => { validateSettings({ teams: [{ ...team, reviewerId: 'a' }] }) }).toThrow(/reviewer/)
-    expect(() => { validateSettings({ teams: [{ ...team, reviewerId: '' }] }) }).toThrow(/reviewer/)
-  })
-
-  it('accepts a coordinator and member responsibilities', () => {
-    const parsed = Config({ teams: [{ ...team, coordinatorId: 'd', responsibilities: { a: '统计方法' } }] }).teams.get()
-    expect(parsed[0]).toMatchObject({ coordinatorId: 'd', responsibilities: { a: '统计方法' } })
-    expect(Config({ teams: [team] }).teams.get()[0]?.coordinatorId).toBeUndefined()
-    expect(() => { validateSettings({ teams: [{ ...team, coordinatorId: 'd', responsibilities: { a: '统计', d: '拆解目标' } }] }) }).not.toThrow()
-  })
-
-  it('rejects responsibilities for non-members or of invalid length', () => {
-    expect(() => { validateSettings({ teams: [{ ...team, responsibilities: { x: '统计' } }] }) }).toThrow(/responsibility/)
-    expect(() => { validateSettings({ teams: [{ ...team, responsibilities: { a: ' ' } }] }) }).toThrow(/1-200/)
-    expect(() => { validateSettings({ teams: [{ ...team, responsibilities: { a: 'x'.repeat(201) } }] }) }).toThrow(/1-200/)
-    expect(() => { validateSettings({ teams: [{ ...team, coordinatorId: ' ' }] }) }).toThrow(/coordinator/)
-  })
-
-  it('accepts a team persona of 1-8000 characters', () => {
-    expect(Config({ teams: [{ ...team, persona: '主持人' }] }).teams.get()[0]?.persona).toBe('主持人')
-    expect(Config({ teams: [team] }).teams.get()[0]?.persona).toBeUndefined()
-    expect(() => { validateSettings({ teams: [{ ...team, persona: ' ' }] }) }).toThrow(/persona/)
-    expect(() => { validateSettings({ teams: [{ ...team, persona: 'x'.repeat(8_001) }] }) }).toThrow(/persona/)
-  })
-
-  it('hosts a team session with the team persona, not a member persona', () => {
-    const members = ['a', 'b', 'c'].map((id) => ({ id, name: `Name ${id}`, description: id, category: 'science' as const, tags: [], persona: `Member ${id}`, enabled: true }))
-    const parts = teamSystemPromptPartsFor({ ...team, persona: '  团队主持人  ', responsibilities: { a: '统计' } }, members)
-    expect(parts.persona).toBe('团队主持人')
-    expect(parts.pre).toContain('# 专家团：方案评审（@plan-review）')
-    expect(parts.pre).toContain('- 分析：Name a（@a） — 统计')
-    expect(parts.pre).toContain('- 审查与汇总：Name c（@c）')
-    expect(parts.suf).toContain('teamId "plan-review"')
-    expect(`${parts.pre}${parts.persona}${parts.suf}`).not.toMatch(/Member [abc]/)
-    expect(teamSystemPromptPartsFor(team, members).persona).toBe(DEFAULT_TEAM_PERSONA)
-    const adhoc = teamSystemPromptPartsFor({ name: '临时专家团', analystIds: ['a'], reviewerId: 'c' }, members)
-    expect(adhoc.pre).toContain('临时组队')
-    expect(adhoc.suf).toContain('analystIds ["a"] 和 reviewerId "c"')
-  })
 })

@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -11,11 +11,14 @@ import { loadBinding, saveBinding } from '../src/host/session-binding.js'
 import type { ExpertFeature } from '../src/index.js'
 import { fakeHostConnection } from './host-connection.js'
 
-const GATED_TOOLS = [
-  'consult_expert', 'consult_expert_category', 'read_expert_reference', 'review_expert_plan',
-  'read_expert_review', 'start_team_run', 'amend_team_brief', 'run_team_stage', 'read_team_run', 'cancel_team_run',
+const GATED_TOOLS = ['consult_expert', 'read_expert_reference']
+// Category consultation, reviews and expert teams were removed; none of these may come back.
+const REMOVED_TOOLS = [
+  'consult_expert_category', 'review_expert_plan', 'read_expert_review',
+  'start_team_run', 'amend_team_brief', 'run_team_stage', 'read_team_run', 'cancel_team_run',
 ]
-const CONVERSATION_ENDPOINTS = ['project', 'greeting', 'binding', 'unbind', 'bind', 'review/list', 'review/read', 'review/cancel']
+const REMOVED_ENDPOINTS = ['review/list', 'review/read', 'review/cancel']
+const CONVERSATION_ENDPOINTS = ['project', 'greeting', 'binding', 'unbind', 'bind']
 const IDENTITY_ONLY: ExpertFeature[] = ['identity']
 const WITH_CONVERSATION: ExpertFeature[] = ['identity', 'conversation']
 const RECORDS = [
@@ -29,7 +32,7 @@ afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()))
 })
 
-async function start(initial: ExpertFeature[], options: { records?: typeof RECORDS; subagents?: unknown } = {}) {
+async function start(initial: ExpertFeature[], options: { records?: typeof RECORDS } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'expert-ai-features-'))
   const ctx = new Context()
   cleanups.push(async () => {
@@ -40,7 +43,7 @@ async function start(initial: ExpertFeature[], options: { records?: typeof RECOR
   await ctx.plugin(ToolRuntime)
   const agents = new Map<string, unknown>()
   const host = fakeHostConnection()
-  ctx.provide('subagents', options.subagents ?? {})
+  ctx.provide('subagents', {})
   ctx.provide('agents', { get: (id: string) => agents.get(id) })
   ctx.provide('connection', host.connection)
   ctx.provide('sandboxPolicy', { defaultMode: 'read-only' })
@@ -49,16 +52,14 @@ async function start(initial: ExpertFeature[], options: { records?: typeof RECOR
   const fiber = await ctx.plugin({ name: 'expert-ai', inject: plugin.inject, apply: plugin.apply }, {
     features: live(() => state.features),
     provider: live(() => 'spawn'),
-    maxBatchSize: live(() => 3),
     stateDir: live(() => root),
     records: live(() => options.records ?? RECORDS),
-    teams: live(() => []),
   })
   return {
     root,
     ctx,
     fiber,
-    tools: () => GATED_TOOLS.filter((name) => ctx.tools.get(name) !== undefined),
+    tools: () => [...GATED_TOOLS, ...REMOVED_TOOLS].filter((name) => ctx.tools.get(name) !== undefined),
     rpc: host.call,
     routes: host.paths,
     setFeatures(next: ExpertFeature[]) {
@@ -94,7 +95,7 @@ describe('features setting', () => {
 })
 
 describe('with the identity feature only', () => {
-  it('registers none of the consult, review or team tools', async () => {
+  it('registers none of the consult tools', async () => {
     const h = await start(IDENTITY_ONLY)
     expect(h.tools()).toEqual([])
   })
@@ -151,14 +152,21 @@ const sandboxModes = (session: Session): string[] =>
     .map((event) => (event.data as { mode: string }).mode)
 
 describe('with the conversation feature', () => {
-  it('registers the consult, review and team tools', async () => {
+  it('registers the single-expert consult tools and nothing else', async () => {
     const h = await start(WITH_CONVERSATION)
     expect(h.tools()).toEqual(GATED_TOOLS)
   })
 
+  it('serves no review or team endpoint', async () => {
+    const h = await start(WITH_CONVERSATION)
+    for (const endpoint of REMOVED_ENDPOINTS) {
+      expect(h.routes(), endpoint).not.toContain(`/api/expert-ai/${endpoint}`)
+      expect((await h.rpc(endpoint, { id: 'x' })).error?.code, endpoint).toBe('not-found')
+    }
+  })
+
   it('serves the conversation endpoints', async () => {
     const h = await start(WITH_CONVERSATION)
-    expect(await h.rpc('review/list')).toEqual({ ok: true, value: [] })
     expect(await h.rpc('binding', { sessionId: 'nobody' })).toEqual({ ok: true, value: undefined })
     expect((await h.rpc('project')).ok).toBe(true)
     expect(await readdir(join(h.root, 'expert-ai', 'projects'))).toHaveLength(1)
@@ -176,6 +184,17 @@ describe('with the conversation feature', () => {
     expect(sandboxModes(session)).toEqual(['read-only'])
   })
 
+  it('opens a session an expert team hosted before teams were removed without a persona', async () => {
+    const h = await start(WITH_CONVERSATION)
+    await mkdir(join(h.root, 'expert-ai', 'sessions'), { recursive: true })
+    const hosted = { team: { id: 'plan-review', name: '方案评审' }, pre: 'Before', persona: 'Host', suf: 'After' }
+    await writeFile(join(h.root, 'expert-ai', 'sessions', 's-team.json'), JSON.stringify(hosted))
+    const { agent, sections } = h.session('s-team')
+    await h.created(agent)
+    expect(sections).toEqual([])
+    expect(await h.rpc('binding', { sessionId: 's-team' })).toEqual({ ok: true, value: undefined })
+  })
+
   it('binds a record through the bind endpoint', async () => {
     const h = await start(WITH_CONVERSATION)
     const { sections } = h.session('s-bind')
@@ -183,6 +202,17 @@ describe('with the conversation feature', () => {
       .toEqual({ ok: true, value: { sessionId: 's-bind', recordId: 'mentor' } })
     expect(sections.map((section) => section.name)).toContain('expert-ai:persona')
     expect(await loadBinding('s-bind', h.root)).toMatchObject({ recordId: 'mentor' })
+  })
+
+  it('binds a session to one expert only, never to a team or a lineup', async () => {
+    const h = await start(WITH_CONVERSATION)
+    const { sections } = h.session('s-group')
+    for (const owner of [{ teamId: 'plan-review' }, { lineup: { analystIds: ['mentor'], reviewerId: 'mentor' } }]) {
+      const reply = await h.rpc('bind', { sessionId: 's-group', ...owner })
+      expect(reply.error?.message).toBe('sessionId and recordId are required')
+    }
+    expect(sections).toEqual([])
+    expect(await loadBinding('s-group', h.root)).toBeUndefined()
   })
 })
 
@@ -219,38 +249,5 @@ describe('switching conversation while the plugin runs', () => {
     const h = await start(WITH_CONVERSATION)
     await h.fiber.dispose()
     expect(h.tools()).toEqual([])
-  })
-})
-
-describe('a team stage still running when conversation goes off', () => {
-  const report = { summary: 'Check evidence', findings: [], assumptions: ['Needs external validation'], disagreements: [], nextActions: ['Run a controlled comparison'] }
-  const experts = ['analyst', 'reviewer'].map((id) => ({ ...RECORDS[0], id, name: id }))
-
-  it.each([
-    ['started with it on', WITH_CONVERSATION],
-    ['switched on later', IDENTITY_ONLY],
-  ])('keeps its subagent restricted to structured output (%s)', async (_label, initial) => {
-    let finish = () => {}
-    const subagents = {
-      getProvider: () => ({ capabilities: { persona: true, toolFilter: true, outputSchema: true, agentOptions: true } }),
-      start: async () => ({
-        id: 'stage-child',
-        dispose: async () => {},
-        result: new Promise((resolve) => { finish = () => resolve({ stopReason: 'completed', output: [], structured: report }) }),
-      }),
-    }
-    const h = await start(initial, { records: experts, subagents })
-    h.setFeatures(WITH_CONVERSATION)
-    const tool = (name: string) => h.ctx.tools.get(name) as unknown as { execute(args: unknown, exec: unknown): Promise<unknown> }
-    const exec = { agent: { id: 'owner', ctx: {} }, signal: new AbortController().signal }
-    const { runId } = await tool('start_team_run').execute({ brief: 'Evaluate', analystIds: ['analyst'], reviewerId: 'reviewer' }, exec) as { runId: string }
-    const stage = tool('run_team_stage').execute({ runId, stage: 'analysis' }, exec)
-    const denial = () => h.ctx.tools.guardReason({ agent: { id: 'stage-child' }, name: 'spawn_teammate' } as never)
-    await vi.waitFor(() => expect(denial()).toMatch(/spawn_teammate/))
-    h.setFeatures(IDENTITY_ONLY)
-    expect(h.tools()).toEqual([])
-    expect(denial()).toMatch(/spawn_teammate/)
-    finish()
-    await stage
   })
 })

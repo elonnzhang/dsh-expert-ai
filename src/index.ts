@@ -1,13 +1,11 @@
 export {
   apply,
   Config,
-  DEFAULT_TEAM_PERSONA,
   independentSystemPromptFor,
   independentSystemPromptPartsFor,
   inject,
   name,
   promptFor,
-  teamSystemPromptPartsFor,
   validateSettings,
 } from "./host/index.js";
 export {
@@ -28,5 +26,3 @@ export type {
   ExpertIdentitySummary,
 } from "./host/identity-service.js";
 export { importMimeograph, loadExpertCatalog, readExpertReference, recordForPackage } from "./host/expert-packages.js";
-export { runExpertReview, readReviewRun, readAnyReviewRun, renderReviewMarkdown } from "./host/review.js";
-export { runExpertReview as runExpertTeamReview } from "./host/team-exec.js";

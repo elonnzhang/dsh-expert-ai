@@ -70,8 +70,6 @@ export function installAgentPresetSelector(
   const developerTools = ctx.configForms.developerTools.enabled;
   const injectedBySession = new Map<string | undefined, AgentPresetSelectorInjected>();
   const selectedLifeBySession = new Map<string, string>();
-  // Sessions hosted by an expert team (review sessions): team name by session id.
-  const teamBySession = new Map<string, string>();
   const stagedPreset: { id: string | undefined } = { id: undefined };
   const rpcOf = (): ClientConnectionRpc => {
     const connection = ctx.get("connection") as ConnectionHandle | undefined;
@@ -84,9 +82,7 @@ export function installAgentPresetSelector(
     if (cached !== undefined) return cached || undefined;
     const result = await callHost(rpcOf(), "binding", { sessionId });
     if (!result.ok) throw new Error(result.error.message);
-    const value = result.value as { recordId?: unknown; team?: { name?: unknown } } | undefined;
-    if (typeof value?.team?.name === "string") teamBySession.set(sessionId, value.team.name);
-    const recordId = value?.recordId;
+    const recordId = (result.value as { recordId?: unknown } | undefined)?.recordId;
     const selected = typeof recordId === "string" && records().some((record) => record.id === recordId)
       ? recordId
       : "";
@@ -95,11 +91,10 @@ export function installAgentPresetSelector(
   };
   const blockedSessions = new Set<SessionId>();
   const setLifeBlock = (sessionId: SessionId, selected: string | undefined): void => {
-    // A team-hosted session already has its own identity.
     blockedSessions.add(sessionId);
     conversation.blocks.set(
       sessionId,
-      selected === undefined && !teamBySession.has(sessionId) ? { reason: t("chooseLifeRequired") } : undefined,
+      selected === undefined ? { reason: t("chooseLifeRequired") } : undefined,
     );
   };
   const clearLifeBlock = (sessionId: SessionId): void => {
@@ -159,7 +154,6 @@ export function installAgentPresetSelector(
         });
         if (!result.ok) throw new Error(result.error.message);
         selectedLifeBySession.set(sessionId, id);
-        teamBySession.delete(sessionId);
         setLifeBlock(sessionId, id);
       },
       async load() {
@@ -204,9 +198,6 @@ export function installAgentPresetSelector(
           }),
           current: selectedPreset,
           ...(life === undefined ? {} : { life }),
-          ...(life === undefined && sessionId !== undefined && teamBySession.has(sessionId)
-            ? { team: teamBySession.get(sessionId)! }
-            : {}),
         };
       },
       async select(id) {
@@ -233,7 +224,6 @@ export function installAgentPresetSelector(
           const unbound = await callHost(rpcOf(), "unbind", { sessionId });
           if (!unbound.ok) throw new Error(unbound.error.message);
           selectedLifeBySession.delete(sessionId);
-          teamBySession.delete(sessionId);
           clearLifeBlock(sessionId);
         }
       },

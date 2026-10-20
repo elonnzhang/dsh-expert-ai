@@ -4,7 +4,6 @@ import {
   SettingsForm,
   SettingsFormModel,
   SettingsValueField,
-  settingsNumberField,
   settingsTextField,
   type SettingsFieldState,
   type SettingsFormScope,
@@ -14,7 +13,7 @@ import type { ConfigForm } from "@deepseek-ai/dsh-client-ui-settings/client";
 import type { ExpertSettings } from "../types.js";
 import css from "./settings.module.css";
 
-type GeneralField = "stateDir" | "provider" | "maxBatchSize";
+type GeneralField = "stateDir" | "provider";
 
 interface GeneralState {
   shell: SettingsFormShell;
@@ -44,14 +43,12 @@ export function GeneralTab({
     const model = new SettingsFormModel<ExpertSettings>(form as SettingsFormScope<ExpertSettings>, [
       settingsTextField("stateDir"),
       settingsTextField("provider"),
-      settingsNumberField("maxBatchSize"),
     ]);
     const store = model.bind<GeneralState>(() => ({
       shell: model.shell(),
       fields: {
         stateDir: model.field("stateDir"),
         provider: model.field("provider"),
-        maxBatchSize: model.field("maxBatchSize"),
       },
     }));
     setStaged({ model, store });
@@ -75,8 +72,8 @@ function GeneralFields({ model, store, t }: Staged & { t: TranslateNS<"expert-ai
 
   const field = (
     name: GeneralField,
-    hint: "stateDirHint" | "providerHint" | "maxBatchSizeHint",
-    extra: { numeric?: boolean; placeholder?: string },
+    hint: "stateDirHint" | "providerHint",
+    extra: { placeholder?: string },
   ): ReactNode => (
     <SettingsValueField
       id={`expert-ai-${name}`}
@@ -114,7 +111,6 @@ function GeneralFields({ model, store, t }: Staged & { t: TranslateNS<"expert-ai
     >
       {field("stateDir", "stateDirHint", { placeholder: t("stateDirPlaceholder") })}
       {field("provider", "providerHint", { placeholder: "spawn" })}
-      {field("maxBatchSize", "maxBatchSizeHint", { numeric: true, placeholder: "3" })}
     </SettingsForm>
   );
 }

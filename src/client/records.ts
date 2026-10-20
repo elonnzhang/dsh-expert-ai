@@ -1,6 +1,8 @@
 import { MAX_EXPERT_SOURCE_NOTE_LENGTH, MAX_EXPERT_TITLE_LENGTH } from "../constants.js";
 import type { ExpertRecord } from "../types.js";
-import { ID_PATTERN } from "./teams.js";
+
+/** Pattern every record id must match; the Host enforces the same one. */
+export const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 /** Draft a new record starts from. */
 export const EMPTY_RECORD: ExpertRecord = {

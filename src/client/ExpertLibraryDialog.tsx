@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import { Button, IconSearchOutlineRegular, Input, Modal, Tag } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ExpertCatalogEntry } from "../expert-types.js";
-import type { ExpertWorkbenchApi } from "./ExpertWorkbench.js";
+import type { ExpertLibraryApi } from "./library-api.js";
 import { errorText } from "./controls.js";
 import css from "./settings.module.css";
 
@@ -20,7 +20,7 @@ export function ExpertLibraryDialog({
   onImported,
   onClose,
 }: {
-  api: Pick<ExpertWorkbenchApi, "catalog" | "importExpert">;
+  api: Pick<ExpertLibraryApi, "catalog" | "importExpert">;
   writable: boolean;
   t: TranslateNS<"expert-ai">;
   /** Called with the imported record id. */

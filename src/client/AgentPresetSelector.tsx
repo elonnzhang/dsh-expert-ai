@@ -21,8 +21,7 @@ export interface AgentPresetOption {
 
 /** Callbacks and records injected by the Client installer. */
 export interface AgentPresetSelectorInjected {
-  /** `team` names the expert team hosting the session when no expert is bound. */
-  load: () => Promise<{ options: AgentPresetOption[]; current: string; life?: string; team?: string }>;
+  load: () => Promise<{ options: AgentPresetOption[]; current: string; life?: string }>;
   select: (id: string) => Promise<void>;
   records: () => readonly ExpertRecord[];
   selectLife: (id: string) => Promise<void>;
@@ -50,7 +49,6 @@ export function AgentPresetSelector({
   const [options, setOptions] = useState<AgentPresetOption[]>([]);
   const [current, setCurrent] = useState("");
   const [life, setLife] = useState("");
-  const [team, setTeam] = useState("");
   const [presetOpen, setPresetOpen] = useState(false);
   const [lifeOpen, setLifeOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -61,7 +59,6 @@ export function AgentPresetSelector({
       setOptions([]);
       setCurrent("");
       setLife("");
-      setTeam("");
       setLoadError(undefined);
       return;
     }
@@ -70,7 +67,6 @@ export function AgentPresetSelector({
         setOptions(value.options);
         setCurrent(value.current);
         setLife(value.life ?? "");
-        setTeam(value.team ?? "");
         setLoadError(undefined);
       })
       .catch((error: unknown) => {
@@ -115,10 +111,7 @@ export function AgentPresetSelector({
           void select(id)
             .then(() => {
               setCurrent(id);
-              if (id !== "expert-ai-mode") {
-                setLife("");
-                setTeam("");
-              }
+              if (id !== "expert-ai-mode") setLife("");
             })
             .catch((error: unknown) => {
               setCurrent(previous);
@@ -170,7 +163,6 @@ export function AgentPresetSelector({
             void selectLife(id)
               .then(() => {
                 setLife(id);
-                setTeam("");
               })
               .catch((error) => {
                 console.error("expert-ai: failed to select expert", error);
@@ -184,14 +176,14 @@ export function AgentPresetSelector({
               className={css.seat}
               aria-haspopup="menu"
               aria-expanded={lifeOpen}
-              title={life === "" ? (team === "" ? t("chooseLifeRequired") : team) : chosenLife?.name}
+              title={life === "" ? t("chooseLifeRequired") : chosenLife?.name}
               onClick={() => {
                 setLifeOpen((value) => !value);
               }}
             >
               <IconUserOutlineMedium className={css.icon} />
               <span className={css.seatLabel}>
-                {chosenLife?.name ?? (team === "" ? t("chooseLife") : team)}
+                {chosenLife?.name ?? t("chooseLife")}
               </span>
               <IconChevronDownOutlineMedium className={css.chevron} />
             </button>

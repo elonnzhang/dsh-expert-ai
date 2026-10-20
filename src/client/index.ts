@@ -18,7 +18,6 @@ import type {} from "@deepseek-ai/dsh-client-locale/client";
 import type { ISessions } from "@deepseek-ai/dsh-api-session-controller/client";
 // Type-only: pulls the ctx.uiWorkspace navigation service merge into scope.
 import type {} from "@deepseek-ai/dsh-client-ui-workspace/client";
-import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import type {
   ClientConnectionRpc,
   ConnectionHandle,
@@ -37,11 +36,10 @@ import {
   type PrepareExpertSession,
 } from "./installAgentPresetSelector.js";
 import { en, NS, zh, type ExpertKey } from "./locales.js";
-import { reviewSubmission, type ExpertWorkbenchApi } from "./ExpertWorkbench.js";
-import { mentionCandidates } from "./teams.js";
-import { ExpertAIPanel, ExpertAIPanelIcon } from "./ExpertAIPanel.js";
+import type { ExpertLibraryApi } from "./library-api.js";
+import { mentionCandidates } from "./mentions.js";
 import { mountWhile } from "./feature-gate.js";
-import type { AnyReviewRun, ExpertCatalogEntry, ReviewSummary } from "../expert-types.js";
+import type { ExpertCatalogEntry } from "../expert-types.js";
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
@@ -58,7 +56,6 @@ declare module "@deepseek-ai/dsh-api-session-controller/client" {
 
 /** The Host plugin entry id whose settings this Client half edits. */
 const EXPERT_AI_ENTRY_ID = EXPERT_AI_NAMESPACE;
-const EXPERT_AI_PANEL_ID = "expert-ai";
 
 export const inject = [
   "slots",
@@ -84,7 +81,7 @@ export function apply(ctx: ClientContext): void {
     if (!result.ok) throw new Error(result.error.message);
     return result.value as T;
   };
-  const expertApi: ExpertWorkbenchApi = {
+  const expertApi: ExpertLibraryApi = {
     async catalog(ref) {
       return callExpert<{ ref: string; cached: boolean; experts: ExpertCatalogEntry[] }>("expert/catalog", { ref });
     },
@@ -109,26 +106,6 @@ export function apply(ctx: ClientContext): void {
       if (!await form.set("records", [...records, next])) throw new Error(t("writeFailed"));
       return next.id;
     },
-    async startReview(request) {
-      const available = records();
-      if (![...request.expertIds, request.reviewerId].every((id) => available.some((item) => item.id === id)))
-        throw new Error(t("chooseExpert"));
-      // The session is hosted by the team itself, never by one of its members.
-      const { sessionId, reference } = await prepareSession(request.teamId === undefined
-        ? { lineup: { analystIds: request.expertIds, reviewerId: request.reviewerId } }
-        : { teamId: request.teamId });
-      try {
-        ctx.uiWorkspace.openSession(sessionId);
-        const result = await reference.binding.session.prompt([{ type: "text", text: reviewSubmission(request, t("reviewRequestInstruction")) }], "queue");
-        if (!result.ok) throw new Error(result.error.message);
-      } finally { reference.release(); }
-    },
-    listReviews: () => callExpert<ReviewSummary[]>("review/list", {}),
-    readReview: (id) => callExpert<{ run: AnyReviewRun; markdown: string }>("review/read", { id }),
-    async cancelReview(id) { await callExpert("review/cancel", { id }); },
-    openReviewSession(sessionId) {
-      ctx.uiWorkspace.openSession(sessionId as SessionId);
-    },
   };
   const injected = (): ExpertSettingSectionInjected => ({
     hooks: { settings: form },
@@ -147,7 +124,6 @@ export function apply(ctx: ClientContext): void {
   });
   const records = (): NonNullable<ExpertSettings["records"]> =>
     form.getSnapshot().value?.records?.filter((record) => record.enabled) ?? [];
-  const teams = (): NonNullable<ExpertSettings["teams"]> => form.getSnapshot().value?.teams ?? [];
   // The Host `dsh-session` and Client Session Controller both merge a `sessions`
   // service onto Context; read the Client contract explicitly.
   const sessions = ctx.get("sessions") as unknown as ISessions;
@@ -164,12 +140,7 @@ export function apply(ctx: ClientContext): void {
       if (!selected.ok) throw new Error(selected.error.message);
     }
   };
-  /** Who a new session is bound to: an expert, a saved team, or an ad-hoc lineup. */
-  type BindTarget =
-    | { recordId: string }
-    | { teamId: string }
-    | { lineup: { analystIds: string[]; reviewerId: string } };
-  const prepareSession = async (target?: BindTarget) => {
+  const prepareSession = async (target?: { recordId: string }) => {
     const connection = ctx.get("connection") as ConnectionHandle | undefined;
     if (connection === undefined)
       throw new Error("expert-ai: connection service is unavailable");
@@ -249,20 +220,15 @@ export function apply(ctx: ClientContext): void {
     name: EXPERT_AI_NAMESPACE,
     order: 5,
     candidates(_session, { query }) {
-      // Experts win an id clash; mentionCandidates hides the shadowed team.
       return Promise.resolve(
-        mentionCandidates(records(), teams(), query).map(({ name, description, kind }) => ({
-          name,
-          description,
-          icon: kind === "team" ? IconUsersOutlineMedium : IconUserOutlineRegular,
-        })),
+        mentionCandidates(records(), query).map((candidate) => ({ ...candidate, icon: IconUserOutlineRegular })),
       );
     },
     warm() {
       void Promise.resolve();
     },
     lexicon() {
-      return [...records().map((item) => item.id), ...teams().map((team) => team.id)];
+      return records().map((item) => item.id);
     },
     subscribeLexicon(_session, listener) {
       return form.subscribe(listener);
@@ -291,30 +257,6 @@ export function apply(ctx: ClientContext): void {
         ),
       ),
       installAgentPresetSelector(ctx, records, t, openExpertSession),
-      // Expert AI is the full-width workbench surface behind the sidebar entry.
-      ctx.slots.inject("main", () =>
-        ctx.slots.register(
-          {
-            name: "main",
-            key: EXPERT_AI_PANEL_ID,
-            locale: NS,
-            inject: () => ({ records, teams, expertApi, t }),
-          },
-          ExpertAIPanel,
-        ),
-      ),
-      ctx.slots.inject("sidebar.panellist", () =>
-        ctx.slots.register(
-          {
-            name: "sidebar.panellist",
-            id: EXPERT_AI_PANEL_ID,
-            order: 20,
-            label: () => t("expertAiPanel"),
-            locale: NS,
-          },
-          ExpertAIPanelIcon,
-        ),
-      ),
       inputTriggers.registerSource(source),
     ];
     return () => {

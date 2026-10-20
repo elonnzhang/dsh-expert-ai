@@ -1,5 +1,5 @@
 import type { ExpertRecord } from "../types.js";
-import { ID_PATTERN } from "./teams.js";
+import { ID_PATTERN } from "./records.js";
 
 function parseAgentMetadata(frontmatter: string): { id?: string; name?: string } {
   const values: { id?: string; name?: string } = {};

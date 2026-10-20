@@ -17,16 +17,14 @@ import {
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ConfigForm } from "@deepseek-ai/dsh-client-ui-settings/client";
 import type { ExpertRecord, ExpertSettings } from "../types.js";
-import type { ExpertTeam } from "../expert-types.js";
 import { EXPERT_AI_CATEGORIES } from "../constants.js";
 import { applyAgentMarkdown } from "./agent-file.js";
 import { errorText } from "./controls.js";
 import { ExpertEditor } from "./ExpertEditor.js";
 import { ExpertLibraryDialog } from "./ExpertLibraryDialog.js";
-import type { ExpertWorkbenchApi } from "./ExpertWorkbench.js";
+import type { ExpertLibraryApi } from "./library-api.js";
 import { categoryLabel } from "./locales.js";
 import { EMPTY_RECORD, normalizeExpertRecord } from "./records.js";
-import { teamsUsing } from "./teams.js";
 import css from "./settings.module.css";
 
 type Editing = { record: ExpertRecord; existing: boolean; importedFile?: string };
@@ -37,7 +35,6 @@ type Editing = { record: ExpertRecord; existing: boolean; importedFile?: string 
  */
 export function ExpertsTab({
   records,
-  teams,
   writable,
   form,
   loadIdentity,
@@ -46,11 +43,10 @@ export function ExpertsTab({
   notify,
 }: {
   records: readonly ExpertRecord[];
-  teams: readonly ExpertTeam[];
   writable: boolean;
   form: ConfigForm<ExpertSettings>;
   loadIdentity: (id: string) => Promise<string>;
-  expertApi: ExpertWorkbenchApi;
+  expertApi: ExpertLibraryApi;
   t: TranslateNS<"expert-ai">;
   /** Show a transient confirmation. */
   notify: (text: string) => void;
@@ -156,8 +152,6 @@ export function ExpertsTab({
         setAcknowledged(false);
       });
   };
-  const referencing = deleting === undefined ? [] : teamsUsing(deleting.id, teams);
-
   return (
     <>
       <div className={css.toolbar}>
@@ -361,12 +355,7 @@ export function ExpertsTab({
         open={deleting !== undefined}
         title={t("deleteRecordTitle", { name: deleting?.name ?? "" })}
         description={
-          referencing.length === 0
-            ? t("deleteRecordDescription", { id: deleting?.id ?? "" })
-            : t("deleteRecordInUse", {
-                id: deleting?.id ?? "",
-                teams: referencing.map((team) => team.name).join("、"),
-              })
+          t("deleteRecordDescription", { id: deleting?.id ?? "" })
         }
         acknowledgeLabel={t("deleteAcknowledge")}
         cancelLabel={t("cancel")}

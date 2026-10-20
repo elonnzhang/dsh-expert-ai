@@ -4,7 +4,7 @@ import {
   EXPERT_AVATAR_MIMES,
   EXPERT_SOURCE_KINDS,
 } from "./constants.js";
-import type { ExpertPackageBinding, ExpertTeam } from "./expert-types.js";
+import type { ExpertPackageBinding } from "./expert-types.js";
 
 export type ExpertCategory = (typeof EXPERT_AI_CATEGORIES)[number];
 
@@ -33,11 +33,11 @@ export interface ExpertRecord {
   /** Text shown after the name, for example "储能系统思考助手". Defaults to "思考助手". */
   title?: string;
   description: string;
-  /** Stable primary domain used for coarse grouping and routing. */
+  /** Stable primary domain used for coarse grouping and search. */
   category: ExpertCategory;
   /** User-defined domain label when category is custom. */
   customCategory?: string;
-  /** Composable characteristics used for search and future team routing. */
+  /** Composable characteristics used for search. */
   tags: string[];
   /** @deprecated Legacy single tag, accepted only for settings migration. */
   tag?: string;
@@ -60,17 +60,12 @@ export interface ExpertSettings {
   /** Parts of the plugin that are on. Defaults to `["identity"]`; `identity` is on even when omitted. */
   features?: ExpertFeature[];
   provider?: string;
-  maxBatchSize?: number;
   /** Optional plugin state directory or its parent. Defaults to `$DSH_HOME/expert-ai` (`~/.dsh/expert-ai`). */
   stateDir?: string;
   records?: ExpertRecord[];
-  /** Saved review lineups referencing record ids. */
-  teams?: ExpertTeam[];
 }
 
 export interface ResolvedExpertSettings {
   provider: string;
-  maxBatchSize: number;
   records: ExpertRecord[];
-  teams: ExpertTeam[];
 }

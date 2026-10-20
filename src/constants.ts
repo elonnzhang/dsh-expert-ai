@@ -5,7 +5,7 @@ export const EXPERT_AI_RPC_CHANNEL = "/api";
 
 export const expertAiEndpoint = (endpoint: string): string => `${EXPERT_AI_NAMESPACE}/${endpoint}`;
 
-/** Switchable parts; `identity` is always on, `conversation` adds the consult, review and team tools, persona binding, Chat Panel and `@` source. */
+/** Switchable parts; `identity` is always on, `conversation` adds the single-expert consult tools, persona binding, Chat Panel and `@` source. */
 export const EXPERT_AI_FEATURES = ["identity", "conversation"] as const;
 
 export const EXPERT_AI_CATEGORIES = ["business", "science", "culture", "tech", "entertainment", "custom"] as const;

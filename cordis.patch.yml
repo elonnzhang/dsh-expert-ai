@@ -3,7 +3,6 @@
       name: dsh-expert-ai
       config:
         provider: spawn
-        maxBatchSize: 3
         records:
           - id: clq
             name: 陈立泉

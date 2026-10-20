@@ -4,8 +4,7 @@ import type { SessionId } from "@deepseek-ai/dsh-session/types";
 import type { ChatPanelInjected } from "../src/client/ChatPanel.js";
 import type { AgentPresetSelectorInjected } from "../src/client/AgentPresetSelector.js";
 import type { ExpertFeature, ExpertRecord } from "../src/types.js";
-import type { ExpertTeam } from "../src/expert-types.js";
-import type { ExpertWorkbenchApi } from "../src/client/ExpertWorkbench.js";
+import type { ExpertLibraryApi } from "../src/client/library-api.js";
 import { MIMEOGRAPHS_REVISION } from "../src/expert-types.js";
 
 vi.mock("../src/client/ChatPanel.js", () => ({ ChatPanel: () => null }));
@@ -31,7 +30,6 @@ function setup(
     rosterUnavailable?: boolean;
     selectFails?: boolean;
     records?: ExpertRecord[];
-    teams?: ExpertTeam[];
     onSource?: (source: unknown) => void;
     features?: ExpertFeature[];
     status?: "loading" | "ready" | "unavailable";
@@ -45,7 +43,7 @@ function setup(
   const developerToolsListeners = new Set<() => void>();
   const activeSlots = new Map<symbol, string>();
   let activeSources = 0;
-  let expertApi: ExpertWorkbenchApi | undefined;
+  let expertApi: ExpertLibraryApi | undefined;
   let promptContent: unknown;
   const sessionId = "session-1" as SessionId;
   let sessionPreset: string | undefined;
@@ -165,7 +163,7 @@ function setup(
           status: formStatus,
           writable: true,
           value: formStatus === "ready"
-            ? { features: formFeatures, records: configuredRecords, teams: options.teams ?? [] }
+            ? { features: formFeatures, records: configuredRecords }
             : undefined,
         }),
         set: async (_key: string, value: ExpertRecord[]) => { configuredRecords = value; calls.push("save-records"); return true; },
@@ -185,7 +183,7 @@ function setup(
       }) => {
         if (options.name === "sidebar.footer.action")
           createSession = (options.inject?.() as ChatPanelInjected).createSession;
-        if (options.name === "settings.section") expertApi = (options.inject?.() as { expertApi: ExpertWorkbenchApi }).expertApi;
+        if (options.name === "settings.section") expertApi = (options.inject?.() as { expertApi: ExpertLibraryApi }).expertApi;
         if (options.name === "conversation.hero.agentPreset") {
           heroPriority = options.priority;
           heroInjected = (options.inject?.("session-1") as AgentPresetSelectorInjected);
@@ -274,42 +272,6 @@ describe("expert-ai standalone sessions", () => {
     expect(fixture.records[0]).toEqual(existing);
   });
 
-  it("opens and submits a review request after binding the session", async () => {
-    const reviewer = { ...record, id: "critic" };
-    const fixture = setup([{ id: "expert-ai-mode" }], { records: [record, reviewer] });
-    await fixture.expertApi.startReview({ question: "Review this plan", expertIds: [record.id], reviewerId: reviewer.id, teamId: "plan-review" });
-    expect(fixture.calls).toEqual(["project", "create", "list", "select:expert-ai-mode", "bind", "open", "prompt", "release"]);
-    // The `t` mock echoes locale keys, so the submission carries the instruction key.
-    // The real instruction text that names start_team_run is covered by locales.test.ts.
-    expect(JSON.stringify(fixture.promptContent)).toContain("reviewRequestInstruction");
-    expect(JSON.stringify(fixture.promptContent)).toContain("Review this plan");
-    expect(JSON.stringify(fixture.promptContent)).toContain("plan-review");
-    // The session is hosted by the team, not by its first analyst.
-    expect(fixture.bindPayloads).toEqual([{ sessionId: "session-1", teamId: "plan-review" }]);
-  });
-
-  it("reopens the session that owns a saved review", () => {
-    const fixture = setup([]);
-    fixture.expertApi.openReviewSession("review-session");
-    expect(fixture.calls).toContain("open");
-  });
-
-  it("hosts an ad-hoc review session by its lineup", async () => {
-    const reviewer = { ...record, id: "critic" };
-    const fixture = setup([{ id: "expert-ai-mode" }], { records: [record, reviewer] });
-    await fixture.expertApi.startReview({ question: "Review this plan", expertIds: [record.id], reviewerId: reviewer.id });
-    expect(fixture.bindPayloads).toEqual([{ sessionId: "session-1", lineup: { analystIds: [record.id], reviewerId: reviewer.id } }]);
-  });
-
-  it("does not block a session hosted by an expert team", async () => {
-    const fixture = setup([{ id: "expert-ai-mode" }]);
-    fixture.setBinding({ team: { id: "plan-review", name: "方案评审" } });
-    const selector = fixture.heroInjected;
-    if (selector === undefined) throw new Error("Hero selector was not injected");
-    await expect(selector.load()).resolves.toMatchObject({ current: "expert-ai-mode", team: "方案评审" });
-    expect(fixture.blocks).toEqual([]);
-  });
-
   it("declares the preset remote used by session creation and the selector", () => {
     expect(inject).toContain("remote.agentPresets");
   });
@@ -320,6 +282,7 @@ describe("expert-ai standalone sessions", () => {
     expect(fixture.heroPriority).toBeLessThan(0);
     expect(fixture.createdCwd).toBe("/tmp/expert-ai/projects/test");
     expect(fixture.calls).toEqual(["project", "create", "list", "select:expert-ai-mode", "bind", "greeting", "open", "release"]);
+    expect(fixture.bindPayloads).toEqual([{ sessionId: "session-1", recordId: record.id }]);
   });
 
   it("still binds a persona when the deployment has no expert-ai mode", async () => {
@@ -400,19 +363,24 @@ describe("expert-ai standalone sessions", () => {
     expect(fixture.calls).toContain("unbind");
   });
 
-  it("offers saved teams after experts in @ candidates", async () => {
-    let source: { candidates: (session: unknown, input: { query: string }) => Promise<Array<{ name: string }>> } | undefined;
-    setup([], { teams: [{ id: "study", name: "Study", purpose: "Plans", analystIds: [record.id], reviewerId: record.id }], onSource: (s) => { source = s as typeof source; } });
-    expect((await source!.candidates(undefined, { query: "" })).map((item) => item.name)).toEqual([record.id, "study"]);
+  it("offers only enabled experts in @ candidates", async () => {
+    let source: {
+      candidates: (session: unknown, input: { query: string }) => Promise<Array<{ name: string; description: string }>>;
+      lexicon: () => string[];
+    } | undefined;
+    const disabled = { ...record, id: "retired", enabled: false };
+    setup([], { records: [record, disabled], onSource: (s) => { source = s as typeof source; } });
+    expect((await source!.candidates(undefined, { query: "" })).map((item) => [item.name, item.description]))
+      .toEqual([[record.id, "Research Guide · Research help"]]);
+    expect(await source!.candidates(undefined, { query: "retired" })).toEqual([]);
+    expect(source!.lexicon()).toEqual([record.id]);
   });
 });
 
 const ALL_SLOTS = [
   "conversation.hero.agentPreset",
-  "main",
   "settings.section",
   "sidebar.footer.action",
-  "sidebar.panellist",
 ];
 
 describe("expert-ai conversation switch", () => {

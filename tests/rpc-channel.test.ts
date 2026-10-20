@@ -108,6 +108,10 @@ describe('the expert-ai Host routes', () => {
     for (const route of routes.values()) expect(route).toMatchObject({ methods: ['POST'], requestBody: 'buffered' })
   })
 
+  it('serves the identity library and single-expert sessions only, with no review routes', () => {
+    expect([...HOST_ENDPOINTS]).toEqual(['project', 'greeting', 'identity', 'binding', 'unbind', 'bind', 'expert/catalog', 'expert/import'])
+  })
+
   it('answers a client-request with a server-response for the same rpcId', async () => {
     const { fiber, routes } = await start()
     await fiber.await()

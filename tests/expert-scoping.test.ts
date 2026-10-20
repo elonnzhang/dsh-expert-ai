@@ -12,7 +12,7 @@ describe("expert tools on the actual Harness registry", () => {
     const ctx = new Context();
     await ctx.plugin(SystemPrompt, {});
     await ctx.plugin(ToolRuntime);
-    const service = createExpertService({ current: () => ({ provider: "spawn", maxBatchSize: 3, records: [], teams: [] }), stateDir: () => undefined });
+    const service = createExpertService({ current: () => ({ provider: "spawn", records: [] }), stateDir: () => undefined });
     const unregister = service.registerTools({ ctx });
     let scope!: Scope;
     const agent = { id: "session-scope-test" } as Agent;
@@ -25,14 +25,13 @@ describe("expert tools on the actual Harness registry", () => {
         execute: async () => true,
       }));
       expect(ctx.tools.schemas(agent).map((tool) => tool.name)).toEqual(["structured_output"]);
-      const result = await ctx.tools.execute({ agent, signal: new AbortController().signal, callId: ToolCallId("test-call"), name: "review_expert_plan", arguments: {} });
+      const result = await ctx.tools.execute({ agent, signal: new AbortController().signal, callId: ToolCallId("test-call"), name: "read_expert_reference", arguments: { id: "x" } });
       expect(result.isError).toBe(true);
       restrict();
       scope.ctx.tools.restrict({ allow: ["read_expert_reference"] });
       expect(ctx.tools.schemas(agent).map((tool) => tool.name).sort()).toEqual(["read_expert_reference", "structured_output"]);
     } finally {
       unregister();
-      service.dispose();
       await ctx.fiber.dispose();
     }
   });

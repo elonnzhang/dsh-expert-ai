@@ -4,10 +4,8 @@ import { join } from "node:path";
 import { expertAiHome } from "./identity.js";
 
 export interface ExpertBinding {
-  /** Bound expert; absent when an expert team hosts the session. */
-  recordId?: string;
-  /** Hosting expert team; `id` is absent for an ad-hoc lineup. */
-  team?: { id?: string; name: string };
+  /** Bound expert. */
+  recordId: string;
   /** Text before the identity. */
   pre: string;
   /** The identity file (AGENTS.md) verbatim. */
@@ -33,17 +31,10 @@ function bindingPath(sessionId: string, stateDir?: string): string {
   return join(expertAiHome(process.env, stateDir), "sessions", `${sessionId}.json`);
 }
 
-function isTeam(value: unknown): value is NonNullable<ExpertBinding["team"]> {
-  if (typeof value !== "object" || value === null) return false;
-  const team = value as NonNullable<ExpertBinding["team"]>;
-  return typeof team.name === "string" && (team.id === undefined || typeof team.id === "string");
-}
-
 function isBinding(value: object): value is ExpertBinding {
   const binding = value as ExpertBinding;
-  // Exactly one of an expert or a hosting team.
-  const owner = binding.team === undefined ? typeof binding.recordId === "string" : binding.recordId === undefined && isTeam(binding.team);
-  return owner && typeof binding.pre === "string" && typeof binding.persona === "string" && typeof binding.suf === "string";
+  return typeof binding.recordId === "string" &&
+    typeof binding.pre === "string" && typeof binding.persona === "string" && typeof binding.suf === "string";
 }
 
 function isLegacyBinding(value: object): value is LegacyExpertBinding {
@@ -63,6 +54,8 @@ export async function loadBinding(
     throw error;
   }
   const value: unknown = JSON.parse(content);
+  // Expert teams are gone; a session one hosted names no expert and opens unbound.
+  if (typeof value === "object" && value !== null && "team" in value) return undefined;
   if (typeof value !== "object" || value === null || !(isBinding(value) || isLegacyBinding(value)))
     throw new Error(`expert-ai: invalid binding for session "${sessionId}"`);
   return value;
