@@ -11,6 +11,3 @@ lib/
 
 dev/cordis.dev.local.yml
 .archify/
-
-# Keep the source repository independent from the workspace's nested checkout.
-dsh-expert-ai/
