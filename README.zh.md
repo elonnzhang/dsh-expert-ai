@@ -2,19 +2,59 @@
 
 [English](README.md) | 中文
 
-`dsh-digital-life` 将可配置的对话式数字生命代理作为可安装的 Host 与 Client Cordis 插件接入 DeepSeek Harness。
+`dsh-digital-life` 为 DeepSeek Harness 维护一个数字身份库（人设、头像、来源声明），并通过 `expertIdentity` Cordis 服务提供给其他插件。它是与 `dsh-bot` 运行时配合使用的身份层（见[与 dsh-bot 配合](#与-dsh-bot-配合)）。插件自带的咨询、评审和专家团功能仍然保留，但只有开启 `conversation` 功能后才会运行（见[运行模式](#运行模式)）。
 
 ## 功能
 
+始终开启（`identity` 功能）：
+
 - 在 `digital-life` 设置命名空间中持久化数字生命记录。
 - 提供符合 Harness 风格的设置区，用于新增、编辑、启用和删除数字生命记录。
+- 提供 `expertIdentity` Cordis 服务，供其他插件（如 Bot 运行时）读取已启用的身份：人设、头像、来源声明与版本。
+
+仅在开启 `conversation` 功能时提供（默认关闭）：
+
 - 提供 `consult_digital_life`，用于一次性咨询指定数字生命。
 - 提供 `consult_digital_life_category`，用于并行咨询一个分类中的多个数字生命。
+- 提供评审工具（`review_expert_plan`、`read_expert_review`）与专家团运行工具，以及设置页的专家团标签和 Expert AI 面板。
 - 注册 `@<id>` 输入源，用于选择已配置的数字生命。
 - 通过 additive `sidebar.footer.action` Slot 注入 Chat Panel，不替换 Harness 的 Sidebar 或 Workspace 浏览器。
 - 创建不附加 Workspace 的独立会话，并使用所选数字生命初始化会话。
-- 将 `digital-life-mode` 注册到 Harness 首页原生 Agent preset 选择器及预设设置页；具体数字生命可从会话选择器或侧边栏 Chat Panel 选择。
-- 提供 `expertIdentity` Cordis 服务，供其他插件（如 Bot 运行时）读取已启用的身份：人设、头像、来源声明与版本。
+- 将 `digital-life-mode` 注册到 Harness 首页原生 Agent preset 选择器及预设设置页（需另外应用的补丁，见[运行模式](#运行模式)）；具体数字生命可从会话选择器或侧边栏 Chat Panel 选择。
+
+## 与 dsh-bot 配合
+
+本插件只提供身份；单聊和群聊由 `dsh-bot` 运行时负责。两者装进同一个 Profile 即可。
+
+- `dsh-bot` 通过 `ctx.inject(['expertIdentity'], …)` 取得 `expertIdentity` 服务。没有装本插件时，它就是普通的 ds-bot；本插件不依赖 `dsh-bot`。
+- 身份只在这里新建和编辑（**设置 → 数字生命**）。按设计，`dsh-bot` 从服务读取已绑定 Bot 的人设和来源声明，并跟随 `expert-identity/changed` 更新。
+- 默认的 `identity` 模式下，本插件不注册 `consult_*`、评审和专家团工具，也不给会话绑定人设，所以 Bot 会话里只有一份身份。`dsh-bot` 作为运行时时请保持 `conversation` 关闭。
+- link 方式加载的 checkout 从 `lib/` 读取，而 `lib/` 不进版本库：改动 Host 半边后请运行 `pnpm run build`。
+
+职责划分与服务契约见 [`docs/expert-bot-phase1.md`](docs/expert-bot-phase1.md)。
+
+## 运行模式
+
+插件入口 `config` 里的 `features` 决定插件做什么。`identity` 始终开启，唯一的另一个取值是 `conversation`，缺省为 `[identity]`。其他名字会在配置校验时被拒绝。
+
+| 功能 | 提供的内容 |
+| --- | --- |
+| `identity`（始终） | 带「专家」「通用设置」标签的设置区、托管的身份文件、`expertIdentity` 服务及其变更事件、`expert/*` 与 `identity` 端点 |
+| `conversation` | `consult_*`、评审与专家团运行工具；新会话的人设与专家团绑定（含 `project`、`greeting`、`binding`、`bind`、`unbind` 和 `review/*` 端点）；Chat Panel；`@<id>` 输入源；Expert AI 面板与侧边栏入口；会话首页的数字生命选择器；设置页的专家团标签 |
+
+在组合包插入的入口里开启对话功能：
+
+```yaml
+- id: digital-life
+  name: dsh-digital-life
+  config:
+    features: [identity, conversation]
+```
+
+- `digital-life-mode` Agent preset 不再随安装的组合包提供。需要时另外应用 `digital-life-mode.patch.yml`；没有它时，独立会话使用部署的默认 preset。`pnpm run dev:patch -- --conversation` 会把两者一起写进开发 overlay。
+- `features` 没有设置页入口。identity 模式下，**子代理 Provider** 与 **分类最大咨询数** 仍然显示，但不起作用。
+- Client 在拿到设置值之后才挂载对话相关界面；设置还在加载、不可用或缺失时，什么都不挂载。
+- 修改 `features` 通过 loader 的 volatile 更新原地生效（若没有生效，请重启 Profile）。把 `conversation` 关掉会撤销工具和 Client 界面，但已经绑定过的会话在重建前仍带着原来的身份段。
 
 ## 演示
 
@@ -155,6 +195,8 @@ pnpm run dev
 
 ## 使用方法
 
+步骤 2–4 需要开启 `conversation` 功能（见[运行模式](#运行模式)）；默认的 identity 模式下只有步骤 1 和 5 适用。
+
 ### 1. 配置数字生命
 
 启动 Web Profile 后，打开 **设置 → 数字生命**，新增或编辑一条记录：
@@ -237,4 +279,4 @@ pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-digital-life
 
 ## 已知限制与后续工作
 
-在普通 Chat 中，`@<id>` 是帮助 Agent 选择 `consult_digital_life` 的模型可见文本，不是自动命令；在数字生命独立会话中，持久化 system prompt 要求点名其他记录时必须使用咨询工具，点名自身时直接回答。当前公共 Sidebar 没有 Workspace 浏览器上方的 additive Slot，因此 Chat Panel 使用受支持的 footer action Slot。独立会话在 `digital-life-mode` Agent preset 可用时使用该模式，否则使用部署默认 preset；每条记录的独立模型配置尚未应用到 Session 创建过程。
+在普通 Chat 中，`@<id>` 是帮助 Agent 选择 `consult_digital_life` 的模型可见文本，不是自动命令；在数字生命独立会话中，持久化 system prompt 要求点名其他记录时必须使用咨询工具，点名自身时直接回答。当前公共 Sidebar 没有 Workspace 浏览器上方的 additive Slot，因此 Chat Panel 使用受支持的 footer action Slot。独立会话在 `digital-life-mode` Agent preset 可用时使用该模式（该 preset 是需另外应用的补丁，见[运行模式](#运行模式)），否则使用部署默认 preset；每条记录的独立模型配置尚未应用到 Session 创建过程。

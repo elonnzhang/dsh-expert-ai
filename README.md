@@ -2,20 +2,60 @@
 
 English | [中文](README.zh.md)
 
-`dsh-digital-life` adds configurable conversational digital-life agents to DeepSeek Harness as an installable Host and Client Cordis plugin.
+`dsh-digital-life` keeps a library of digital identities (persona, avatar, source disclosure) for DeepSeek Harness and serves it to other plugins through the `expertIdentity` Cordis service. It is the identity layer meant to run together with the `dsh-bot` runtime (see [Working with dsh-bot](#working-with-dsh-bot)). Its own consultation, review and team-run features are kept, but only run when the `conversation` feature is switched on (see [Run modes](#run-modes)).
 
 ## Features
+
+Always on (the `identity` feature):
 
 - Persists records in the `digital-life` settings namespace and each identity in `$DSH_HOME/digital-life/<id>/agents/<id>.md`.
 - Imports persona identities from agent Markdown files such as `~/.agent/agents/xxx.md` and `~/.claude/agents/xxx.md` (YAML frontmatter is ignored).
 - Adds a Harness-styled settings section for creating, editing, enabling, and deleting records.
+- Provides the `expertIdentity` Cordis service, so another plugin such as a Bot runtime can read the enabled identities: persona, avatar, source disclosure and revision.
+
+Only with the `conversation` feature (off by default):
+
 - Adds `consult_digital_life` for one independent consultation.
 - Adds `consult_digital_life_category` for parallel category consultation.
+- Adds the review tools (`review_expert_plan`, `read_expert_review`) and the team-run tools, with the 专家团 settings tab and the Expert AI panel.
 - Registers an `@<id>` input source for selecting configured records.
 - Injects a Chat Panel through the additive `sidebar.footer.action` Slot without replacing the Harness sidebar or workspace browser.
 - Creates conversations without a Workspace and starts standalone conversations initialized with a selected digital-life persona.
-- Registers `digital-life-mode` in Harness's native Agent preset selector and Agent presets settings. Choose a specific identity from the conversation selector or the sidebar Chat Panel.
-- Provides the `expertIdentity` Cordis service, so another plugin such as a Bot runtime can read the enabled identities: persona, avatar, source disclosure and revision.
+- Registers `digital-life-mode` in Harness's native Agent preset selector and Agent presets settings (an opt-in patch, see [Run modes](#run-modes)). Choose a specific identity from the conversation selector or the sidebar Chat Panel.
+
+## Working with dsh-bot
+
+This plugin only supplies identities; the `dsh-bot` runtime runs the single and group chats. Install both into the same Profile.
+
+- `dsh-bot` asks for the `expertIdentity` service with `ctx.inject(['expertIdentity'], …)`. Without this plugin it behaves like a plain ds-bot, and this plugin needs nothing from `dsh-bot`.
+- Identities are created and edited only here, under **Settings → 数字生命**. `dsh-bot` is designed to take a bound Bot's persona and source disclosure from the service and to follow `expert-identity/changed`.
+- In the default `identity` mode this plugin registers no `consult_*`, review or team-run tools and binds no persona to Sessions, so a Bot Session carries one identity. Leave `conversation` off while `dsh-bot` is the runtime.
+- A linked checkout is served from `lib/`, which is not committed: run `pnpm run build` after changing the Host half.
+
+The split of responsibilities and the service contract are in [`docs/expert-bot-phase1.md`](docs/expert-bot-phase1.md).
+
+## Run modes
+
+`features` in the plugin entry's `config` selects what the plugin does. `identity` is always on, `conversation` is the only other value, and the default is `[identity]`. Any other name is rejected when the configuration is validated.
+
+| Feature | What it adds |
+| --- | --- |
+| `identity` (always) | the settings section with the 专家 and 通用设置 tabs, the managed identity files, the `expertIdentity` service and its changed event, the `expert/*` and `identity` endpoints |
+| `conversation` | the `consult_*`, review and team-run tools; persona and team binding of new Sessions, with the `project`, `greeting`, `binding`, `bind`, `unbind` and `review/*` endpoints; the Chat Panel; the `@<id>` input source; the Expert AI panel and sidebar entry; the digital-life selector in the conversation hero; the 专家团 settings tab |
+
+Turn conversation on in the entry that the bundle inserts:
+
+```yaml
+- id: digital-life
+  name: dsh-digital-life
+  config:
+    features: [identity, conversation]
+```
+
+- The `digital-life-mode` Agent preset is no longer part of the installed bundle. To use it, also apply `digital-life-mode.patch.yml`; without it, standalone sessions run on the deployment's default preset. `pnpm run dev:patch -- --conversation` writes both into the development overlay.
+- `features` has no settings UI. In identity mode **子代理 Provider** and **分类最大咨询数** stay visible but unused.
+- The Client mounts the conversation surfaces only once the setting is known; while it is loading, unavailable or missing, nothing is mounted.
+- A change to `features` is applied in place through the loader's volatile update (restart the Profile if it does not take effect). Switching `conversation` off withdraws the tools and the Client surfaces, but a Session that was already bound keeps its identity sections until it is recreated.
 
 ## Demo
 
@@ -159,6 +199,8 @@ For the package contract, local overlays, and distribution choices, see
 
 ## Usage
 
+Steps 2–4 need the `conversation` feature (see [Run modes](#run-modes)); in the default identity mode only steps 1 and 5 apply.
+
 ### 1. Configure digital lives
 
 Open **Settings → 数字生命** after the Web Profile starts. Add or edit a record with:
@@ -231,4 +273,4 @@ Consultation tools add their schemas to the main agent's model request. A single
 
 ## Known Limitations and Deferred Work
 
-In a regular Chat, `@<id>` is model-visible text that helps the agent choose `consult_digital_life`; it is not an automatic command. In a standalone digital-life session, the durable system prompt requires other-record mentions to use the consultation tool while self-mentions are answered directly. The current public sidebar has no additive Slot above the workspace browser, so Chat Panel uses the supported footer action Slot. Standalone digital-life sessions use the `digital-life-mode` Agent preset when it is available; otherwise they use the deployment default. Per-record model selection is not yet applied during Session creation.
+In a regular Chat, `@<id>` is model-visible text that helps the agent choose `consult_digital_life`; it is not an automatic command. In a standalone digital-life session, the durable system prompt requires other-record mentions to use the consultation tool while self-mentions are answered directly. The current public sidebar has no additive Slot above the workspace browser, so Chat Panel uses the supported footer action Slot. Standalone digital-life sessions use the `digital-life-mode` Agent preset when it is available (it ships as an opt-in patch, see [Run modes](#run-modes)); otherwise they use the deployment default. Per-record model selection is not yet applied during Session creation.
