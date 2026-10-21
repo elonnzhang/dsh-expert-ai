@@ -12,9 +12,9 @@ The plugin does two things:
 - **Single-expert conversation**: pick an expert in the sidebar Chat Panel, or type `@` in the composer and pick one, to open a conversation bound to that expert's persona. It has no Workspace, is forced to the read-only file sandbox, and gets its opening message from the plugin.
 - **Expert mention and consultation**: `@<id>` in the composer still saves the mention as model-visible text, and the primary agent can ask one expert through the `consult_expert` tool, whose answer comes back through a persona subagent.
 
-It also adds a Harness-styled settings section for creating, editing, enabling, and deleting records, including imports from agent Markdown files (YAML frontmatter is ignored, the body is the persona).
+It also adds a Harness-styled settings section for creating, editing, enabling, and deleting records, with imports from agent Markdown files (YAML frontmatter is ignored, the body is the persona) or versioned `mimeographs` method packages.
 
-It does not add an Agent preset selector, online expert-package import, or group chats (the `dsh-bot` runtime owns those).
+It does not add an Agent preset selector or group chats (the `dsh-bot` runtime owns those).
 
 ## Working with dsh-bot
 
@@ -112,11 +112,11 @@ Restart `pnpm dsh web` after installing, updating, or removing the plugin.
 
 ### Upgrading from a release that offered run modes
 
-The `features` run-mode switch is gone: the identity layer, the Chat Panel and the `@` expert
-source are always on, and the `expert-ai-mode` Agent preset, online expert-package import
-(`expert/catalog`, `expert/import`) and the category/review/team features before them have been
-removed. No data migration is needed. Stop the Profile and drop the fields that are no longer read
-from the plugin's patch row:
+The `features` run-mode switch is gone: the identity layer, the Chat Panel, the `@` expert source,
+`consult_expert`, `read_expert_reference` and online expert-package import (`expert/catalog`,
+`expert/import`) are always on. The `expert-ai-mode` Agent preset and the category/review/team
+features have been removed. No data migration is needed. Stop the Profile and drop the fields that
+are no longer read from the plugin's patch row:
 
 ```yaml
 - id: expert-ai
@@ -131,9 +131,9 @@ from the plugin's patch row:
     maxBatchSize: 3
 ```
 
-The data directory is still `$DSH_HOME/expert-ai`. Its `.expert-packages/` directory holds packages
-imported online by an older release; `projects/` and `sessions/` keep working. History you no longer
-need can be deleted:
+The data directory is still `$DSH_HOME/expert-ai`. Its `.expert-packages/` directory holds
+commit-pinned packages and catalog caches; `projects/` and `sessions/` keep working. History you no
+longer need can be deleted:
 
 ```sh
 rm -rf "${DSH_HOME:-$HOME/.dsh}/expert-ai/.expert-packages"
@@ -219,6 +219,14 @@ You can also import an Agent Markdown file. Its YAML frontmatter is ignored and 
 ```text
 $DSH_HOME/expert-ai/<id>/agents/<id>.md
 ```
+
+Or choose **Import → From the expert method library**, enter a `mimeographs` branch or tag (default
+`main`), load the catalog, and pick an expert. The import pins `AGENTS.md`, `SKILL.md`, `LICENSE` and
+the catalog-declared `references/*.md` to the resolved commit under
+`$DSH_HOME/expert-ai/.expert-packages/mimeographs/<commit>/<slug>/`. An existing copy for the same
+commit and slug is reused. Catalog and ref resolutions are cached in the same directory, so a cached
+catalog remains usable while GitHub is unavailable. Imported experts can read these local references
+through `read_expert_reference`.
 
 An external Agent file remains the sole source of identity and is not copied or overwritten by the plugin.
 

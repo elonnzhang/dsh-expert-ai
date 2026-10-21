@@ -83,9 +83,9 @@ async function start(options: {
 }
 
 describe("consult_expert", () => {
-  it("is the only tool the plugin registers", async () => {
+  it("registers the consultation and local reference tools", async () => {
     const h = await start();
-    expect(h.tools()).toEqual(["consult_expert"]);
+    expect(h.tools()).toEqual(["consult_expert", "read_expert_reference"]);
   });
 
   it("runs the expert as a persona subagent and returns its answer", async () => {

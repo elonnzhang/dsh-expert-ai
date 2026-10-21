@@ -9,6 +9,7 @@ import {
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { ConfigForm, ConfigFormSnapshot } from "@deepseek-ai/dsh-client-ui-settings/client";
 import type { ExpertSettings } from "../types.js";
+import type { ExpertLibraryApi } from "./library-api.js";
 import { ExpertsTab } from "./ExpertsTab.js";
 import { GeneralTab } from "./GeneralTab.js";
 import css from "./settings.module.css";
@@ -25,6 +26,7 @@ export interface ExpertSettingSectionInjected {
   };
   form: ConfigForm<ExpertSettings>;
   loadIdentity: (id: string) => Promise<string>;
+  expertApi: ExpertLibraryApi;
   t: TranslateNS<"expert-ai">;
 }
 
@@ -104,6 +106,7 @@ export function ExpertSettingSection(props: Props): ReactNode {
             writable={snapshot.writable}
             form={props.form}
             loadIdentity={props.loadIdentity}
+            expertApi={props.expertApi}
             t={t}
             notify={notify}
           />

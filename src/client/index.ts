@@ -21,8 +21,10 @@ import { IconUserOutlineRegular, IconUsersOutlineMedium } from "@deepseek-ai/dsh
 import { EXPERT_AI_NAMESPACE } from "../constants.js";
 import { callHost } from "./hostCall.js";
 import type { ExpertRecord, ExpertSettings } from "../types.js";
+import type { ExpertCatalogEntry } from "../expert-types.js";
 import { ExpertSettingSection, type ExpertSettingSectionInjected } from "./ExpertSettingSection.js";
 import { ChatPanel, type ChatPanelInjected } from "./ChatPanel.js";
+import type { ExpertLibraryApi } from "./library-api.js";
 import { mentionCandidates } from "./mentions.js";
 import { en, NS, zh, type ExpertKey } from "./locales.js";
 
@@ -61,14 +63,44 @@ export function apply(ctx: ClientContext): void {
     if (connection === undefined) throw new Error("expert-ai: connection service is unavailable");
     return connection.rpc as unknown as ClientConnectionRpc;
   };
+  const callExpert = async <T,>(endpoint: string, payload: unknown): Promise<T> => {
+    const result = await callHost(rpc(), endpoint, payload);
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value as T;
+  };
+  const expertApi: ExpertLibraryApi = {
+    async catalog(ref) {
+      return callExpert<{ ref: string; cached: boolean; experts: ExpertCatalogEntry[] }>("expert/catalog", { ref });
+    },
+    async importExpert(slug, ref) {
+      const imported = (record: ExpertRecord): boolean =>
+        record.expertPackage?.slug === slug && record.expertPackage.ref === ref;
+      const snapshot = form.getSnapshot();
+      if (!snapshot.writable || snapshot.value === undefined) throw new Error(t("unavailable"));
+      const existing = snapshot.value.records?.find(imported);
+      if (existing !== undefined) return existing.id;
+      const { record } = await callExpert<{ record: ExpertRecord }>("expert/import", { slug, ref });
+      const latest = form.getSnapshot();
+      if (!latest.writable || latest.value === undefined) throw new Error(t("unavailable"));
+      if (latest.value.stateDir !== snapshot.value.stateDir) throw new Error(t("expertDirectoryChanged"));
+      const records = latest.value.records ?? [];
+      const samePackage = records.find(imported);
+      if (samePackage !== undefined) return samePackage.id;
+      const next = records.some((item) => item.id === record.id)
+        ? { ...record, id: `${record.id}-${ref.toLowerCase().replace(/[^a-z0-9-]+/g, "-")}` }
+        : record;
+      if (records.some((item) => item.id === next.id)) throw new Error(t("expertIdConflict", { id: next.id }));
+      if (!await form.set("records", [...records, next])) throw new Error(t("writeFailed"));
+      return next.id;
+    },
+  };
   const injected = (): ExpertSettingSectionInjected => ({
     hooks: { settings: form },
     form,
+    expertApi,
     t,
     async loadIdentity(id) {
-      const result = await callHost(rpc(), "identity", { recordId: id });
-      if (!result.ok) throw new Error(result.error.message);
-      return (result.value as { identity: string }).identity;
+      return (await callExpert<{ identity: string }>("identity", { recordId: id })).identity;
     },
   });
   const records = (): NonNullable<ExpertSettings["records"]> =>

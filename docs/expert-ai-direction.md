@@ -1,6 +1,6 @@
 # 专家 AI 产品方向与服务规划
 
-> 状态（2026-10-20）：分类咨询、评审、专家团与专家包在线导入都已从本仓库移除，当前代码提供身份层（`expertIdentity` 服务与身份库设置页）、单聊（Chat Panel 与 `@` 专家候选）以及向主 Agent 的 `consult_expert` 咨询工具。智囊团提案 `docs/think-tank-agent-team.md` 也已删除，需要时用 `git show 8164529:docs/think-tank-agent-team.md` 查阅。下文对现有代码的分析（如 `consult_expert_category`、`maxBatchSize`、`consult_expert`）记录的是移除前的状态；产品方向仍作后续参考。
+> 状态（2026-10-21）：分类咨询、评审与专家团已从本仓库移除。当前代码提供身份层（`expertIdentity` 服务与身份库设置页）、单聊（Chat Panel 与 `@` 专家候选）、向主 Agent 的 `consult_expert` 咨询工具，以及 `mimeographs` 在线目录、按提交版本导入与 `read_expert_reference`。智囊团提案 `docs/think-tank-agent-team.md` 也已删除，需要时用 `git show 8164529:docs/think-tank-agent-team.md` 查阅。下文对已移除功能的分析（如 `consult_expert_category`、`maxBatchSize`）记录的是移除前的状态；产品方向仍作后续参考。
 
 建议将 dsh-expert-ai 定位为 **专家认知与协作服务平台**：汇集公开专家方法、经授权的个人经验和组织案例，连接科研工具与任务流程，支持真实问题分析、多专家协作、实验反馈和经验传承。数字分身承担身份与交流，具体服务通过可检查的交付物和结果评测验证价值。
 

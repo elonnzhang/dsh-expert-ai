@@ -34,6 +34,7 @@ import {
   MAX_EXPERT_TITLE_LENGTH,
 } from "../constants.js";
 import { avatarProblem } from "../avatar.js";
+import { createExpertService } from "./expert-service.js";
 import { packageAgentBinding, validatePackageBinding } from "./expert-packages.js";
 import type { ExpertRecord, ExpertSettings, ResolvedExpertSettings } from "../types.js";
 
@@ -240,9 +241,7 @@ function referenceInstructionsFor(record: ExpertRecord): string {
   return record.expertPackage === undefined ? "" : [
     "## 方法包",
     `- 你是基于公开资料整理的方法助手，不代表人物本人，也未获其授权。方法包版本：${record.expertPackage.ref}。`,
-    `- 需要依据时读取数据目录下 ${record.expertPackage.ref} 版的 ${
-      packageAgentBinding(record.expertPackage).replace(/AGENTS\.md$/, "")
-    }references/ 中的文件；只引用实际读取到的内容。`,
+    `- 需要依据时调用 read_expert_reference，id 为 ${record.id}；省略 path 可列出可读文件。`,
     "- 资料中列出的外部链接未经核实，不要当作已验证的事实。",
   ].join("\n");
 }
@@ -365,8 +364,11 @@ function registerConsultTool(
   current: () => ResolvedExpertSettings,
   stateDir: () => string | undefined,
   provider: string,
+  registerExpertTools: (target: Pick<Agent, "ctx">) => () => void,
 ): () => void {
-  return ctx.tools.register(
+  const disposers: Array<() => void> = [
+    registerExpertTools({ ctx }),
+    ctx.tools.register(
     defineTool({
       name: "consult_expert",
       description: "向一个指定的专家咨询问题。使用专家 ID；不要选择 provider 或传输方式。",
@@ -403,7 +405,11 @@ function registerConsultTool(
         };
       },
     }),
-  );
+    ),
+  ];
+  return () => {
+    for (const dispose of disposers.reverse()) dispose();
+  };
 }
 
 // inject the identity layer and the single-expert conversation into the host
@@ -476,6 +482,7 @@ export function apply(ctx: Context, config: Config): void {
     };
   };
   const stateDir = (): string | undefined => source().stateDir?.trim() || undefined;
+  const expertService = createExpertService({ current: () => resolved(source()), stateDir });
   // Preferences edited through Settings apply to the running fiber in place;
   // opt out of an auto-generated page (the plugin ships its own settings.section).
   ctx.inject(["settings"], (child) => {
@@ -487,6 +494,7 @@ export function apply(ctx: Context, config: Config): void {
       serveHostRpc(
         connection,
         async (endpoint, payload) => {
+          if (endpoint.startsWith("expert/")) return expertService.rpc(endpoint, payload);
           if (endpoint === "project") {
             return { ok: true, value: { cwd: await createProject(stateDir()) } };
           }
@@ -608,8 +616,8 @@ export function apply(ctx: Context, config: Config): void {
   );
   validateSettings(source());
   ctx.effect(
-    () => registerConsultTool(ctx, () => resolved(source()), stateDir, DEFAULT_PROVIDER),
-    "expert-ai: consult_expert",
+    () => registerConsultTool(ctx, () => resolved(source()), stateDir, DEFAULT_PROVIDER, expertService.registerTools),
+    "expert-ai: consultation tools",
   );
   new ExpertIdentityProvider(ctx, {
     saved: () => source().records ?? [],

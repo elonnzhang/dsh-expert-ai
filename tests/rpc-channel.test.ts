@@ -109,8 +109,10 @@ describe('the expert-ai Host routes', () => {
   })
 
   it('serves the identity library and single-expert conversations only', () => {
-    expect([...HOST_ENDPOINTS]).toEqual(['project', 'greeting', 'identity', 'binding', 'unbind', 'bind'])
-    for (const gone of ['expert/catalog', 'expert/import', 'review/list', 'review/read'])
+    expect([...HOST_ENDPOINTS]).toEqual([
+      'project', 'greeting', 'identity', 'binding', 'unbind', 'bind', 'expert/catalog', 'expert/import',
+    ])
+    for (const gone of ['review/list', 'review/read'])
       expect([...HOST_ENDPOINTS]).not.toContain(gone)
   })
 

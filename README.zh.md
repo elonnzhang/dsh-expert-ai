@@ -12,9 +12,10 @@
 - **单聊**：在侧边栏 Chat Panel 里选择一位专家，或在输入框输入 `@` 选择一位专家，打开一个绑定该专家人设的独立会话。会话不依附 Workspace，强制只读文件沙箱，开场消息由插件写入。
 - **点名与咨询**：输入框里的 `@<id>` 仍作为模型可见文本保存；主 Agent 可以用 `consult_expert` 工具向一位专家发起一次性咨询，回答由该专家的 persona 子代理返回。
 
-同时提供符合 Harness 风格的设置区，用于新增、编辑、启用和删除专家记录，并可导入 Agent Markdown 文件（YAML frontmatter 忽略，正文即人设）。
+同时提供符合 Harness 风格的设置区，用于新增、编辑、启用和删除专家记录，可从 Agent Markdown
+文件（YAML frontmatter 忽略，正文即人设）或按版本从 `mimeographs` 专家方法库导入。
 
-不提供：Agent preset 选择器、专家包在线导入，以及群聊（群聊由 `dsh-bot` 运行时负责）。
+不提供：Agent preset 选择器，以及群聊（群聊由 `dsh-bot` 运行时负责）。
 
 ## 与 dsh-bot 配合
 
@@ -111,9 +112,9 @@ pnpm dsh plugin --profile web remove dsh-expert-ai
 
 ### 从带运行模式的版本升级
 
-`features` 运行模式开关已删除：身份层、Chat Panel 与 `@` 专家候选始终开启。`expert-ai-mode`
-Agent preset、专家包在线导入（`expert/catalog`、`expert/import`），以及更早的分类咨询、评审与专家团
-都已移除。
+`features` 运行模式开关已删除：身份层、Chat Panel、`@` 专家候选、`consult_expert`、
+`read_expert_reference` 与专家包在线导入（`expert/catalog`、`expert/import`）始终开启。
+`expert-ai-mode` Agent preset、分类咨询、评审与专家团已移除。
 
 已有 Profile 无需迁移数据，只需停止 Profile 后清理 patch 行里不再读取的字段：
 
@@ -130,7 +131,7 @@ Agent preset、专家包在线导入（`expert/catalog`、`expert/import`），�
     maxBatchSize: 3
 ```
 
-数据目录仍是 `$DSH_HOME/expert-ai`。其中 `.expert-packages/` 是旧版在线导入的专家包缓存，
+数据目录仍是 `$DSH_HOME/expert-ai`。其中 `.expert-packages/` 保存按提交固定版本的专家包与目录缓存，
 `projects/` 与 `sessions/` 中的旧单聊记录继续可用；不再需要的历史可以自行删除：
 
 ```sh
@@ -215,6 +216,12 @@ pnpm run dev
 ```text
 $DSH_HOME/expert-ai/<id>/agents/<id>.md
 ```
+
+或者点击 **导入 → 从专家方法库导入**，填写 `mimeographs` 的分支或标签（默认 `main`），加载目录后
+选择一位专家。导入会把 `AGENTS.md`、`SKILL.md`、`LICENSE` 和目录声明的 `references/*.md` 固定到
+解析出的提交，写入 `$DSH_HOME/expert-ai/.expert-packages/mimeographs/<提交>/<slug>/`；同一提交和
+slug 已存在时复用本地副本。目录与版本解析会缓存在同一目录下，GitHub 暂时不可达时仍可读取已缓存
+的目录。导入后的专家可通过 `read_expert_reference` 读取这些本地参考资料。
 
 外部 Agent 文件不会被插件复制或覆盖。
 
