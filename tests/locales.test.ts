@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { en, zh } from "../src/client/locales.js";
+import { en, zh } from "../src/client/shared/locales.js";
 
 function placeholders(value: string): string[] {
   return [...value.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]!).sort();

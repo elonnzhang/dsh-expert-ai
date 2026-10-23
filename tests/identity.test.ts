@@ -1,14 +1,16 @@
 import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { homedir, tmpdir } from 'node:os'
+import { join, relative } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { agentDocument, agentIdentity, agentPath, createProject, expertAiHome, identityFor, initializeIdentities, managedAgentBinding, packageRootFrom, readAgentIdentity, reconcileIdentities } from '../src/host/identity.js'
-import type { ExpertRecord } from '../src/types.js'
+import { agentDocument, agentIdentity, agentPath, createProject, expertAiHome, identityFor, importMimeograph, initializeIdentities, packageRootFrom, recordForPackage, reconcileIdentities } from '../src/host/identity/index.js'
+import { managedAgentPath, normalizeRecord } from '../src/record-model.js'
+import type { CanonicalExpertRecord } from '../src/types.js'
+import { packageBinding, packageFetcher } from './expert-fixture.js'
 
-const record: ExpertRecord = {
+const record = normalizeRecord({
   id: 'mentor', name: '导师', description: '创业与管理', tags: ['创业', '现金流'], category: 'business',
   persona: '关注现金流。', enabled: true,
-}
+})
 const homes: string[] = []
 afterEach(async () => {
   vi.unstubAllEnvs()
@@ -74,32 +76,52 @@ describe('expert agent identity', () => {
       .toBe('# Identity\nBe concise.')
   })
 
-  it('uses a same-named state directory file before a bundled file', async () => {
+  it('uses a state-relative file before the plugin fallback for file origins', async () => {
     const root = await home()
     const relative = 'experts/xingtu/clq/AGENTS.md'
     const local = join(root, 'expert-ai', relative)
     await mkdir(join(root, 'expert-ai', 'experts', 'xingtu', 'clq'), { recursive: true })
     await writeFile(local, '# Local override\n')
-    expect(await readAgentIdentity(relative)).toBe('# Local override')
+    expect(await identityFor({ ...record, origin: { kind: 'file', path: relative } })).toBe('# Local override')
   })
 
-  it('falls back to the bundled Xingtu file when the state directory has no copy', async () => {
+  it('falls back to the plugin package for a missing relative file origin', async () => {
     const root = await home()
-    const identity = await readAgentIdentity('experts/xingtu/clq/AGENTS.md', root)
+    const identity = await identityFor({ ...record, origin: { kind: 'file', path: 'experts/xingtu/clq/AGENTS.md' } }, root)
     expect(identity).toContain('# 陈立泉 · 科学家数字分身')
+  })
+
+  it('reads bundled origins only from the plugin package', async () => {
+    const root = await home()
+    const directory = join(expertAiHome(), 'experts', 'xingtu', 'clq')
+    await mkdir(directory, { recursive: true })
+    await writeFile(join(directory, 'AGENTS.md'), '# Local override\n')
+    await writeFile(join(directory, 'manifest.json'), '{}')
+    const bundled = normalizeRecord({ ...record, origin: { kind: 'bundled', path: 'experts/xingtu/clq' } })
+    await initializeIdentities([bundled], root)
+    expect(await identityFor(bundled, root)).toContain('# 陈立泉 · 科学家数字分身')
+    expect(await readFile(join(directory, 'AGENTS.md'), 'utf8')).toBe('# Local override\n')
   })
 
   it('does not retry absolute or home-relative paths inside the package', async () => {
     await home()
-    await expect(readAgentIdentity('/nonexistent-expert-identity/missing.md')).rejects.toThrow('ENOENT')
-    await expect(readAgentIdentity('~/nonexistent-expert-identity/missing.md')).rejects.toThrow('ENOENT')
+    for (const path of ['/nonexistent-expert-identity/missing.md', '~/nonexistent-expert-identity/missing.md'])
+      await expect(identityFor({ ...record, origin: { kind: 'file', path } })).rejects.toThrow('ENOENT')
+  })
+
+  it('expands a home-relative file origin and strips its frontmatter', async () => {
+    const root = await home()
+    const file = join(root, 'identity.md')
+    await writeFile(file, '\uFEFF---\r\nname: mentor\r\n---\r\n\r\n# Home identity\r\n')
+    const path = `~/${relative(homedir(), file)}`
+    expect(await identityFor({ ...record, origin: { kind: 'file', path } })).toBe('# Home identity')
   })
 
   it('does not retry a relative path when reading fails for a reason other than ENOENT', async () => {
     const root = await home()
     const directory = join(root, 'expert-ai', 'experts', 'xingtu', 'clq', 'AGENTS.md')
     await mkdir(directory, { recursive: true })
-    await expect(readAgentIdentity('experts/xingtu/clq/AGENTS.md')).rejects.toThrow('EISDIR')
+    await expect(identityFor({ ...record, origin: { kind: 'file', path: 'experts/xingtu/clq/AGENTS.md' } })).rejects.toThrow('EISDIR')
   })
 
   it('finds the nearest package root', async () => {
@@ -121,7 +143,7 @@ describe('expert agent identity', () => {
 
   it('persists a managed agent binding and uses its markdown as the source', async () => {
     await home()
-    const managed = { ...record, agent: managedAgentBinding(record.id) }
+    const managed = normalizeRecord({ ...record, origin: undefined, agent: managedAgentPath(record.id) })
     await reconcileIdentities([], [managed])
     expect(await readFile(agentPath(record.id), 'utf8')).toContain('关注现金流。')
     expect(await identityFor({ ...managed, persona: 'stale settings text' })).toBe('关注现金流。')
@@ -132,7 +154,7 @@ describe('expert agent identity', () => {
     const source = join(root, 'agents', 'mentor.md')
     await mkdir(join(root, 'agents'), { recursive: true })
     await writeFile(source, '---\nname: mentor\n---\nUse first principles.\n')
-    const imported = { ...record, persona: '', agent: source }
+    const imported = normalizeRecord({ ...record, origin: { kind: 'file', path: source } })
     await reconcileIdentities([], [imported])
     await expect(readFile(agentPath(record.id))).rejects.toMatchObject({ code: 'ENOENT' })
     expect(await identityFor(imported)).toBe('Use first principles.')
@@ -142,10 +164,49 @@ describe('expert agent identity', () => {
     expect(await readFile(source, 'utf8')).toContain('Use first principles.')
   })
 
+  it('uses the legacy inline persona only when the managed file is absent', async () => {
+    await home()
+    expect(await identityFor(record)).toBe(record.persona)
+    await initializeIdentities([record])
+    expect(await identityFor({ ...record, persona: '' })).toBe(record.persona)
+    await expect(identityFor({ ...record, id: 'missing', persona: '' })).rejects.toThrow('no identity configured')
+  })
+
+  it('reads an imported package origin without creating a managed file', async () => {
+    const root = await home()
+    const imported = recordForPackage(await importMimeograph(packageBinding, root, packageFetcher()), 'main')
+    await initializeIdentities([imported], root)
+    expect(await identityFor(imported, root)).toContain('Separate evidence')
+    await expect(readFile(agentPath(imported.id, root))).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('leaves id storage intact when deleting file, bundled, and package records', async () => {
+    const root = await home()
+    const file = join(root, 'outside.md')
+    await writeFile(file, 'External identity.')
+    const imported = recordForPackage(await importMimeograph(packageBinding, root, packageFetcher()), 'main')
+    const records: CanonicalExpertRecord[] = [
+      normalizeRecord({ ...record, id: 'external', origin: { kind: 'file', path: file } }),
+      normalizeRecord({ ...record, id: 'bundled', origin: { kind: 'bundled', path: 'experts/xingtu/clq' } }),
+      imported,
+    ]
+    for (const item of records) {
+      const directory = join(expertAiHome(), item.id)
+      await mkdir(directory, { recursive: true })
+      await writeFile(join(directory, 'marker'), 'Keep me.')
+    }
+    const applied: string[] = []
+    await reconcileIdentities(records, [], undefined, (id) => { applied.push(id) })
+    expect(applied.sort()).toEqual(records.map(({ id }) => id).sort())
+    for (const item of records)
+      expect(await readFile(join(expertAiHome(), item.id, 'marker'), 'utf8')).toBe('Keep me.')
+    expect(await identityFor(imported, root)).toContain('Separate evidence')
+  })
+
   it('reports each stored change even when another record cannot be stored', async () => {
     await home()
     const gone = { ...record, id: 'gone' }
-    const broken = { ...record, id: 'broken', agent: join('/nonexistent-expert-identity', 'missing.md') }
+    const broken = normalizeRecord({ ...record, id: 'broken', origin: { kind: 'file', path: join('/nonexistent-expert-identity', 'missing.md') } })
     await initializeIdentities([record, gone])
     const applied: Array<[string, string | undefined]> = []
     await expect(

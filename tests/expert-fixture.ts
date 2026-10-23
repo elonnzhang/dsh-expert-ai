@@ -4,7 +4,7 @@ const MIMEOGRAPHS_REVISION = "a38f5fcad0853be3e98a6cd95d8e6bf8c66f7c7b";
 
 export const packageBinding = { source: "mimeographs", slug: "test-expert", revision: MIMEOGRAPHS_REVISION } as const;
 
-export function packageFetcher(options: { references?: string[]; fail?: string } = {}) {
+export function packageFetcher(options: { references?: string[]; fail?: string; files?: Record<string, string> } = {}) {
   const references = options.references ?? ["references/frameworks.md", "references/principles.md", "references/sources.md"];
   const files: Record<string, string> = {
     "catalog.json": JSON.stringify({ experts: [{
@@ -17,6 +17,7 @@ export function packageFetcher(options: { references?: string[]; fail?: string }
     "mimeographs/test-expert/references/frameworks.md": "# Framework\nCompare alternatives against a baseline.",
     "mimeographs/test-expert/references/principles.md": "# Principles\nAsk which evidence would change the decision.",
     "mimeographs/test-expert/references/sources.md": "# Sources\nA test fixture, not a real scientist.",
+    ...options.files,
   };
   return vi.fn<typeof fetch>(async (input) => {
     const url = new URL(String(input));

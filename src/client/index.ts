@@ -19,14 +19,16 @@ import type {} from "@deepseek-ai/dsh-client-ui-workspace/client";
 import type { ClientConnectionRpc, ConnectionHandle } from "@deepseek-ai/dsh-client-connection/client";
 import { IconUserOutlineRegular, IconUsersOutlineMedium } from "@deepseek-ai/dsh-client-ui-primitives";
 import { EXPERT_AI_NAMESPACE } from "../constants.js";
-import { callHost } from "./hostCall.js";
+import { callHost } from "./shared/hostCall.js";
 import type { ExpertRecord, ExpertSettings } from "../types.js";
 import type { ExpertCatalogEntry } from "../expert-types.js";
-import { ExpertSettingSection, type ExpertSettingSectionInjected } from "./ExpertSettingSection.js";
-import { ChatPanel, type ChatPanelInjected } from "./ChatPanel.js";
-import type { ExpertLibraryApi } from "./library-api.js";
-import { mentionCandidates } from "./mentions.js";
-import { en, NS, zh, type ExpertKey } from "./locales.js";
+import { ExpertSettingSection, type ExpertSettingSectionInjected } from "./setting/ExpertSettingSection.js";
+import { ChatPanel, type ChatPanelInjected } from "./chat-pane/ChatPanel.js";
+import type { ExpertLibraryApi } from "./setting/library-api.js";
+import { mentionCandidates } from "./chat-pane/mentions.js";
+import { en, NS, zh, type ExpertKey } from "./shared/locales.js";
+import { normalizeExpertRecord } from "./setting/records.js";
+import { originOf } from "../record-model.js";
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
@@ -73,8 +75,10 @@ export function apply(ctx: ClientContext): void {
       return callExpert<{ ref: string; cached: boolean; experts: ExpertCatalogEntry[] }>("expert/catalog", { ref });
     },
     async importExpert(slug, ref) {
-      const imported = (record: ExpertRecord): boolean =>
-        record.expertPackage?.slug === slug && record.expertPackage.ref === ref;
+      const imported = (record: ExpertRecord): boolean => {
+        const origin = originOf(record);
+        return origin.kind === "package" && origin.source === "mimeographs" && origin.slug === slug;
+      };
       const snapshot = form.getSnapshot();
       if (!snapshot.writable || snapshot.value === undefined) throw new Error(t("unavailable"));
       const existing = snapshot.value.records?.find(imported);
@@ -86,11 +90,19 @@ export function apply(ctx: ClientContext): void {
       const records = latest.value.records ?? [];
       const samePackage = records.find(imported);
       if (samePackage !== undefined) return samePackage.id;
-      const next = records.some((item) => item.id === record.id)
-        ? { ...record, id: `${record.id}-${ref.toLowerCase().replace(/[^a-z0-9-]+/g, "-")}` }
-        : record;
+      const canonical = normalizeExpertRecord({
+        ...record,
+        ...(record.origin?.kind === "package" && record.origin.ref === ""
+          ? { origin: { ...record.origin, ref } }
+          : {}),
+      });
+      const idRef = ref.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+      const next = records.some((item) => item.id === canonical.id)
+        ? { ...canonical, id: `${canonical.id}-${idRef}` }
+        : canonical;
       if (records.some((item) => item.id === next.id)) throw new Error(t("expertIdConflict", { id: next.id }));
-      if (!await form.set("records", [...records, next])) throw new Error(t("writeFailed"));
+      const normalized = records.map(normalizeExpertRecord);
+      if (!await form.set("records", [...normalized, next])) throw new Error(t("writeFailed"));
       return next.id;
     },
   };
@@ -104,7 +116,7 @@ export function apply(ctx: ClientContext): void {
     },
   });
   const records = (): NonNullable<ExpertSettings["records"]> =>
-    form.getSnapshot().value?.records?.filter((record) => record.enabled) ?? [];
+    form.getSnapshot().value?.records?.map(normalizeExpertRecord).filter((record) => record.enabled) ?? [];
   // The Host `dsh-session` and Client Session Controller both merge a `sessions`
   // service onto Context; read the Client contract explicitly.
   const sessions = ctx.get("sessions") as unknown as ISessions;
@@ -132,37 +144,33 @@ export function apply(ctx: ClientContext): void {
     }
   };
 
-  // `@` names an expert: picking one starts a conversation with it in a new
-  // session, while the session being typed in keeps only the mention text.
-  // The menu titles each group with its `slash.menu` key, and the workspace
-  // owning that dictionary rejects a second registrant of any locale, so this
-  // source takes the existing key whose name states what it lists.
+  // Like ds-bot, picking an expert inserts plain mention text in this session.
+  // Source names must be unique in the shared @ menu, so reuse the existing
+  // `skill` name and label every candidate with its own section instead.
   const source: InputTriggerSource = {
     trigger: "@",
     name: "skill",
     order: 5,
     candidates(_session, { query }) {
       return Promise.resolve(
-        mentionCandidates(records(), query).map((candidate) => ({ ...candidate, icon: IconUserOutlineRegular })),
+        mentionCandidates(records(), query).map((candidate) => ({
+          ...candidate,
+          icon: IconUserOutlineRegular,
+          section: t("expertGroup"),
+        })),
       );
     },
     warm() {
       void Promise.resolve();
     },
     lexicon() {
-      return records().map((item) => item.id);
+      return [...new Set(records().flatMap((item) => [item.id, item.name]))];
     },
     subscribeLexicon(_session, listener) {
       return form.subscribe(listener);
     },
     onPick({ candidate }) {
-      const record = records().find((item) => item.id === candidate.name);
-      if (record !== undefined) {
-        void createSession(record).catch((error: unknown) => {
-          console.error(`expert-ai: failed to start a conversation with "${record.id}"`, error);
-        });
-      }
-      return { text: `@${candidate.name} `, continue: true };
+      return { text: candidate.value ?? `@${candidate.name} ` };
     },
     codec: {
       clipboardText: (ref) => `@${ref}`,

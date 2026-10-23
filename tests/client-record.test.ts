@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeExpertRecord } from "../src/client/records.js";
+import { normalizeExpertRecord } from "../src/client/setting/records.js";
 import { validateSettings } from "../src/index.js";
 import type { ExpertRecord } from "../src/types.js";
 
@@ -10,6 +10,7 @@ const draft: ExpertRecord = {
   category: "business",
   tags: [" 测试 "],
   persona: " 你是测试代理 ",
+  origin: { kind: "managed" },
   enabled: true,
 };
 
@@ -23,19 +24,25 @@ describe("expert-ai record normalization", () => {
       description: "测试描述",
       tags: ["测试"],
       persona: "你是测试代理",
-      agent: "test-agent/agents/test-agent.md",
+      origin: { kind: "managed" },
     });
+    expect(normalized).not.toHaveProperty("agent");
+    expect(normalized).not.toHaveProperty("expertPackage");
+    expect(normalized).not.toHaveProperty("tag");
     expect(() => validateSettings({ records: [normalized] })).not.toThrow();
   });
 
-  it("uses an explicit agent path instead of inline persona", () => {
+  it("uses an explicit agent path as a file origin instead of inline persona", () => {
     const normalized = normalizeExpertRecord({
       ...draft,
+      origin: undefined,
       agent: " ~/.agent/agents/test-agent.md ",
     });
 
-    expect(normalized.agent).toBe("~/.agent/agents/test-agent.md");
+    expect(normalized.origin).toEqual({ kind: "file", path: "~/.agent/agents/test-agent.md" });
     expect(normalized.persona).toBe("");
+    expect(normalized).not.toHaveProperty("agent");
+    // A Host file is the identity source, so the record needs no inline persona.
     expect(() => validateSettings({ records: [normalized] })).not.toThrow();
   });
 
@@ -46,8 +53,87 @@ describe("expert-ai record normalization", () => {
       persona: " 更新后的人格 ",
     });
 
-    expect(normalized.agent).toBe("test-agent/agents/test-agent.md");
+    expect(normalized.origin).toEqual({ kind: "managed" });
     expect(normalized.persona).toBe("更新后的人格");
+  });
+
+  it("reads legacy bundled and package bindings as canonical origins", () => {
+    const bundled = normalizeExpertRecord({
+      ...draft,
+      origin: undefined,
+      agent: "experts/xingtu/clq/AGENTS.md",
+      persona: "",
+    });
+    expect(bundled.origin).toEqual({ kind: "bundled", path: "experts/xingtu/clq" });
+
+    const packageRecord = normalizeExpertRecord({
+      ...draft,
+      origin: undefined,
+      persona: "",
+      expertPackage: {
+        source: "mimeographs",
+        slug: "clq-expert",
+        revision: "a".repeat(40),
+        ref: "main",
+      },
+    });
+    expect(packageRecord.origin).toEqual({
+      kind: "package",
+      source: "mimeographs",
+      slug: "clq-expert",
+      revision: "a".repeat(40),
+      ref: "main",
+    });
+    expect(packageRecord).not.toHaveProperty("expertPackage");
+  });
+
+  it.each([
+    ["experts/ELON", "experts/ELON"],
+    ["experts/xingtu/ELON", "experts/xingtu/ELON"],
+    ["experts/xingtu/team/ELON", "experts/xingtu/team/ELON"],
+    ["./experts/xingtu/ELON/", "experts/xingtu/ELON"],
+    ["experts\\xingtu\\ELON", "experts/xingtu/ELON"],
+  ])("accepts a bundled pack at any depth: %s", (path, expected) => {
+    const normalized = normalizeExpertRecord({ ...draft, origin: { kind: "bundled", path }, persona: "" });
+    expect(normalized.origin).toEqual({ kind: "bundled", path: expected });
+    expect(() => validateSettings({ records: [normalized] })).not.toThrow();
+  });
+
+  it.each([
+    "experts",
+    "experts/",
+    "xingtu/ELON",
+    "/experts/ELON",
+    "experts/../ELON",
+    "experts//ELON",
+  ])("refuses a bundled path outside experts/: %s", (path) => {
+    const normalized = normalizeExpertRecord({ ...draft, origin: { kind: "bundled", path }, persona: "" });
+    expect(() => validateSettings({ records: [normalized] })).toThrow(/directory under experts/);
+  });
+
+  it("migrates a legacy agent path at any depth, keeping folder case", () => {
+    for (const path of ["experts/ELON", "experts/xingtu/ELON", "experts/xingtu/team/ELON"]) {
+      const normalized = normalizeExpertRecord({ ...draft, origin: undefined, agent: `${path}/AGENTS.md`, persona: "" });
+      expect(normalized.origin).toEqual({ kind: "bundled", path });
+    }
+  });
+
+  it("drops blank model and toolFilter fields and trims non-blank ones", () => {
+    const blank = normalizeExpertRecord({
+      ...draft,
+      model: { provider: " ", model: "" },
+      toolFilter: ["", "  "],
+    });
+    expect(blank).not.toHaveProperty("model");
+    expect(blank).not.toHaveProperty("toolFilter");
+
+    const set = normalizeExpertRecord({
+      ...draft,
+      model: { provider: " openai ", model: " gpt-4.1 " },
+      toolFilter: [" read_file ", "read_file", "web_search"],
+    });
+    expect(set.model).toEqual({ provider: "openai", model: "gpt-4.1" });
+    expect(set.toolFilter).toEqual(["read_file", "web_search"]);
   });
 });
 
@@ -81,6 +167,12 @@ describe("expert-ai presentation fields", () => {
     const normalized = normalizeExpertRecord({ ...draft, avatar: null, source: null } as unknown as ExpertRecord);
     expect(normalized).not.toHaveProperty("avatar");
     expect(normalized).not.toHaveProperty("source");
+  });
+
+  it("merges a legacy single tag into the canonical tags", () => {
+    const normalized = normalizeExpertRecord({ ...draft, tags: [], tag: " 方法 " });
+    expect(normalized.tags).toEqual(["方法"]);
+    expect(normalized).not.toHaveProperty("tag");
   });
 
   it("produces settings the Host accepts", () => {

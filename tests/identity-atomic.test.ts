@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { agentPath, initializeIdentities, reconcileIdentities } from '../src/host/identity.js'
-import type { ExpertRecord } from '../src/types.js'
+import { agentPath, initializeIdentities, reconcileIdentities } from '../src/host/identity/index.js'
+import { normalizeRecord } from '../src/record-model.js'
 
 const disk = vi.hoisted(() => ({ full: false, stuck: false }))
 
@@ -21,11 +21,11 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   return { ...actual, writeFile, rm }
 })
 
-const record: ExpertRecord = {
+const record = normalizeRecord({
   id: 'mentor', name: '导师', description: '创业与管理', tags: ['创业'], category: 'business',
   persona: '关注现金流。', enabled: true,
-}
-const edited = { ...record, persona: '关注团队。' }
+})
+const edited = normalizeRecord({ ...record, persona: '关注团队。' })
 
 const dirs: string[] = []
 afterEach(async () => {

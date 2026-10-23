@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "origin": "bundled",
+  "id": "zyq",
+  "name": "曾毓群",
+  "title": "动力电池与储能思考助手",
+  "description": "1968年生，福建宁德人。宁德时代（CATL）创始人、董事长兼CEO，全球动力电池市占率近四成的龙头企业掌门人。陈立泉2006届博士生，从消费电子电池（ATL）到动力电池（CATL）两度创业。",
+  "category": "business",
+  "tags": [
+    "动力电池",
+    "储能",
+    "技术成熟度",
+    "体系化"
+  ],
+  "source": {
+    "kind": "public"
+  },
+  "provenance": {
+    "collection": "xingtu"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "1fc9af02ad88045f7e519f1954751e69281640f412324b97a940321dabeba9a2",
+      "bytes": 4741
+    }
+  ]
+}

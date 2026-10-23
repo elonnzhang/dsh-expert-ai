@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyAgentMarkdown } from "../src/client/agent-file.js";
-import { EMPTY_RECORD, recordProblem } from "../src/client/records.js";
+import { applyAgentMarkdown } from "../src/client/setting/agent-file.js";
+import { EMPTY_RECORD, copyAsManaged, normalizeExpertRecord, recordProblem } from "../src/client/setting/records.js";
 import type { ExpertRecord } from "../src/types.js";
 
 const valid: ExpertRecord = {
@@ -20,6 +20,7 @@ describe("agent file import", () => {
       id: "user-li",
       name: "李雷（产品）",
       persona: "你是李雷。",
+      origin: { kind: "managed" },
     });
   });
 
@@ -57,5 +58,32 @@ describe("record validation", () => {
     const note = recordProblem({ ...valid, source: { ...fits, note: "注".repeat(201) } }, new Set(), undefined);
     expect(note?.reason).toBe("sourceNoteLength");
     expect([...(note?.fields ?? [])]).toEqual(["source"]);
+  });
+
+  it("requires a managed persona in the editor", () => {
+    expect(recordProblem({ ...valid, persona: "" }, new Set(), undefined)?.reason).toBe("required");
+    expect(recordProblem({ ...valid, origin: { kind: "file", path: "/tmp/agent.md" }, persona: "" }, new Set(), undefined)).toBeUndefined();
+  });
+});
+
+describe("copy as managed", () => {
+  it("converts a bundled record with its loaded identity into a canonical managed record", () => {
+    const copied = copyAsManaged({
+      ...valid,
+      id: "clq",
+      origin: { kind: "bundled", path: "experts/xingtu/clq" },
+      persona: "已加载的人格正文",
+      expertPackage: {
+        source: "mimeographs",
+        slug: "clq-expert",
+        revision: "a".repeat(40),
+        ref: "main",
+      },
+    });
+    expect(copied.origin).toEqual({ kind: "managed" });
+    expect(copied.persona).toBe("已加载的人格正文");
+    expect(copied).not.toHaveProperty("agent");
+    expect(copied).not.toHaveProperty("expertPackage");
+    expect(recordProblem(copied, new Set(), undefined)).toBeUndefined();
   });
 });

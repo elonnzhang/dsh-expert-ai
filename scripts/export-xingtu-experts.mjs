@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
+import { packFiles } from "./pack-manifest.mjs";
 
 /** Snapshot used to regenerate the bundled Xingtu expert method packs. */
 const SNAPSHOT = process.argv[2];
@@ -11,6 +12,17 @@ if (SNAPSHOT === undefined) {
 }
 
 const kb = JSON.parse(await readFile(join(SNAPSHOT, "webapp/data/kb.json"), "utf8"));
+const TITLE = {
+  clq: "固态电池与科研方法思考助手",
+  lh: "固态电池与产学研思考助手",
+  lzg: "光伏与长期主义思考助手",
+  zyq: "动力电池与储能思考助手",
+  oyg: "电池安全与产业路线图思考助手",
+  wcf: "新能源汽车与电池技术思考助手",
+  zjh: "储能系统思考助手",
+  yhg: "固态电池工程化思考助手",
+  crx: "光伏逆变器与储能思考助手",
+};
 const META = {
   clq: { category: "science", tags: ["固态电池", "锂电池", "科研方法", "电动中国"] },
   lh: { category: "science", tags: ["固态电池", "纳米硅碳", "产学研", "人才培养"] },
@@ -45,14 +57,6 @@ function render(person) {
     moodMap[item.mood].push(item);
   }
   const lines = [
-    "---",
-    `id: ${person.id ?? ""}`.trim(),
-    `name: ${JSON.stringify(person.name)}`,
-    `description: ${JSON.stringify(person.desc)}`,
-    `category: ${META[person.id].category}`,
-    `tags: ${JSON.stringify(META[person.id].tags)}`,
-    "---",
-    "",
     `# ${person.name} · ${person.role}`,
     "",
     "## 身份与语气",
@@ -87,9 +91,26 @@ function render(person) {
 }
 
 for (const [id, person] of Object.entries(kb)) {
-  const file = join(OUT, id, "AGENTS.md");
-  await rm(dirname(file), { recursive: true, force: true });
-  await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, render({ ...person, id }), "utf8");
+  const directory = join(OUT, id);
+  const file = join(directory, "AGENTS.md");
+  const title = TITLE[id];
+  if (title === undefined) throw new Error(`missing title for Xingtu expert ${id}`);
+  await rm(directory, { recursive: true, force: true });
+  await mkdir(directory, { recursive: true });
+  await writeFile(file, `${render({ ...person, id }).trimEnd()}\n`, "utf8");
+  const manifest = {
+    schemaVersion: 2,
+    origin: "bundled",
+    id,
+    name: person.name,
+    title,
+    description: person.desc,
+    category: META[id].category,
+    tags: META[id].tags,
+    source: { kind: "public" },
+    provenance: { collection: "xingtu" },
+    files: await packFiles(directory),
+  };
+  await writeFile(join(directory, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 }
 console.log(`exported ${Object.keys(kb).length} Xingtu experts to ${OUT}`);

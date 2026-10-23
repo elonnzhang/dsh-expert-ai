@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "origin": "bundled",
+  "id": "lzg",
+  "name": "李振国",
+  "title": "光伏与长期主义思考助手",
+  "description": "1968年生，河南许昌人。隆基绿能创始人，现任中央研究院院长、首席技术官。单晶硅领域30余年专家，2025年普氏全球能源奖终身成就奖得主。",
+  "category": "business",
+  "tags": [
+    "光伏",
+    "单晶硅",
+    "第一性原理",
+    "长期主义"
+  ],
+  "source": {
+    "kind": "public"
+  },
+  "provenance": {
+    "collection": "xingtu"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "d8575e3f6ca1d1c7338ffa8d40d42a052faa918b5204f7e574e2fa8f9d02aa8c",
+      "bytes": 5168
+    }
+  ]
+}

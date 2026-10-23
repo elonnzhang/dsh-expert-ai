@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "origin": "bundled",
+  "id": "crx",
+  "name": "曹仁贤",
+  "title": "光伏逆变器与储能思考助手",
+  "description": "1968年生。阳光电源创始人、董事长兼总裁，研究员，第十四届全国人大代表、中国光伏行业协会理事长。1997年辞去合肥工业大学教职创办阳光电源，从光伏逆变器做到全球出货量第一，又带出全球领先的储能系统业务，提出『让人人享用清洁电力』。",
+  "category": "business",
+  "tags": [
+    "光伏逆变器",
+    "储能",
+    "氢能",
+    "聚焦"
+  ],
+  "source": {
+    "kind": "public"
+  },
+  "provenance": {
+    "collection": "xingtu"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "b8bcd1074ec897503cbbdc42a45959f0e9eebe27b8912d56b2a008859c926e12",
+      "bytes": 6971
+    }
+  ]
+}

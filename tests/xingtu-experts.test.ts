@@ -8,7 +8,7 @@ const patch = readFileSync(resolve(import.meta.dirname, "..", "cordis.patch.yml"
 const xingtu = patch
   .split(/^ {10}- id: /m)
   .slice(1)
-  .filter((block) => block.includes("agent: experts/xingtu/"))
+  .filter((block) => block.includes("path: experts/xingtu/"))
   .map((block) => ({ id: block.slice(0, block.indexOf("\n")), block }));
 
 const recordIds = patch
@@ -23,10 +23,13 @@ describe("星途 experts in the bundle patch", () => {
     expect(recordIds).not.toContain("research-guide");
   });
 
-  it("ships the nine experts, each bound to the agent file of its own id", () => {
+  it("ships the nine experts, each bound to the pack of its own id", () => {
     expect(xingtu).toHaveLength(9);
-    for (const { id, block } of xingtu)
-      expect(block, id).toMatch(new RegExp(`^ {12}agent: experts/xingtu/${id}/AGENTS\\.md$`, "m"));
+    for (const { id, block } of xingtu) {
+      expect(block, id).toMatch(/^ {12}origin:\n {14}kind: bundled$/m);
+      expect(block, id).toMatch(new RegExp(`^ {14}path: experts/xingtu/${id}$`, "m"));
+      expect(block, id).not.toMatch(/^ {12}(?:agent|persona):/m);
+    }
   });
 
   it("gives each one a title of its own", () => {

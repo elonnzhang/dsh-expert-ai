@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { avatarProblem } from "../src/avatar.js";
-import { AVATAR_SIDE, avatarFromFile, centerSquare, encodeAvatar } from "../src/client/avatar-file.js";
+import { AVATAR_SIDE, avatarFromFile, centerSquare, encodeAvatar } from "../src/client/setting/avatar-file.js";
 
 const png = "iVBORw0KGgo=";
 const SOURCE_LIMIT = 25 * 1024 * 1024;

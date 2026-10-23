@@ -19,6 +19,12 @@ export const EXPERT_AI_CATEGORY_LABELS = {
 /** What an identity's persona was built from; it decides the disclosure the Bot must give. */
 export const EXPERT_SOURCE_KINDS = ["public", "organization", "authorized"] as const;
 
+/**
+ * Where an identity's body is stored: a managed file the settings page edits, a Host file,
+ * a pack shipped inside the plugin, or a commit-pinned imported pack.
+ */
+export const EXPERT_ORIGIN_KINDS = ["managed", "file", "bundled", "package"] as const;
+
 /** Image types an identity avatar may use. */
 export const EXPERT_AVATAR_MIMES = ["image/png", "image/jpeg", "image/webp"] as const;
 
@@ -26,7 +32,7 @@ export const EXPERT_AVATAR_MIMES = ["image/png", "image/jpeg", "image/webp"] as 
 export const MAX_EXPERT_AVATAR_LENGTH = 160_000;
 
 /** Title shown after the name when a record sets none. */
-export const DEFAULT_EXPERT_TITLE = "思考助手";
+export const DEFAULT_EXPERT_TITLE = "Bot";
 
 export const MAX_EXPERT_TITLE_LENGTH = 40;
 

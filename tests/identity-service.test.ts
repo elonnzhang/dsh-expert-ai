@@ -6,43 +6,54 @@ import { join, resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { EXPERT_AI_CATEGORY_LABELS, EXPERT_SOURCE_KINDS } from '../src/constants.js'
-import { agentPath } from '../src/host/identity.js'
-import { disclosureFor, ExpertIdentityProvider } from '../src/index.js'
-import type { ExpertIdentityChange, ExpertIdentityService } from '../src/index.js'
-import type { ExpertRecord } from '../src/types.js'
+import { agentPath, disclosureFor, ExpertIdentityProvider } from '../src/host/identity/index.js'
+import type { ExpertIdentityChange, ExpertIdentityService } from '../src/host/identity/index.js'
+import * as identityStore from '../src/host/identity/store.js'
+import { normalizeRecord } from '../src/record-model.js'
+import type { CanonicalExpertRecord, ExpertRecord } from '../src/types.js'
+import type { ExpertPackManifestV2 } from '../src/expert-types.js'
 
-const mentor: ExpertRecord = {
+const mentor = normalizeRecord({
   id: 'mentor', name: '创业导师', description: '创业与现金流', tags: ['创业', '现金流'], category: 'business',
   persona: '关注现金流。', enabled: true,
-}
-const analyst: ExpertRecord = {
+})
+const analyst = normalizeRecord({
   id: 'analyst', name: '储能专家', description: '储能系统', tags: ['储能'], category: 'tech',
   persona: '关注系统可靠性。', enabled: true,
-}
+})
 const png = { mime: 'image/png' as const, data: 'iVBORw0KGgo=' }
 
 const sha256 = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex')
 
-function xingtuRecords(): ExpertRecord[] {
+const XINGTU_REVISIONS = {
+  clq: '1b7cc8d710e395fc0b5cf6ad9f6c9d74e4804902e72f3db563c1b06372f1d526',
+  lh: '70f9604769b7f2c3a3cff369459d7c782d5a73a670fa6e16a37abcac9be9d7a3',
+  lzg: '45720b83bada5f82850157aa71d45ce23dd164d39d0773f36be507ba43602240',
+  zyq: 'dfcfd6a0d674e855c653bc2e19f85e19aef0575329ed847fcd35afc563537be4',
+  oyg: 'd1f798267b2ee2332ebf8b8b7979258d8700d56376cf2ac5d19a2a2bbd5919cb',
+  wcf: 'cf89c882cc1b532a085cdcd662f1d5a99474d824353a6edf0bd730e7a3164334',
+  zjh: 'c16bc4a38d7f34859630ee523ac7bd2e6aa39951edd7c4e0e62dde1e0fc25cc2',
+  yhg: 'fcbbb07ed5b1844649c1480a5d640ce82eb1a81950e3eb142250b5f3d320a8e4',
+  crx: '4779c0bef9a90a6d93bf1dd22c1bc7bb9b06b6401b84bab35c20bd70641117be',
+} as const
+
+function xingtuRecords(): CanonicalExpertRecord[] {
   const patch = readFileSync(resolve(import.meta.dirname, '..', 'cordis.patch.yml'), 'utf8')
   return patch
     .split(/^ {10}- id: /m)
     .slice(1)
-    .filter((block) => block.includes('agent: experts/xingtu/'))
+    .filter((block) => block.includes('kind: bundled'))
     .map((block) => {
       const id = block.slice(0, block.indexOf('\n'))
-      const field = (name: string): string => new RegExp(`^ {12}${name}: (.+)$`, 'm').exec(block)?.[1]?.trim() ?? ''
-      return {
+      const path = /^ {14}path: (.+)$/m.exec(block)?.[1]?.trim() ?? ''
+      const manifest = JSON.parse(readFileSync(resolve(import.meta.dirname, '..', path, 'manifest.json'), 'utf8')) as ExpertPackManifestV2
+      return normalizeRecord({
+        ...manifest,
         id,
-        name: field('name'),
-        title: field('title'),
-        description: field('description'),
-        category: 'science',
-        tags: [],
         persona: '',
-        agent: field('agent'),
+        origin: { kind: 'bundled', path },
         enabled: true,
-      }
+      })
     })
 }
 
@@ -53,7 +64,7 @@ interface Harness {
   dir: string
   /** The service as another plugin receives it, through cordis' proxy. */
   service: ExpertIdentityService
-  records: ExpertRecord[]
+  records: CanonicalExpertRecord[]
   changes: string[][]
   /** Every payload of `expert-identity/changed`, as the listener received it. */
   events: ExpertIdentityChange[]
@@ -62,6 +73,7 @@ interface Harness {
 const cleanups: Array<() => Promise<void>> = []
 afterEach(async () => {
   await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()))
+  vi.restoreAllMocks()
 })
 
 /** `before` runs ahead of the recorder, so a listener it adds is called first; `dirFor` picks the state directory. */
@@ -77,7 +89,7 @@ async function start(
     await rm(root, { recursive: true, force: true })
   })
   const dir = dirFor === undefined ? root : await dirFor(root)
-  const harness = { ctx, root, dir, records, changes: [], events: [] } as unknown as Harness
+  const harness = { ctx, root, dir, records: records.map(normalizeRecord), changes: [], events: [] } as unknown as Harness
   before?.(ctx)
   ctx.on('expert-identity/changed', (change) => {
     harness.changes.push(change.ids)
@@ -93,7 +105,7 @@ async function start(
 
 /** Replace the records as a settings write does, then wait until the service has caught up. */
 async function update(harness: Harness, records: ExpertRecord[]): Promise<void> {
-  harness.records = records
+  harness.records = records.map(normalizeRecord)
   harness.ctx.emit('loader/volatile-update', [['records']])
   await harness.service.list()
 }
@@ -114,7 +126,10 @@ describe('expertIdentity service', () => {
     const records = xingtuRecords()
     const h = await start(records)
     const listed = await h.service.list()
+    expect(listed).toHaveLength(9)
     expect(listed.map((item) => item.id)).toEqual(records.map((record) => record.id))
+    expect(Object.fromEntries(listed.map(({ id, revision }) => [id, revision]))).toEqual(XINGTU_REVISIONS)
+    expect(listed.every(({ origin }) => origin === 'bundled')).toBe(true)
     expect(await h.service.get('clq')).toMatchObject({ id: 'clq', name: '陈立泉', title: '固态电池与科研方法思考助手' })
   })
 
@@ -122,9 +137,9 @@ describe('expertIdentity service', () => {
     const h = await start([mentor])
     const identity = await h.service.get('mentor')
     expect(identity).toEqual({
-      id: 'mentor', name: '创业导师', title: '思考助手', description: '创业与现金流', category: '企业',
+      id: 'mentor', name: '创业导师', title: 'Bot', description: '创业与现金流', category: '企业',
       tags: ['创业', '现金流'], source: { kind: 'public' }, revision: sha256('关注现金流。'), enabled: true,
-      persona: '关注现金流。', disclosure: disclosureFor('public'),
+      persona: '关注现金流。', disclosure: disclosureFor('public'), origin: 'managed',
     })
     expect(identity).not.toHaveProperty('avatar')
   })
@@ -163,7 +178,7 @@ describe('expertIdentity service', () => {
     ])
     const [first, second] = await h.service.list()
     expect(first).toMatchObject({ title: '创业思考助手', category: '企业', avatar: png, source: { kind: 'organization', note: '内部访谈' } })
-    expect(second).toMatchObject({ title: '思考助手', category: '新能源' })
+    expect(second).toMatchObject({ title: 'Bot', category: '新能源' })
   })
 
   it('does not publish an avatar the Bot runtime would reject', async () => {
@@ -173,7 +188,7 @@ describe('expertIdentity service', () => {
   })
 
   it('omits an identity whose persona cannot be read and keeps the others', async () => {
-    const h = await start([mentor, { ...analyst, agent: join('/nonexistent-expert-identity', 'missing.md') }])
+    const h = await start([mentor, { ...analyst, origin: { kind: 'file', path: join('/nonexistent-expert-identity', 'missing.md') } }])
     expect((await h.service.list()).map((item) => item.id)).toEqual(['mentor'])
     await expect(h.service.get('analyst')).resolves.toBeUndefined()
   })
@@ -191,15 +206,63 @@ describe('expertIdentity service', () => {
   })
 
   it('hands out copies, so a consumer cannot change the settings', async () => {
-    const h = await start([{ ...mentor, tags: ['创业', '现金流'], avatar: { ...png } }])
+    const h = await start([{ ...mentor, tags: ['创业', '现金流'], avatar: { ...png }, source: { kind: 'organization', note: 'Original' } }])
     const first = await h.service.get('mentor')
     first?.tags.push('篡改')
     if (first?.avatar !== undefined) first.avatar.data = 'AAAA'
+    if (first !== undefined) first.source.note = 'Changed'
+    const listed = await h.service.list()
+    listed[0]?.tags.push('篡改列表')
+    if (listed[0] !== undefined) listed[0].source.kind = 'authorized'
     const again = await h.service.get('mentor')
     expect(again?.tags).toEqual(['创业', '现金流'])
     expect(again?.avatar).toEqual(png)
+    expect(again?.source).toEqual({ kind: 'organization', note: 'Original' })
     expect(h.records[0]?.tags).toEqual(['创业', '现金流'])
     expect(h.records[0]?.avatar).toEqual(png)
+  })
+
+  it('loads each enabled body once across repeated list and get calls until the next settle', async () => {
+    const reads = vi.spyOn(identityStore, 'identityFor')
+    const h = await start([mentor, analyst])
+    await h.service.list()
+    await h.service.list()
+    await h.service.get('mentor')
+    await h.service.get('analyst')
+    expect(reads.mock.calls.map(([record]) => record.id).sort()).toEqual(['analyst', 'mentor'])
+    await update(h, [{ ...mentor, description: 'Changed metadata' }, analyst])
+    expect(reads).toHaveBeenCalledTimes(4)
+    expect((await h.service.get('mentor'))?.description).toBe('Changed metadata')
+    expect(reads).toHaveBeenCalledTimes(4)
+  })
+
+  it('keeps the cached external body until a settings change settles', async () => {
+    const h = await start([mentor])
+    const path = join(h.root, 'external.md')
+    const external = normalizeRecord({ ...analyst, origin: { kind: 'file', path } })
+    await writeFile(path, '# First body')
+    await update(h, [mentor, external])
+    await writeFile(path, '# Second body')
+    expect((await h.service.get('analyst'))?.persona).toBe('# First body')
+    await update(h, [mentor, external])
+    expect((await h.service.get('analyst'))?.persona).toBe('# Second body')
+    expect(h.events).toStrictEqual([{ ids: ['analyst'] }, { ids: ['analyst'] }])
+  })
+
+  it('retries an unreadable body on the next settle without polling it on list or get', async () => {
+    const h = await start([mentor])
+    const path = join(h.root, 'late-cache.md')
+    const late = normalizeRecord({ ...analyst, origin: { kind: 'file', path } })
+    await update(h, [mentor, late])
+    const reads = vi.spyOn(identityStore, 'identityFor')
+    await writeFile(path, '# Ready now')
+    await h.service.list()
+    await expect(h.service.get('analyst')).resolves.toBeUndefined()
+    expect(reads).not.toHaveBeenCalled()
+    await update(h, [mentor, late])
+    expect(reads.mock.calls.some(([record]) => record.id === 'analyst')).toBe(true)
+    expect((await h.service.get('analyst'))?.persona).toBe('# Ready now')
+    expect(h.events).toStrictEqual([{ ids: ['analyst'] }])
   })
 
   it('writes the managed file under the state directory in force at each write', async () => {
@@ -214,7 +277,7 @@ describe('expertIdentity service', () => {
   })
 
   it('keeps editor-managed identities published when the state directory changes', async () => {
-    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const managed = normalizeRecord({ ...mentor, origin: undefined, agent: 'mentor/agents/mentor.md' })
     const h = await start([managed])
     const other = await mkdtemp(join(tmpdir(), 'expert-identity-other-'))
     cleanups.push(() => rm(other, { recursive: true, force: true }))
@@ -227,7 +290,7 @@ describe('expertIdentity service', () => {
   })
 
   it('seeds a new state directory again on a later save when the first attempt failed', async () => {
-    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const managed = normalizeRecord({ ...mentor, origin: undefined, agent: 'mentor/agents/mentor.md' })
     const h = await start([managed])
     const blocked = join(h.root, 'blocked')
     await writeFile(blocked, 'not a directory')
@@ -243,7 +306,7 @@ describe('expertIdentity service', () => {
   })
 
   it('seeds the state directory on a later save when the attempt at startup failed', async () => {
-    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const managed = normalizeRecord({ ...mentor, origin: undefined, agent: 'mentor/agents/mentor.md' })
     const h = await start([managed], undefined, async (root) => {
       const blocked = join(root, 'blocked')
       await writeFile(blocked, 'not a directory')
@@ -259,7 +322,7 @@ describe('expertIdentity service', () => {
   })
 
   it('retries a save that failed when the settings are written again', async () => {
-    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
+    const managed = normalizeRecord({ ...mentor, origin: undefined, agent: 'mentor/agents/mentor.md' })
     const h = await start([managed])
     const file = agentPath('mentor', h.root)
     await rm(file)
@@ -274,8 +337,8 @@ describe('expertIdentity service', () => {
   })
 
   it('keeps saving personas after the state directory changes while another record cannot be read', async () => {
-    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
-    const broken = { ...analyst, agent: join('/nonexistent-expert-identity', 'missing.md') }
+    const managed = normalizeRecord({ ...mentor, origin: undefined, agent: 'mentor/agents/mentor.md' })
+    const broken = normalizeRecord({ ...analyst, origin: { kind: 'file', path: join('/nonexistent-expert-identity', 'missing.md') } })
     const h = await start([managed, broken])
     const other = await mkdtemp(join(tmpdir(), 'expert-identity-other-'))
     cleanups.push(() => rm(other, { recursive: true, force: true }))
@@ -289,7 +352,7 @@ describe('expertIdentity service', () => {
   })
 
   it('applies a revert after an earlier write only partly succeeded', async () => {
-    const broken = { ...analyst, agent: join('/nonexistent-expert-identity', 'missing.md') }
+    const broken = normalizeRecord({ ...analyst, origin: { kind: 'file', path: join('/nonexistent-expert-identity', 'missing.md') } })
     const h = await start([mentor])
     await update(h, [{ ...mentor, persona: '关注团队。' }, broken])
     expect((await h.service.get('mentor'))?.persona).toBe('关注团队。')
@@ -300,8 +363,8 @@ describe('expertIdentity service', () => {
   })
 
   it('stores a record again when a partly failed write had removed it', async () => {
-    const managed = { ...mentor, agent: 'mentor/agents/mentor.md' }
-    const broken = { ...analyst, agent: join('/nonexistent-expert-identity', 'missing.md') }
+    const managed = normalizeRecord({ ...mentor, origin: undefined, agent: 'mentor/agents/mentor.md' })
+    const broken = normalizeRecord({ ...analyst, origin: { kind: 'file', path: join('/nonexistent-expert-identity', 'missing.md') } })
     const h = await start([managed])
     await update(h, [broken])
     await expect(h.service.get('mentor')).resolves.toBeUndefined()
@@ -311,7 +374,7 @@ describe('expertIdentity service', () => {
   })
 
   it('removes the storage of a record that a partly failed write had added', async () => {
-    const broken = { ...analyst, id: 'broken', agent: join('/nonexistent-expert-identity', 'missing.md') }
+    const broken = normalizeRecord({ ...analyst, id: 'broken', origin: { kind: 'file', path: join('/nonexistent-expert-identity', 'missing.md') } })
     const h = await start([mentor])
     await update(h, [mentor, analyst, broken])
     expect(await readFile(agentPath('analyst', h.root), 'utf8')).toContain('关注系统可靠性。')
@@ -490,7 +553,7 @@ describe('expert-identity/changed', () => {
   it('publishes an identity once its persona becomes readable', async () => {
     const h = await start([mentor])
     const file = join(h.root, 'late.md')
-    const late = { ...analyst, agent: file }
+    const late = normalizeRecord({ ...analyst, origin: { kind: 'file', path: file } })
     await update(h, [mentor, late])
     expect(h.changes).toEqual([])
     await writeFile(file, '---\nname: analyst\n---\n\n后来才写好的人设。\n')
@@ -530,7 +593,7 @@ describe('withdrawn identities', () => {
   it('does not call an identity withdrawn when its persona stops being readable', async () => {
     const h = await start([mentor])
     const file = join(h.root, 'late.md')
-    const late = { ...analyst, agent: file }
+    const late = normalizeRecord({ ...analyst, origin: { kind: 'file', path: file } })
     await writeFile(file, '---\nname: analyst\n---\n\n外部人设。\n')
     await update(h, [mentor, late])
     await rm(file)
@@ -540,7 +603,7 @@ describe('withdrawn identities', () => {
 
   it('lists a record deleted while its persona could not be read as withdrawn', async () => {
     const h = await start([mentor])
-    await update(h, [mentor, { ...analyst, agent: join(h.root, 'never-written.md') }])
+    await update(h, [mentor, { ...analyst, origin: { kind: 'file', path: join(h.root, 'never-written.md') } }])
     await update(h, [mentor])
     expect(h.events).toStrictEqual([{ ids: ['analyst'], withdrawn: ['analyst'] }])
   })

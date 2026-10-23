@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & help
+    url: https://github.com/elonnzhang/dsh-expert-ai/discussions
+    about: Installation, setup, and usage questions belong in Discussions, not Issues.
+  - name: Feature requests & ideas
+    url: https://github.com/elonnzhang/dsh-expert-ai/discussions
+    about: Suggest features and discuss ideas in Discussions.

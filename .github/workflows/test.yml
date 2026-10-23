@@ -1,0 +1,81 @@
+name: Test
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} - Node ${{ matrix.node }} - DSH ${{ matrix.dsh }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, node: 24, dsh: 0.2.0-rc.2 }
+          - { os: ubuntu-latest, node: 22, dsh: 0.2.0-rc.2 }
+          - { os: macos-latest, node: 24, dsh: 0.2.0-rc.2 }
+          - { os: windows-latest, node: 24, dsh: 0.2.0-rc.2 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+
+  pack:
+    name: Packed files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Check the package contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(pnpm pack --dry-run)"
+          printf '%s\n' "$output"
+          required=(
+            lib/index.js
+            lib/index.d.ts
+            lib/client.js
+            lib/types/client/index.d.ts
+            cordis.patch.yml
+          )
+          for file in "${required[@]}"; do
+            if ! grep -Fx "$file" <<<"$output" >/dev/null; then
+              echo "::error::pnpm pack output does not list $file"
+              exit 1
+            fi
+          done
+
+  # A job whose needs failed is skipped, and GitHub counts a skipped required check
+  # as passed. Run this job always and fail it unless both checks succeeded.
+  result:
+    name: Test result
+    needs: [test, pack]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.test.result }}" = success && test "${{ needs.pack.result }}" = success

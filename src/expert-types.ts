@@ -1,4 +1,4 @@
-import type { ExpertCategory } from "./types.js";
+import type { ExpertCategory, ExpertIdentitySource } from "./types.js";
 
 export interface ExpertPackageBinding {
   source: "mimeographs";
@@ -31,14 +31,34 @@ export interface ExpertPackageManifest extends ExpertPackageLocation {
   files: Array<{ path: string; sha256: string; bytes: number }>;
 }
 
-/** One verified reference file from an imported package. */
+/** The metadata and integrity list shipped by a bundled or imported v2 expert pack. */
+export interface ExpertPackManifestV2 {
+  schemaVersion: 2;
+  origin: "bundled" | "package";
+  id: string;
+  name: string;
+  title?: string;
+  description: string;
+  category: ExpertCategory;
+  tags: string[];
+  source: ExpertIdentitySource;
+  provenance: {
+    collection: string;
+    slug?: string;
+    revision?: string;
+    importedAt?: string;
+  };
+  files: Array<{ path: string; sha256: string; bytes: number }>;
+}
+
+/** One verified reference file from a bundled or imported expert pack. */
 export interface ExpertReference {
   id: string;
   expertId: string;
   path: string;
   revision: string;
   sha256: string;
-  sourceUrl: string;
+  sourceUrl?: string;
   text: string;
   truncated: boolean;
 }

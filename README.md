@@ -9,8 +9,8 @@ English | [中文](README.zh.md)
 The plugin does two things:
 
 - **Identity layer**: persists records in the `expert-ai` settings namespace and each identity in `$DSH_HOME/expert-ai/<id>/agents/<id>.md`; provides the `expertIdentity` Cordis service so another plugin, such as a Bot runtime, can read the enabled identities: persona, avatar, source disclosure and revision.
-- **Single-expert conversation**: pick an expert in the sidebar Chat Panel, or type `@` in the composer and pick one, to open a conversation bound to that expert's persona. It has no Workspace, is forced to the read-only file sandbox, and gets its opening message from the plugin.
-- **Expert mention and consultation**: `@<id>` in the composer still saves the mention as model-visible text, and the primary agent can ask one expert through the `consult_expert` tool, whose answer comes back through a persona subagent.
+- **Single-expert conversation**: pick an expert in the sidebar Chat Panel to open a conversation bound to that expert's persona. It has no Workspace, is forced to the read-only file sandbox, and gets its opening message from the plugin.
+- **Expert mention and consultation**: `@<id>` and `@<name>` in the composer save the mention as model-visible text, and the primary agent can ask one expert through the `consult_expert` tool, whose answer comes back through a persona subagent.
 
 It also adds a Harness-styled settings section for creating, editing, enabling, and deleting records, with imports from agent Markdown files (YAML frontmatter is ignored, the body is the persona) or versioned `mimeographs` method packages.
 
@@ -36,11 +36,24 @@ The split of responsibilities and the service contract are in [`docs/expert-bot-
 
 ## Record fields
 
-Each record has an `id`, `name`, `description`, primary-domain `category`, composable `tags[]`, `agent`, `persona`, and `enabled` flag. `agent` is the only runtime identity source. When no Agent file is supplied, saving a record writes `persona` to the managed `<id>/agents/<id>.md` file and stores that relative path in `agent`; when an Agent file is supplied, its Markdown body is authoritative and `persona` is ignored. Relative `agent` paths are read from `$DSH_HOME/expert-ai/` first and then from the plugin package, so bundled `experts/` files work in a fresh Profile; a same-named file under `$DSH_HOME/expert-ai/` overrides the bundled copy. New records using the `custom` category should set `customCategory`; older records without it fall back to the display name. The Host validates the settings document; leftover `features`, `teams`, and `maxBatchSize` from older settings are ignored. `toolFilter` and `model` are optional: they pick the tools and the model a consultation runs on.
+Each record has an `id`, `name`, `description`, primary-domain `category`, composable `tags[]`, `origin`, `persona`, and `enabled` flag. Metadata (name, title, description, tags, source, avatar) lives only in the record; `origin` says where the identity body is read from:
+
+| `origin.kind` | Body comes from | Editable |
+|---|---|---|
+| `managed` | `$DSH_HOME/expert-ai/<id>/agents/<id>.md`, written from `persona` when the settings page saves | Yes |
+| `file` | The Host Markdown file at `origin.path` (`~`, absolute, or relative to `$DSH_HOME/expert-ai/`) | No, the file is the source |
+| `bundled` | A pack directory inside the plugin package, such as `experts/ELON` or `experts/xingtu/clq`; any nesting is allowed | No; **Copy as managed identity** in settings |
+| `package` | An imported pack under `$DSH_HOME/expert-ai/mimeographs/<slug>/` | No; can be copied as managed |
+
+Bundled experts and imported method packs share one pack format: `manifest.json` (`schemaVersion: 2`, initial metadata, provenance and the sha256 of every file), `AGENTS.md` (the body, no frontmatter), and optional `SKILL.md`, `LICENSE` and `references/*.md`. Sizes and hashes are verified before a pack is read.
+
+`toolFilter` and `model` are optional: `toolFilter` limits the tools of both the chat and a consultation, while `model` (provider/model) applies to `consult_expert` only. New records using the `custom` category should set `customCategory`; without it the display name is used.
+
+Older records with `agent`, `expertPackage` or `tag` still load: the Host derives `origin` from them, and the settings page writes the new shape on its next save. Leftover `features`, `teams`, `maxBatchSize` and `provider` are ignored.
 
 Presentation fields are optional, so records saved before they existed stay valid:
 
-- `title` (at most 40 characters after trimming) is shown after the name and defaults to “思考助手”.
+- `title` (at most 40 characters after trimming) is shown after the name and defaults to “Bot”.
 - `avatar` is `{ mime, data }` with an `image/png`, `image/jpeg` or `image/webp` mime and base64 data; the whole data URL must fit in 160,000 characters. The editor crops a picked image to a centered 160 px square and re-encodes it.
 - `source` is `{ kind, note? }` with `kind` one of `public`, `organization` or `authorized`; `note` holds at most 200 characters. A record without `source` counts as `public`, and the kind selects the disclosure the identity carries.
 
@@ -49,6 +62,7 @@ Presentation fields are optional, so records saved before they existed stay vali
 Another plugin reads identities with `ctx.inject(['expertIdentity'], ctx => …)`:
 
 - `list()` returns the enabled identities whose persona can be read. `get(id)` returns one with its `persona` and `disclosure`, or `undefined` for an unknown, disabled or unreadable id.
+- Every identity carries `origin` (`managed`, `file`, `bundled` or `package`); older consumers may ignore it.
 - `revision` is the sha256 of the persona. A change of title, avatar or source does not alter it; it arrives through the changed event and a fresh `get`.
 - `disclosure` is a Chinese paragraph chosen by `source.kind`, for the consumer to put into its prompt as is.
 - `expert-identity/changed` carries `{ ids, withdrawn? }`. `ids` are the sorted ids that appeared, disappeared or changed. `withdrawn` (sorted, absent when empty) lists those whose record the user disabled or deleted, and `ids` still contains them; an identity whose persona merely cannot be read is not withdrawn. Listeners are not awaited, and nothing is emitted at startup.
@@ -123,16 +137,15 @@ are no longer read from the plugin's patch row:
   name: dsh-expert-ai
   config:
     stateDir: …        # keep
-    provider: spawn    # keep: the subagent provider for consult_expert
     records: […]       # keep
     # no longer read; safe to delete
     features: [identity, conversation]
     teams: […]
     maxBatchSize: 3
+    provider: spawn    # consultations always use spawn
 ```
 
-The data directory is still `$DSH_HOME/expert-ai`. Its `.expert-packages/` directory holds
-commit-pinned packages and catalog caches; `projects/` and `sessions/` keep working. History you no
+The data directory is still `$DSH_HOME/expert-ai`. Its `mimeographs/<slug>/` directories hold imported packs, while `.expert-packages/` holds lookup caches and legacy packages; `projects/` and `sessions/` keep working. History you no
 longer need can be deleted:
 
 ```sh
@@ -223,8 +236,7 @@ $DSH_HOME/expert-ai/<id>/agents/<id>.md
 Or choose **Import → From the expert method library**, enter a `mimeographs` branch or tag (default
 `main`), load the catalog, and pick an expert. The import pins `AGENTS.md`, `SKILL.md`, `LICENSE` and
 the catalog-declared `references/*.md` to the resolved commit under
-`$DSH_HOME/expert-ai/.expert-packages/mimeographs/<commit>/<slug>/`. An existing copy for the same
-commit and slug is reused. Catalog and ref resolutions are cached in the same directory, so a cached
+`$DSH_HOME/expert-ai/mimeographs/<slug>/`. An existing copy for the same slug is reused, regardless of the requested commit. Catalog and ref resolutions are cached in the same directory, so a cached
 catalog remains usable while GitHub is unavailable. Imported experts can read these local references
 through `read_expert_reference`.
 
@@ -240,7 +252,7 @@ Saving on the settings page rewrites the `expert-ai` row of that file.
 
 ### 2. Chat with an expert
 
-Type `@` in the composer and pick an expert, or open **Chat Panel** in the sidebar and choose one; either way the plugin starts a new conversation with that expert. The plugin creates an isolated project under `$DSH_HOME/expert-ai/projects/<datetime>`, then creates a Session and binds the expert's persona on the Host:
+Open **Chat Panel** in the sidebar and choose an expert to start a new conversation with that expert. The plugin creates an isolated project under `$DSH_HOME/expert-ai/projects/<datetime>`, then creates a Session and binds the expert's persona on the Host:
 
 - The Session receives a record-specific system prompt through Host binding; the opening message is written by the plugin and does not repeat the full persona.
 - The Session is forced to the **read-only file sandbox**: files can be read, not changed.
@@ -248,7 +260,7 @@ Type `@` in the composer and pick an expert, or open **Chat Panel** in the sideb
 
 ### 3. Consult one expert from a conversation
 
-With `@<id>` in the composer, the mention stays model-visible text and the primary agent decides whether a consultation helps. `consult_expert(id, question)` starts a persona subagent for that expert and returns its answer; the subagent provider is the **子代理 Provider** setting (default `spawn`). The expert answers once, without follow-up questions.
+Type `@` in the composer to search by expert ID or name. Picking an expert inserts `@<name> ` in the current conversation, matching ds-bot. You can also type `@<id>` or `@<name>` directly, including names with spaces. The mention stays model-visible text and the primary agent decides whether a consultation helps. `consult_expert(id, question)` starts a persona subagent for that expert on the Harness `spawn` provider and returns its answer. The expert answers once, without follow-up questions.
 
 ### 4. Update the plugin
 
@@ -268,12 +280,14 @@ pnpm dsh plugin --profile web add https://github.com/elonnzhang/dsh-expert-ai.gi
 
 ## Model Experience
 
-An expert conversation receives a record-specific system prompt and is set to the read-only file sandbox. The role instruction is carried by the system prompt and remains durable and model-visible in that Session.
+The chat and the consultation share one compiler: a record and its body compile into an expert plan (prompt sections plus a tool and model policy) that is then mounted on a Session or a subagent. A chat Session receives the plan's system prompt, the read-only file sandbox and the `toolFilter` tool limit; the plan is saved under `sessions/`, so a Host restart restores it unchanged. The role instruction is carried by the system prompt and remains durable and model-visible in that Session.
 
 `consult_expert` adds its schema to the primary agent's model request. A consultation starts one subagent, installs the expert's persona as the subagent persona, and returns the answer text.
 
 ## Known Limitations
 
-- Expert conversations start in a new Session each time, either from the `@` menu or from the Chat Panel; the current Session keeps only the `@<id>` mention text.
+- The Chat Panel starts expert conversations in a new Session each time. The `@` menu inserts mention text in the current Session without creating or opening another Session.
+- A chat cannot switch models per record: the Session model selection DSH 0.2.0-rc.2 offers plugins also rewrites the deployment default, so `model` applies to `consult_expert` only.
+- A same-named file in the data directory no longer overrides a bundled expert; use **Copy as managed identity** to edit one.
 - The Chat Panel lives in the sidebar footer action Slot: the current public sidebar has no additive Slot above the workspace browser.
 - Expert conversations use the deployment's default Agent preset; the plugin no longer installs one of its own.

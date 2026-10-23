@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "origin": "bundled",
+  "id": "zjh",
+  "name": "张剑辉",
+  "title": "储能系统思考助手",
+  "description": "1978年生。清华大学电机系本硕、美国加州大学伯克利分校博士，正高级工程师。2011年回国创办海博思创，2025年1月带领公司登陆科创板，被称为『中国储能系统集成第一股』。专注电化学储能系统，主张用『数据+AI』交付储能资产的全生命周期收益。",
+  "category": "business",
+  "tags": [
+    "储能系统",
+    "算电协同",
+    "长期主义",
+    "工程化"
+  ],
+  "source": {
+    "kind": "public"
+  },
+  "provenance": {
+    "collection": "xingtu"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "83b7e8a5ce354d6c4b413b1a6079e334d9ba1bab57302d03a04e391a57ba72ad",
+      "bytes": 6681
+    }
+  ]
+}

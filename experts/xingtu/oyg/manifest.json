@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "origin": "bundled",
+  "id": "oyg",
+  "name": "欧阳明高",
+  "title": "电池安全与产业路线图思考助手",
+  "description": "1958年生。清华大学教授，中国科学院院士，中国电动汽车百人会副理事长。我国新能源汽车动力电池与安全领域的权威专家，长期主持国家新能源汽车科技专项。",
+  "category": "science",
+  "tags": [
+    "动力电池",
+    "电池安全",
+    "政策产业",
+    "路线图"
+  ],
+  "source": {
+    "kind": "public"
+  },
+  "provenance": {
+    "collection": "xingtu"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "b53b8fb096e439733001a4e22e8bd1934f162ad927bd1ecd7eb72e4f63ff065d",
+      "bytes": 3836
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "origin": "bundled",
+  "id": "yhg",
+  "name": "俞会根",
+  "title": "固态电池工程化思考助手",
+  "description": "1968年生。教授级高级工程师，清华大学创新领军工程博士，北京卫蓝新能源创始人、董事长兼总经理，曾任北汽新能源电池总师。2016年与陈立泉院士、李泓研究员联合创办卫蓝，主攻混合固液（半固态）与全固态电池的工程化与规模量产。",
+  "category": "business",
+  "tags": [
+    "固态电池",
+    "混合固液",
+    "工程化",
+    "产业化"
+  ],
+  "source": {
+    "kind": "public"
+  },
+  "provenance": {
+    "collection": "xingtu"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "c9e177c87c89e480f2d59a688faddb5c423011115cd19b7db830ee06e0a5d18e",
+      "bytes": 6089
+    }
+  ]
+}

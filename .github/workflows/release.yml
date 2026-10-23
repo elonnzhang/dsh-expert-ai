@@ -1,0 +1,89 @@
+name: Release
+
+# Publishes dsh-expert-ai to npm when a GitHub release is published.
+#
+# npm Trusted Publishing uses GitHub's OIDC token, so this repository stores no npm
+# token. npm adds a provenance statement to every published version. Configure it once
+# on npmjs.com: package dsh-expert-ai, Settings, Trusted Publisher, GitHub Actions,
+# repository elonnzhang/dsh-expert-ai, workflow release.yml, no environment.
+#
+# The GitHub release tag must be v<version in package.json> and must point at a commit
+# on main. A version with a pre-release suffix goes to the npm tag "next"; a stable
+# version goes to "latest".
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run every check and pack without publishing
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Check and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      # Trusted Publishing requires npm 11.5.1 or later.
+      - run: npm install -g npm@11.6.2 --no-fund --no-audit
+
+      - name: Check the tag and the branch
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::The release tag is $TAG, but package.json has version $version. Tag v$version or change the version."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$TAG points at a commit that is not on main. Release from main."
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+
+      - name: Pack (dry run)
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: pnpm pack --dry-run
+
+      - name: Publish
+        if: github.event_name == 'release' || (!inputs.dry_run && github.ref == 'refs/heads/main')
+        run: |
+          tag="$(node -p "require('./package.json').version.includes('-') ? 'next' : 'latest'")"
+          echo "Publishing $(node -p "require('./package.json').version") with the npm tag $tag"
+          npm publish --provenance --access public --tag "$tag"
+
+      # Keep the package archive on the GitHub release for installs without npm.
+      - name: Attach the package to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          pnpm pack
+          gh release upload "$TAG" "dsh-expert-ai-$(node -p "require('./package.json').version").tgz" --clobber

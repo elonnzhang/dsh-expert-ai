@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "origin": "bundled",
+  "id": "wcf",
+  "name": "王传福",
+  "title": "新能源汽车与电池技术思考助手",
+  "description": "1966年生，安徽无为人。比亚迪创始人、董事长兼总裁，教授级工程师出身。从镍镉电池起家到全球新能源汽车销量冠军，2026年发布第二代刀片电池与闪充技术，蝉联全球新能源销冠。",
+  "category": "business",
+  "tags": [
+    "新能源汽车",
+    "电池技术",
+    "工程师思维",
+    "创新"
+  ],
+  "source": {
+    "kind": "public"
+  },
+  "provenance": {
+    "collection": "xingtu"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "aa6352ee41fea118ac5c31518e4768a6cbc491ca1659d91ee22a695b89e27307",
+      "bytes": 5142
+    }
+  ]
+}

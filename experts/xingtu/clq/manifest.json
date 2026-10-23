@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "origin": "bundled",
+  "id": "clq",
+  "name": "陈立泉",
+  "title": "固态电池与科研方法思考助手",
+  "description": "1940年生，四川南充人。中国工程院院士，中科院物理所研究员，2025年度国家最高科学技术奖获得者。我国固态离子学奠基人、锂电池产业开拓者，提出『电动中国』战略构想。",
+  "category": "science",
+  "tags": [
+    "固态电池",
+    "锂电池",
+    "科研方法",
+    "电动中国"
+  ],
+  "source": {
+    "kind": "public"
+  },
+  "provenance": {
+    "collection": "xingtu"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "d94dcc09a7433e080d4ee157d389b3c6e81c95ad70cef300366be78787ff55d7",
+      "bytes": 5751
+    }
+  ]
+}

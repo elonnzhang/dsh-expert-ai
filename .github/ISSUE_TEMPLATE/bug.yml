@@ -1,0 +1,58 @@
+name: Bug report / 报告 bug
+description: Something in dsh-expert-ai does not work as it should. / dsh-expert-ai 有功能不正常。
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Add the exact error text and, when possible, a screenshot of the whole window.
+        请附上完整报错原文；如果可以，也请附整窗截图。
+
+        Security problems: use the **Security** tab and **Report a vulnerability**.
+        Questions and ideas: use [Discussions](https://github.com/elonnzhang/dsh-expert-ai/discussions).
+        安全问题请在 **Security** 页私下报告；提问和建议请发到 [Discussions](https://github.com/elonnzhang/dsh-expert-ai/discussions)。
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / 发生了什么？
+      description: What you did, what you expected, and what happened instead. / 你做了什么、期望什么、实际发生了什么。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      placeholder: |
+        1. Open Settings, then Expert / 打开“设置 → 专家”
+        2. Do ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / 环境
+      description: DSH version, install method, and dsh-expert-ai version. / DSH 版本、安装方式和 dsh-expert-ai 版本。
+      placeholder: |
+        DSH 0.2.0-rc.2, DSH Desktop / DSH Web / CLI
+        Installed with npm / Git / local checkout / other
+        dsh-expert-ai 0.1.1
+    validations:
+      required: true
+  - type: dropdown
+    id: deepseek_bot
+    attributes:
+      label: Is DeepSeek-Bot installed alongside? / 是否同时安装了 DeepSeek-Bot？
+      options:
+        - "No / 否"
+        - "Yes / 是"
+        - "Not sure / 不确定"
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy / 隐私
+      options:
+        - label: This report has no API keys, tokens, or personal data. / 报告里没有 API key、token 或个人信息。
+          required: true

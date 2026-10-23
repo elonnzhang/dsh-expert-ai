@@ -22,8 +22,8 @@ pnpm dsh --profile web --dump-config
 （`expert/catalog` / `expert/import`），以及 `consult_expert` 和 `read_expert_reference` 工具。
 没有运行模式开关。
 
-旧配置行里遗留的 `features`、`teams`、`maxBatchSize` 仍可加载但会被忽略；停止 Profile 后可以
-直接删掉这些字段。`provider` 仍然有效，是 `consult_expert` 使用的子代理 Provider。
+旧配置行里遗留的 `features`、`teams`、`maxBatchSize`、`provider` 仍可加载但会被忽略；停止 Profile
+后可以直接删掉这些字段。`consult_expert` 固定使用 `spawn` 子代理 Provider。
 
 ## 本地 link
 

@@ -6,7 +6,7 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { afterEach, describe, expect, it } from 'vitest'
 import * as plugin from '../src/index.js'
-import { HOST_ENDPOINTS } from '../src/host/rpc-routes.js'
+import { HOST_ENDPOINTS } from '../src/host/rpc/index.js'
 
 type FetchRoute = { path: string; methods: readonly string[]; requestBody: string; fetch(request: Request): Promise<Response> }
 type WebServerOwner = Context & { webServer: { register(route: { kind: 'prefix'; path: string }): () => void } }

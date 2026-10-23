@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { Config, independentSystemPromptFor, independentSystemPromptPartsFor, validateSettings } from '../src/index.js'
+import { Config, chatPromptParts, normalizeRecord, validateSettings } from '../src/index.js'
 import type { ExpertRecord } from '../src/types.js'
 
 const record: ExpertRecord = {
   id: 'startup-mentor', name: '创业导师', description: '创业战略与现金流', tags: ['创业', '现金流'], category: 'business',
   persona: '关注用户价值和现金流。', enabled: true,
+}
+
+const promptParts = (value: ExpertRecord, identity = value.persona) => chatPromptParts(normalizeRecord(value), identity)
+const promptFor = (value: ExpertRecord, identity = value.persona) => {
+  const parts = promptParts(value, identity)
+  return [parts.pre, parts.persona, parts.suf].filter(Boolean).join('\n\n')
 }
 
 describe('expert-ai configuration', () => {
@@ -59,15 +65,16 @@ describe('expert-ai configuration', () => {
   })
 
   it('wraps the identity and localizes the domain in the conversation prompt', () => {
-    const prompt = independentSystemPromptFor(record, '  身份正文  ')
+    const prompt = promptFor(record, '  身份正文  ')
     expect(prompt).toContain('身份正文')
     expect(prompt).toContain('主领域：企业')
     expect(prompt).not.toContain('business')
-    expect(independentSystemPromptFor({ ...record, category: 'custom', customCategory: '' })).not.toContain('主领域')
+    // A custom domain without a label falls back to the expert name, as the identity service publishes it.
+    expect(promptFor({ ...record, category: 'custom', customCategory: '' })).toContain(`主领域：${record.name}`)
   })
 
   it('keeps the identity file as a section of its own', () => {
-    const parts = independentSystemPromptPartsFor(record, '  # AGENTS\n身份正文  ')
+    const parts = promptParts(record, '  # AGENTS\n身份正文  ')
     expect(parts.persona).toBe('# AGENTS\n身份正文')
     expect(parts.pre).toContain(`# 专家：${record.name}`)
     expect(parts.pre).toContain('主领域：企业')
@@ -75,11 +82,11 @@ describe('expert-ai configuration', () => {
     expect(parts.suf).toContain('## 对话方式')
     expect(parts.suf).not.toContain('身份正文')
     expect(Object.keys(parts)).toEqual(['pre', 'persona', 'suf'])
-    expect(independentSystemPromptFor(record, '  # AGENTS\n身份正文  ')).toBe([parts.pre, parts.persona, parts.suf].join('\n\n'))
+    expect(promptFor(record, '  # AGENTS\n身份正文  ')).toBe([parts.pre, parts.persona, parts.suf].join('\n\n'))
   })
 
   it('asks the expert to stay in its own identity and to be honest about authorship', () => {
-    const prompt = independentSystemPromptFor(record)
+    const prompt = promptFor(record)
 
     expect(prompt).toContain('不要切换身份')
     expect(prompt).toContain('不要声称自己是真实人物本人')
